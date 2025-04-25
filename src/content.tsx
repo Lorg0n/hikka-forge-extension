@@ -1,0 +1,1 @@
+console.log("Hikka Forge Extension content script running on", window.location.href);

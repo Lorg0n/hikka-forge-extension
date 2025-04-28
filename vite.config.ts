@@ -11,19 +11,25 @@ const outDir = path.resolve(__dirname, `dist/${browser}`)
 
 const copyManifestPlugin = (): Plugin => ({
   name: "copy-manifest",
-  closeBundle() {
-    const dest = path.resolve(outDir, "manifest.json")
+  writeBundle() { 
+    const destManifest = path.resolve(outDir, "manifest.json")
     if (!fs.existsSync(manifestPath)) {
       console.error(`❌ Manifest not found: ${manifestPath}`)
       process.exit(1)
     }
-    fs.copyFileSync(manifestPath, dest)
-    console.log(`✅ Copied ${manifestPath} → dist/${browser}/manifest.json`)
-    
+    fs.mkdirSync(path.dirname(destManifest), { recursive: true });
+    fs.copyFileSync(manifestPath, destManifest)
+    console.log(`✅ Copied ${manifestPath} → ${path.relative(__dirname, destManifest)}`)
+
     const srcAssets = path.resolve(__dirname, "public/assets")
     const destAssets = path.resolve(outDir, "assets")
-    fs.cpSync(srcAssets, destAssets, { recursive: true })
-    console.log(`📦 Copied assets → dist/${browser}/assets`)
+    if (fs.existsSync(srcAssets)) {
+        fs.mkdirSync(path.dirname(destAssets), { recursive: true });
+        fs.cpSync(srcAssets, destAssets, { recursive: true })
+        console.log(`📦 Copied assets → ${path.relative(__dirname, destAssets)}`)
+    } else {
+        console.warn(`⚠️ Assets directory not found, skipping copy: ${srcAssets}`)
+    }
   },
 })
 
@@ -39,14 +45,15 @@ export default defineConfig({
     outDir,
     rollupOptions: {
       input: {
-        main: path.resolve(__dirname, "popup.html"),
+        popup: path.resolve(__dirname, "popup.html"),
         background: path.resolve(__dirname, "src/background.ts"),
-        content: path.resolve(__dirname, "src/content.tsx"),
+        content_loader: path.resolve(__dirname, "src/content-loader.js"), 
+        content: path.resolve(__dirname, "src/content.tsx"), 
       },
       output: {
-        entryFileNames: (chunk) => {
-          return `src/${chunk.name}.js`
-        },
+        entryFileNames: `src/[name].js`,
+        chunkFileNames: `src/[name]-[hash].js`,
+        assetFileNames: `assets/[name]-[hash].[ext]`,
       },
     },
   },

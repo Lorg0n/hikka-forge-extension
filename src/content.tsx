@@ -1,3 +1,7 @@
+import ReactDOM from "react-dom";
+import { createRoot } from "react-dom/client";
+import { Button } from "./components/ui/button";
+
 type InsertPosition = 'before' | 'after' | 'prepend' | 'append' | 'replace';
 
 interface ModuleSelector {
@@ -527,61 +531,60 @@ function createSafeContentFunction(htmlContent: string): () => HTMLElement {
     };
 }
 
-const animeModule: Module = {
-    id: 'anime-module',
-    name: 'Anime Module',
-    description: 'Adds information to anime pages',
-    urlPatterns: ['https://hikka.io/anime/*'],
-    enabled: true,
-    selector: {
-        selector: '.main-content',
-        position: 'prepend'
-    },
-    content: createSafeContentFunction(`
-    <div class="hikka-forge-anime-module" style="
-      margin: 10px 0;
-      padding: 8px;
-      background-color: #f8f9fa;
-      border-radius: 4px;
-      border: 1px solid #e9ecef;
-      font-family: inherit;
-    ">
-      <p style="margin: 0; padding: 0; color: inherit;">Hikka Forge Module activated for anime page</p>
-    </div>
-  `),
-    onLoad: () => console.log('[Hikka Forge] Anime module loaded'),
-    onUnload: () => console.log('[Hikka Forge] Anime module unloaded')
+function createReactModule(moduleId: string, Component: React.ComponentType): Module {
+    const rootRefs: Map<string, any> = new Map();
+    
+    return {
+        id: 'anime-module',
+        name: 'Anime Module',
+        description: 'Adds information to anime pages',
+        urlPatterns: ['https://hikka.io/anime/*'],
+        enabled: true,
+        selector: {
+            selector: 'div.flex.justify-between.gap-4',
+            position: 'prepend'
+        },
+        content: () => {
+            const container = document.createElement('div');
+            container.id = `react-module-container-${moduleId}`;
+
+            setTimeout(() => {
+                const root = createRoot(container);
+                root.render(<Component />);
+                rootRefs.set(container.id, root);
+            }, 0);
+            
+            return container;
+        },
+        onLoad: () => console.log(`[Hikka Forge] React module ${moduleId} loaded`),
+        onUnload: () => {
+            const containerId = `react-module-container-${moduleId}`;
+            const root = rootRefs.get(containerId);
+            if (root) {
+                root.unmount();
+                rootRefs.delete(containerId);
+            }
+            console.log(`[Hikka Forge] React module ${moduleId} unloaded`);
+        }
+    };
+}
+
+const ButtonComponent = () => {
+    return (
+        <div className="p-4 bg-white dark:bg-gray-800 rounded-md shadow">
+            <h3 className="mb-3 text-lg font-medium">Shadcn Button Example</h3>
+            <Button 
+                onClick={() => alert('Shadcn button clicked!')}
+                variant="default"
+            >
+                Click Me
+            </Button>
+        </div>
+    );
 };
 
-const mangaModule: Module = {
-    id: 'manga-module',
-    name: 'Manga Module',
-    description: 'Adds information to manga pages',
-    urlPatterns: ['https://hikka.io/anime/*'],
-    enabled: true,
-    selector: {
-        selector: 'div.flex.justify-between.gap-4',
-        position: 'after',
-        index: 2
-    },
-    content: createSafeContentFunction(`
-    <div class="hikka-forge-manga-module" style="
-      margin: 10px 0;
-      padding: 8px;
-      background-color: #e9f5ff;
-      border-radius: 4px;
-      border: 1px solid #c7e2ff;
-      font-family: inherit;
-    ">
-      <p style="margin: 0; padding: 0; color: inherit;">Hikka Forge Module activated for manga/ranobe page</p>
-    </div>
-  `),
-    onLoad: () => console.log('[Hikka Forge] Manga module loaded'),
-    onUnload: () => console.log('[Hikka Forge] Manga module unloaded')
-};
-
-moduleManager.registerModule(animeModule);
-moduleManager.registerModule(mangaModule);
+const shadcnButtonModule = createReactModule('shadcn-button-module', ButtonComponent);
+moduleManager.registerModule(shadcnButtonModule);
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('[Hikka Forge] Received message:', message);

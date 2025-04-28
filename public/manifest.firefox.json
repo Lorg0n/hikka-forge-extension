@@ -24,11 +24,11 @@
         "tabs"
     ],
     "host_permissions": [
-        "<all_urls>"
+        "https://hikka.io/*"
     ],
     "content_scripts": [
         {
-        "matches": ["<all_urls>"], 
+        "matches": ["https://hikka.io/*"], 
         "js": [
             "src/content_loader.js" 
         ],

@@ -1,284 +1,295 @@
-interface ModuleAction {
-  type: 'MODULE_ACTION';
-  action: 'TOGGLE' | 'REFRESH';
-  moduleId?: string;
-  enabled?: boolean;
-}
+import type { BackgroundMessage, ModuleInfo, ContentMessage } from './types/module';
 
-interface GetModuleInfo {
-  type: 'GET_MODULE_INFO';
-}
-
-interface UrlChangedMessage {
-  type: 'URL_CHANGED';
-  url: string;
-}
-
-interface SyncModulesMessage {
-  type: 'SYNC_MODULES';
-  settings: Record<string, any>;
-}
-
-type Message = ModuleAction | GetModuleInfo | UrlChangedMessage | SyncModulesMessage;
-
-interface ModuleInfo {
-  id: string;
-  name: string;
-  description: string;
-  enabled: boolean;
-  urlPatterns: string[];
-}
-
-interface TabState {
-  url: string;
-  lastChecked: number;
-}
+let moduleDefinitionsCache: ModuleInfo[] | null = null;
+let cacheTimestamp: number = 0;
+const CACHE_DURATION = 5 * 60 * 1000;
 
 class BackgroundManager {
-  private tabStates: Map<number, TabState> = new Map();
-  private updateInterval: number | null = null;
+    private tabStates: Map<number, { url: string; lastChecked: number }> = new Map();
 
-  constructor() {
-    this.initWebNavigationListeners();
-    this.initTabsListeners();
-    this.initMessageListener();
+    constructor() {
+        this.initWebNavigationListeners();
+        this.initTabsListeners();
+        this.initMessageListener();
+        this.initInstallAndUpdateListeners();
+        console.log('[Hikka Forge] Background script initialized');
 
-    console.log('[Hikka Forge] Background script initialized');
-  }
-
-  private initWebNavigationListeners(): void {
-    chrome.webNavigation.onHistoryStateUpdated.addListener(details => {
-      if (details.frameId === 0 && details.url.startsWith('https://hikka.io/')) {
-        this.handleUrlChange(details.tabId, details.url);
-      }
-    });
-
-    chrome.webNavigation.onCompleted.addListener(details => {
-      if (details.frameId === 0 && details.url.startsWith('https://hikka.io/')) {
-        this.handleUrlChange(details.tabId, details.url);
-      }
-    });
-  }
-
-  private initTabsListeners(): void {
-    chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-      if ((changeInfo.status === 'complete' || changeInfo.url) &&
-          tab.url && tab.url.startsWith('https://hikka.io/')) {
-        this.handleUrlChange(tabId, tab.url);
-      }
-    });
-
-    chrome.tabs.onRemoved.addListener(tabId => {
-      this.tabStates.delete(tabId);
-    });
-  }
-
-  private initMessageListener(): void {
-    chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) => {
-      if (message.type === 'GET_MODULE_INFO') {
-        this.getModulesInfo(sender.tab?.id)
-          .then(modules => {
-            sendResponse({ success: true, modules });
-          })
-          .catch(error => {
-            sendResponse({ success: false, error: String(error) });
-          });
-        return true;
-      }
-
-      if (message.type === 'MODULE_ACTION') {
-        this.handleModuleAction(message as ModuleAction, sendResponse);
-        return true;
-      }
-
-      return false;
-    });
-  }
-
-  private handleUrlChange(tabId: number, url: string): void {
-    const now = Date.now();
-
-    const tabState = this.tabStates.get(tabId);
-    if (tabState && tabState.url === url && now - tabState.lastChecked < 1000) {
-      return;
+        this.primeModuleDefinitionsCache();
     }
 
-    this.tabStates.set(tabId, { url, lastChecked: now });
-
-    chrome.tabs.sendMessage(tabId, {
-      type: 'URL_CHANGED',
-      url
-    }).catch(error => {
-      if (!error.message.includes('Could not establish connection')) {
-        console.error('[Hikka Forge] Error sending URL:', error);
-      }
-    });
-  }
-
-  private async getModulesInfo(tabId?: number): Promise<ModuleInfo[]> {
-    if (!tabId) {
-      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (tabs.length === 0) {
-        return [];
-      }
-      tabId = tabs[0].id;
-    }
-
-    if (!tabId) return [];
-
-    try {
-      const response = await chrome.tabs.sendMessage(tabId, { type: 'GET_MODULE_INFO' });
-      if (response && response.success && Array.isArray(response.modules)) {
-        return response.modules;
-      }
-      return [];
-    } catch (error) {
-      console.error('[Hikka Forge] Error getting module info:', error);
-      return [];
-    }
-  }
-
-  private handleModuleAction(message: ModuleAction, sendResponse: (response?: any) => void): void {
-    chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
-      if (!tabs[0]?.id) {
-        sendResponse({ success: false, error: 'Active tab not found' });
-        return;
-      }
-
-      try {
-        const response = await chrome.tabs.sendMessage(tabs[0].id, message);
-        sendResponse(response);
-
-        if (message.action === 'TOGGLE' && message.moduleId && message.enabled !== undefined) {
-          this.syncModuleState(message.moduleId, message.enabled);
-        }
-      } catch (error) {
-        sendResponse({ success: false, error: String(error) });
-      }
-    });
-  }
-
-  private async syncModuleState(moduleId: string, enabled: boolean): Promise<void> {
-    try {
-      await chrome.storage.sync.set({ [`module_${moduleId}`]: enabled });
-
-      const tabs = await chrome.tabs.query({ url: 'https://hikka.io/*' });
-      for (const tab of tabs) {
-        if (tab.id) {
-          chrome.tabs.sendMessage(tab.id, {
-            type: 'SYNC_MODULES',
-            settings: { [`module_${moduleId}`]: enabled }
-          }).catch(error => {
-            if (!error.message.includes('Could not establish connection')) {
-              console.error('[Hikka Forge] Error syncing with tab:', error);
+    private initWebNavigationListeners(): void {
+        chrome.webNavigation.onHistoryStateUpdated.addListener(details => {
+            if (details.frameId === 0 && details.url.startsWith('https://hikka.io/')) {
+                this.handleUrlChange(details.tabId, details.url);
             }
-          });
-        }
-      }
-    } catch (error) {
-      console.error('[Hikka Forge] Error during module synchronization:', error);
-    }
-  }
+        }, { url: [{ hostEquals: 'hikka.io' }] });
 
-  async getAllActiveModules(): Promise<Record<string, ModuleInfo[]>> {
-    const result: Record<string, ModuleInfo[]> = {};
-
-    try {
-      const tabs = await chrome.tabs.query({ url: 'https://hikka.io/*' });
-
-      for (const tab of tabs) {
-        if (tab.id && tab.url) {
-          try {
-            const modules = await this.getModulesInfo(tab.id);
-            result[tab.url] = modules;
-          } catch (error) {
-            console.error(`[Hikka Forge] Error getting modules for ${tab.url}:`, error);
-            result[tab.url] = [];
-          }
-        }
-      }
-    } catch (error) {
-      console.error('[Hikka Forge] Error getting all active modules:', error);
+        chrome.webNavigation.onCompleted.addListener(details => {
+            if (details.frameId === 0 && details.url.startsWith('https://hikka.io/')) {
+                this.handleUrlChange(details.tabId, details.url);
+            }
+        }, { url: [{ hostEquals: 'hikka.io' }] });
     }
 
-    return result;
-  }
+    private initTabsListeners(): void {
+        chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+            if (changeInfo.url && tab.url?.startsWith('https://hikka.io/')) {
+                this.handleUrlChange(tabId, tab.url);
+            }
 
-  async checkModulesHealth(): Promise<void> {
-    try {
-      const settings = await chrome.storage.sync.get(null);
+            if (changeInfo.status === 'complete' && tab.url?.startsWith('https://hikka.io/')) {
+                this.syncTabIfNeeded(tabId);
+            }
+        });
 
-      const tabs = await chrome.tabs.query({ url: 'https://hikka.io/*' });
+        chrome.tabs.onRemoved.addListener(tabId => {
+            this.tabStates.delete(tabId);
+        });
+    }
 
-      if (tabs.length > 0) {
+    private initInstallAndUpdateListeners(): void {
+        chrome.runtime.onInstalled.addListener(details => {
+            if (details.reason === 'install') {
+                console.log('[Hikka Forge] Extension installed');
+                chrome.storage.sync.set({
+                    'module_enabled_example-button': true,
+                    'module_enabled_font-override': false,
+                }).then(() => {
+                    console.log('[Hikka Forge] Default module states set.');
+                }).catch(error => {
+                    console.error('[Hikka Forge] Error setting default module states:', error);
+                });
+            } else if (details.reason === 'update') {
+
+            }
+            moduleDefinitionsCache = null;
+        });
+    }
+
+    private initMessageListener(): void {
+        chrome.runtime.onMessage.addListener((message: BackgroundMessage | any, sender, sendResponse) => {
+            let isAsync = false;
+
+            if (message.type === 'GET_MODULE_DEFINITIONS') {
+                isAsync = true;
+                this.getModuleDefinitionsWithState()
+                    .then(modules => sendResponse({ success: true, modules }))
+                    .catch(error => {
+                        console.error("[Hikka Forge] Error getting module definitions:", error);
+                        sendResponse({ success: false, error: String(error) });
+                    });
+            } else if (message.type === 'MODULE_ACTION') {
+                if (message.action === 'TOGGLE' && message.moduleId && typeof message.enabled === 'boolean') {
+                    isAsync = true;
+                    this.toggleModuleState(message.moduleId, message.enabled)
+                        .then(() => sendResponse({ success: true }))
+                        .catch(error => {
+                            console.error(`[Hikka Forge] Error toggling module ${message.moduleId}:`, error);
+                            sendResponse({ success: false, error: String(error) });
+                        });
+                } else if (message.action === 'REFRESH') {
+                    isAsync = true;
+                    this.refreshContentInAllTabs()
+                        .then(() => sendResponse({ success: true }))
+                        .catch(error => {
+                            console.error("[Hikka Forge] Error refreshing content:", error);
+                            sendResponse({ success: false, error: String(error) });
+                        });
+                } else {
+                    console.warn("[Hikka Forge] Unknown MODULE_ACTION received:", message);
+                    sendResponse({ success: false, error: 'Invalid module action' });
+                }
+            }
+            return isAsync;
+        });
+    }
+
+    private handleUrlChange(tabId: number, url: string): void {
+        const now = Date.now();
+        const tabState = this.tabStates.get(tabId);
+
+        if (tabState && tabState.url === url && now - tabState.lastChecked < 500) {
+            return;
+        }
+
+        console.log(`[Hikka Forge] URL change detected for tab ${tabId}: ${url}`);
+        this.tabStates.set(tabId, { url, lastChecked: now });
+
+        this.syncTabIfNeeded(tabId);
+    }
+
+    private async toggleModuleState(moduleId: string, enabled: boolean): Promise<void> {
+        const storageKey = `module_enabled_${moduleId}`;
+        console.log(`[Hikka Forge] Setting ${storageKey} to ${enabled}`);
+        try {
+            await chrome.storage.sync.set({ [storageKey]: enabled });
+
+            moduleDefinitionsCache = null;
+
+            await this.syncAllTabs();
+        } catch (error) {
+            console.error(`[Hikka Forge] Failed to save state for ${moduleId}:`, error);
+            throw error;
+        }
+    }
+
+    private async primeModuleDefinitionsCache(): Promise<void> {
+        console.log('[Hikka Forge] Priming module definitions cache...');
+        try {
+            await this.fetchModuleDefinitionsFromContentScript();
+            console.log('[Hikka Forge] Cache primed successfully.');
+        } catch (error) {
+            console.warn('[Hikka Forge] Could not prime cache on startup (no active Hikka tabs?):', error);
+        }
+    }
+
+    private async getModuleDefinitionsWithState(): Promise<ModuleInfo[]> {
+        const now = Date.now();
+        if (moduleDefinitionsCache && now - cacheTimestamp < CACHE_DURATION) {
+            console.log("[Hikka Forge] Returning cached module definitions.");
+
+            return this.updateCachedStatesFromStorage(moduleDefinitionsCache);
+        }
+
+        console.log("[Hikka Forge] Cache expired or empty, fetching fresh module definitions...");
+        try {
+            const definitions = await this.fetchModuleDefinitionsFromContentScript();
+            moduleDefinitionsCache = definitions;
+            cacheTimestamp = now;
+
+            return this.updateCachedStatesFromStorage(definitions);
+        } catch (error) {
+            console.error("[Hikka Forge] Failed to fetch fresh definitions, returning empty/stale cache:", error);
+
+            return this.updateCachedStatesFromStorage(moduleDefinitionsCache || []);
+        }
+    }
+
+    private async updateCachedStatesFromStorage(definitions: ModuleInfo[]): Promise<ModuleInfo[]> {
+        if (!definitions || definitions.length === 0) {
+            return [];
+        }
+        const keys = definitions.map(def => `module_enabled_${def.id}`);
+        try {
+            const storedStates = await chrome.storage.sync.get(keys);
+            return definitions.map(def => ({
+                ...def,
+                enabled: storedStates[`module_enabled_${def.id}`] ?? false
+            }));
+        } catch (error) {
+            console.error("[Hikka Forge] Failed to get states from storage:", error);
+
+            return definitions;
+        }
+    }
+
+    private async fetchModuleDefinitionsFromContentScript(): Promise<ModuleInfo[]> {
+        const tabs = await chrome.tabs.query({ url: "https://hikka.io/*", status: "complete" });
+
+        if (tabs.length === 0) {
+            throw new Error("No active Hikka tabs found to fetch module definitions from.");
+        }
+
         for (const tab of tabs) {
-          if (tab.id) {
-            chrome.tabs.sendMessage(tab.id, {
-              type: 'SYNC_MODULES',
-              settings
-            }).catch(() => {
-              // Ignore connection errors
-            });
-          }
+            if (tab.id) {
+                try {
+                    console.log(`[Hikka Forge] Requesting module info from tab ${tab.id}`);
+                    const response = await chrome.tabs.sendMessage(tab.id, { type: 'GET_CONTENT_MODULES_INFO' } as ContentMessage);
+                    if (response?.success && Array.isArray(response.modules)) {
+                        console.log(`[Hikka Forge] Received module info from tab ${tab.id}:`, response.modules.length);
+
+                        return response.modules.map((m: ModuleInfo) => ({
+                            id: m.id,
+                            name: m.name,
+                            description: m.description,
+                            enabled: false,
+                            urlPatterns: m.urlPatterns,
+                        }));
+                    } else {
+                        console.warn(`[Hikka Forge] Invalid response from tab ${tab.id}:`, response);
+                    }
+                } catch (error: any) {
+
+                    if (!error.message.includes('Could not establish connection') && !error.message.includes('Receiving end does not exist')) {
+                        console.warn(`[Hikka Forge] Error fetching module info from tab ${tab.id}:`, error);
+                    } else {
+                        // TODO: Handle this error more gracefully
+                    }
+                }
+            }
         }
-      }
-    } catch (error) {
-      console.error('[Hikka Forge] Error checking module health:', error);
-    }
-  }
-
-  startHealthCheck(intervalMs: number = 30000): void {
-    if (this.updateInterval !== null) {
-      clearInterval(this.updateInterval);
+        throw new Error("Failed to fetch module definitions from any active Hikka tab.");
     }
 
-    this.updateInterval = setInterval(() => {
-      this.checkModulesHealth();
-    }, intervalMs) as unknown as number;
-  }
+    private async syncTabIfNeeded(tabId: number): Promise<void> {
 
-  stopHealthCheck(): void {
-    if (this.updateInterval !== null) {
-      clearInterval(this.updateInterval);
-      this.updateInterval = null;
+        if (this.tabStates.has(tabId)) {
+            try {
+                await this.sendSyncMessageToTab(tabId);
+            } catch (error) {
+
+            }
+        }
     }
-  }
+
+    private async syncAllTabs(): Promise<void> {
+        console.log('[Hikka Forge] Syncing states with all Hikka tabs...');
+        try {
+            const tabs = await chrome.tabs.query({ url: "https://hikka.io/*" });
+            const syncPromises = tabs
+                .filter(tab => tab.id !== undefined)
+                .map(tab => this.sendSyncMessageToTab(tab.id!));
+
+            await Promise.allSettled(syncPromises);
+            console.log('[Hikka Forge] Sync attempt completed for all tabs.');
+        } catch (error) {
+            console.error('[Hikka Forge] Error querying tabs for sync:', error);
+        }
+    }
+
+    private async sendSyncMessageToTab(tabId: number): Promise<void> {
+        try {
+            const allSettings = await chrome.storage.sync.get(null);
+            const enabledStates: Record<string, boolean> = {};
+
+            for (const key in allSettings) {
+                if (key.startsWith('module_enabled_')) {
+                    const moduleId = key.substring('module_enabled_'.length);
+                    enabledStates[moduleId] = !!allSettings[key];
+                }
+            }
+
+            console.log(`[Hikka Forge] Sending SYNC_MODULES to tab ${tabId}`, enabledStates);
+            await chrome.tabs.sendMessage(tabId, {
+                type: 'SYNC_MODULES',
+                enabledStates
+            } as ContentMessage);
+            console.log(`[Hikka Forge] SYNC_MODULES sent successfully to tab ${tabId}`);
+        } catch (error: any) {
+            if (!error.message.includes('Could not establish connection') && !error.message.includes('Receiving end does not exist')) {
+                console.error(`[Hikka Forge] Error sending SYNC_MODULES to tab ${tabId}:`, error);
+            }
+        }
+    }
+
+    private async refreshContentInAllTabs(): Promise<void> {
+        console.log('[Hikka Forge] Sending REFRESH action to all Hikka tabs...');
+        try {
+            const tabs = await chrome.tabs.query({ url: "https://hikka.io/*" });
+            const refreshPromises = tabs
+                .filter(tab => tab.id !== undefined)
+                .map(tab =>
+                    chrome.tabs.sendMessage(tab.id!, { type: 'MODULE_ACTION', action: 'REFRESH' } as ContentMessage)
+                        .catch(err => { })
+                );
+            await Promise.allSettled(refreshPromises);
+            console.log('[Hikka Forge] REFRESH action sent to all tabs.');
+        } catch (error) {
+            console.error('[Hikka Forge] Error sending REFRESH action:', error);
+            throw error;
+        }
+    }
+
 }
 
 const backgroundManager = new BackgroundManager();
-
-backgroundManager.startHealthCheck();
-
-chrome.runtime.onInstalled.addListener(details => {
-  if (details.reason === 'install') {
-    console.log('[Hikka Forge] Extension installed');
-
-    chrome.storage.sync.set({
-      'module_anime-module': true,
-      'module_manga-module': true
-    }).catch(error => {
-      console.error('[Hikka Forge] Error setting initial settings:', error);
-    });
-  } else if (details.reason === 'update') {
-    console.log(`[Hikka Forge] Extension updated from version ${details.previousVersion}`);
-
-    setTimeout(() => {
-      backgroundManager.checkModulesHealth();
-    }, 5000);
-  }
-});
-
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'GET_ALL_ACTIVE_MODULES') {
-    backgroundManager.getAllActiveModules()
-      .then(modules => {
-        sendResponse({ success: true, modules });
-      })
-      .catch(error => {
-        sendResponse({ success: false, error: String(error) });
-      });
-    return true;
-  }
-
-  return false;
-});

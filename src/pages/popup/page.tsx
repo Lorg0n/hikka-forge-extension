@@ -1,11 +1,9 @@
+
 'use client'
 
+import React, { useEffect, useState, useCallback } from "react";
 import browser from "webextension-polyfill";
-import { useEffect } from "react";
 import logo from "@/assets/logo.svg";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
 
 import {
   Form,
@@ -16,107 +14,164 @@ import {
   FormLabel,
 } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const SettingsFormSchema = z.object({
-  anime_player: z.boolean().default(false).optional(),
-  font_override: z.boolean().default(false).optional(),
-});
+import type { ModuleInfo, PopupMessage, GetModulesResponse, SimpleActionResponse } from "@/types/module";
+import { useForm } from "react-hook-form";
 
 function App() {
-  const form = useForm<z.infer<typeof SettingsFormSchema>>({
-    resolver: zodResolver(SettingsFormSchema),
-    defaultValues: {
-      anime_player: false,
-      font_override: false,
-    },
-  });
+  const [modules, setModules] = useState<ModuleInfo[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+
+
+
+  const form = useForm();
+
+
+  const loadModules = useCallback(async () => {
+
+    setIsLoading(true);
+    setError(null);
+    console.log("Popup: Requesting module definitions...");
+    try {
+      const message: PopupMessage = { type: 'GET_MODULE_DEFINITIONS' };
+      const response = await browser.runtime.sendMessage(message) as GetModulesResponse;
+      console.log("Popup: Received response:", response);
+      if (response?.success && Array.isArray(response.modules)) {
+        setModules(response.modules);
+      } else {
+        const errorMessage = response?.error || "Unknown error loading modules.";
+        setError("Failed to load module settings. " + errorMessage);
+        console.error("Popup: Error loading modules -", errorMessage);
+      }
+    } catch (err: any) {
+      setError(`Error communicating with background script: ${err.message}`);
+      console.error("Popup: Error sending message -", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const loadSettings = async () => {
-      const storage = chrome.storage?.sync || browser.storage?.sync;
-      
-      if (storage) {
-        try {
-          const result = await storage.get(['anime_player', 'font_override']);
-          
-          form.reset({
-            anime_player: result.anime_player ?? false,
-            font_override: result.font_override ?? false,
-          });
-        } catch (error) {
-          console.error('Failed to load settings:', error);
-        }
-      }
-    };
+    loadModules();
+  }, [loadModules]);
 
-    loadSettings();
-  }, [form]);
+  const handleToggleChange = async (moduleId: string, enabled: boolean) => {
 
-  const handleSettingChange = async (values: z.infer<typeof SettingsFormSchema>) => {
-    const storage = chrome.storage?.sync || browser.storage?.sync;
-    
-    if (storage) {
-      try {
-        await storage.set(values);
-        console.log('Settings saved:', values);
-      } catch (error) {
-        console.error('Failed to save settings:', error);
+    console.log(`Popup: Toggling ${moduleId} to ${enabled}`);
+    setModules(prevModules =>
+      prevModules.map(mod =>
+        mod.id === moduleId ? { ...mod, enabled } : mod
+      )
+    );
+    try {
+      const message: PopupMessage = { type: 'MODULE_ACTION', action: 'TOGGLE', moduleId, enabled };
+      const response = await browser.runtime.sendMessage(message) as SimpleActionResponse;
+      if (!response?.success) {
+        const errorMessage = response?.error || "Unknown toggle error.";
+        console.error(`Popup: Failed to toggle module ${moduleId} -`, errorMessage);
+        setError(`Failed to save setting for ${moduleId}. ${errorMessage}`);
+        loadModules();
+      } else {
+        console.log(`Popup: Module ${moduleId} toggled successfully.`);
+        setError(null);
       }
+    } catch (err: any) {
+      console.error("Popup: Error sending toggle message -", err);
+      setError(`Error saving setting: ${err.message}`);
+      loadModules();
+    }
+  };
+
+  const handleRefresh = async () => {
+
+    console.log("Popup: Requesting content refresh...");
+    try {
+      const message: PopupMessage = { type: 'MODULE_ACTION', action: 'REFRESH' };
+      const response = await browser.runtime.sendMessage(message) as SimpleActionResponse;
+      if (!response?.success) {
+        const errorMessage = response?.error || "Unknown refresh error.";
+        console.error("Popup: Failed to trigger refresh -", errorMessage);
+        setError("Failed to refresh content. " + errorMessage);
+      } else {
+        console.log("Popup: Refresh triggered successfully.");
+        setError(null);
+
+      }
+    } catch (err: any) {
+      console.error("Popup: Error sending refresh message -", err);
+      setError(`Error triggering refresh: ${err.message}`);
     }
   };
 
   return (
-    <div className="flex flex-col min-w-[320px] min-h-[auto] relative overflow-hidden p-4 gap-8">
-      <div className="flex justify-start items-center flex-grow-0 flex-shrink-0 relative gap-4">
-        <img src={logo} alt="Logo" className="size-7" />
-        <h1 className="font-bold text-xl">Hikka Forge</h1>
+    <div className="flex flex-col min-w-[350px] max-w-[400px] relative overflow-hidden p-4 gap-6 bg-background text-foreground">
+      { }
+      <div className="flex justify-between items-center flex-grow-0 flex-shrink-0 relative gap-4">
+        <div className="flex items-center gap-3">
+          <img src={logo} alt="Logo" className="size-7" />
+          <h1 className="font-bold text-xl">Hikka Forge</h1>
+        </div>
+        <Button variant="ghost" size="sm" onClick={handleRefresh} title="Refresh active modules on page">
+          Refresh Content
+        </Button>
       </div>
+
+      { }
+      {error && (
+        <div className="p-3 bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-md">
+          Error: {error}
+        </div>
+      )}
+
       <div className="flex flex-col gap-4">
-        <Form {...form}>
-          <form className="space-y-4" onChange={form.handleSubmit(handleSettingChange)}>
-            <FormField
-              control={form.control}
-              name="anime_player"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between">
-                  <div className="space-y-0.5">
-                    <FormLabel>Anime Player</FormLabel>
+        {isLoading ? (
+
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex flex-row items-center justify-between p-1">
+                <div className="space-y-1">
+                  <Skeleton className="h-5 w-28" />
+                  <Skeleton className="h-3 w-48" />
+                </div>
+                <Skeleton className="h-5 w-10 rounded-full" />
+              </div>
+            ))}
+          </div>
+        ) : modules.length === 0 && !error ? (
+
+          <p className="text-muted-foreground text-center py-4">No modules found or Hikka tab not active.</p>
+        ) : (
+
+          <Form {...form}>
+            { }
+            <div className="space-y-1">
+              {modules.map((moduleInfo) => (
+
+                <FormItem key={moduleInfo.id} className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm hover:bg-accent/50 transition-colors">
+                  <div className="space-y-0.5 mr-4">
+                    <FormLabel className="text-base">{moduleInfo.name}</FormLabel>
                     <FormDescription>
-                      Display the player on the anime page
+                      {moduleInfo.description}
                     </FormDescription>
                   </div>
                   <FormControl>
+                    { }
                     <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
+                      checked={moduleInfo.enabled}
+                      onCheckedChange={(checked) => handleToggleChange(moduleInfo.id, checked)}
+                      aria-label={`Toggle ${moduleInfo.name}`}
                     />
                   </FormControl>
                 </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="font_override"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between">
-                  <div className="space-y-0.5">
-                    <FormLabel>Font Override</FormLabel>
-                    <FormDescription>
-                      Override all font on the page to Inter
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-          </form>
-        </Form>
+              ))}
+            </div>
+          </Form>
+
+        )}
       </div>
     </div>
   );

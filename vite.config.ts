@@ -45,7 +45,7 @@ export default defineConfig({
     outDir,
     rollupOptions: {
       input: {
-        popup: path.resolve(__dirname, "popup.html"),
+        popup: path.resolve(__dirname, "src/pages/popup/popup.html"),
         background: path.resolve(__dirname, "src/background.ts"),
         content_loader: path.resolve(__dirname, "src/content-loader.js"), 
         content: path.resolve(__dirname, "src/content.tsx"), 

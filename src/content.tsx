@@ -1,57 +1,481 @@
-import ReactDOM from "react-dom";
-import { createRoot } from "react-dom/client";
-import { Button } from "./components/ui/button";
 
-type InsertPosition = 'before' | 'after' | 'prepend' | 'append' | 'replace';
+import React from 'react';
+import { createRoot, Root } from 'react-dom/client';
+import type { ForgeModuleDef, ModuleInfo, ContentMessage, InsertPosition } from '@/types/module';
+import '@/index.css';
 
-interface ModuleSelector {
-    selector: string;
-    position: InsertPosition;
-    index?: number;
-}
+const moduleImports = import.meta.glob< { default: ForgeModuleDef }>('/src/modules/*/module.ts', { eager: true });
 
-interface Module {
-    id: string;
-    name: string;
-    description: string;
-    urlPatterns: string[];
-    enabled: boolean;
-    selector: ModuleSelector;
-    content: string | (() => string) | (() => HTMLElement);
-    styles?: string;
-    onLoad?: () => void;
-    onUnload?: () => void;
-}
+const ANIMATION_DURATION_MS = 300;
 
 class ModuleManager {
-    private modules: Map<string, Module> = new Map();
-    private activeModules: Set<string> = new Set();
+    private moduleDefinitions: Map<string, ForgeModuleDef> = new Map();
+    private moduleEnabledStates: Map<string, boolean> = new Map();
+    private activeModuleRoots: Map<string, { container: HTMLElement, root: Root }> = new Map();
     private currentUrl: string = window.location.href;
-    private observers: Map<string, MutationObserver> = new Map();
-    private styleElements: Map<string, HTMLStyleElement> = new Map();
-    private contentElements: Map<string, HTMLElement> = new Map();
+    private observers: Map<string, MutationObserver> = new Map(); 
+    private activeStyleTags: Map<string, HTMLStyleElement> = new Map();
 
     constructor() {
-        this.initUrlChangeListener();
-        this.startUrlPolling();
-        console.log('[Hikka Forge] Module system initialized');
+        this.loadModuleDefinitions();
+        this.initUrlChangeListener(); 
+        this.startUrlPolling(); 
+        this.initMessageListener(); 
+        console.log('[Hikka Forge] Module Manager initialized');
+        
+        setTimeout(() => this.requestInitialStates(), 500);
+    }
+
+    private loadModuleDefinitions(): void {
+        console.log('[Hikka Forge] Loading module definitions...');
+        for (const path in moduleImports) {
+            const moduleDef = moduleImports[path].default;
+            if (moduleDef && moduleDef.id) {
+                this.moduleDefinitions.set(moduleDef.id, moduleDef);
+                
+                this.moduleEnabledStates.set(moduleDef.id, false);
+                console.log(`[Hikka Forge] Registered module definition: ${moduleDef.name} (${moduleDef.id})`);
+            } else {
+                console.warn(`[Hikka Forge] Invalid module definition found at ${path}`);
+            }
+        }
+    }
+
+     private requestInitialStates(): void {
+        console.log('[Hikka Forge] Requesting initial module states from background...');
+        chrome.runtime.sendMessage({ type: 'GET_MODULE_DEFINITIONS' }) 
+            .then(response => {
+                if (response?.success && response.modules) {
+                    console.log('[Hikka Forge] Received initial states:', response.modules);
+                    const states: Record<string, boolean> = {};
+                    response.modules.forEach((modInfo: ModuleInfo) => {
+                         states[modInfo.id] = modInfo.enabled;
+                    });
+                    this.syncModuleStates(states);
+                } else {
+                     console.warn('[Hikka Forge] Failed to get initial module states from background.', response?.error);
+                     
+                     this.evaluateModulesForCurrentUrl();
+                }
+            })
+            .catch(error => {
+                 console.error('[Hikka Forge] Error requesting initial states:', error);
+                 this.evaluateModulesForCurrentUrl();
+            });
+    }
+
+    private syncModuleStates(enabledStates: Record<string, boolean>): void {
+        console.log('[Hikka Forge] Syncing module states:', enabledStates);
+        let changed = false;
+        this.moduleDefinitions.forEach(moduleDef => {
+            const newState = enabledStates[moduleDef.id];
+            if (newState !== undefined && this.moduleEnabledStates.get(moduleDef.id) !== newState) {
+                 this.moduleEnabledStates.set(moduleDef.id, newState);
+                 console.log(`[Hikka Forge] State updated for ${moduleDef.name}: ${newState}`);
+                 changed = true;
+            } else if (newState === undefined && this.moduleEnabledStates.has(moduleDef.id)) {
+                
+                
+                
+                
+                 console.log(`[Hikka Forge] State for ${moduleDef.name} not provided in sync, keeping current.`);
+            }
+        });
+
+        if (changed) {
+            console.log('[Hikka Forge] Module states changed, re-evaluating modules for current URL.');
+            this.evaluateModulesForCurrentUrl();
+        } else {
+            console.log('[Hikka Forge] No module state changes detected during sync.');
+            
+            this.evaluateModulesForCurrentUrl(true); 
+        }
+    }
+
+    private evaluateModulesForCurrentUrl(onlyLoadMissing: boolean = false): void {
+        console.log(`[Hikka Forge] Evaluating modules for URL: ${this.currentUrl}`);
+        const modulesToActivate: ForgeModuleDef[] = [];
+        const modulesToDeactivate: string[] = []; 
+
+        this.moduleDefinitions.forEach(moduleDef => {
+            const isEnabled = this.moduleEnabledStates.get(moduleDef.id) ?? false;
+            const matchesUrl = this.matchesUrlPatterns(this.currentUrl, moduleDef.urlPatterns);
+            
+            const isComponentActive = this.activeModuleRoots.has(moduleDef.id);
+            const areStylesActive = this.activeStyleTags.has(moduleDef.id);
+            const isActive = isComponentActive || areStylesActive;
+            
+
+            if (isEnabled && matchesUrl) {
+                if (!isActive) {
+                    modulesToActivate.push(moduleDef);
+                }
+            } else {
+                if (isActive && !onlyLoadMissing) {
+                    modulesToDeactivate.push(moduleDef.id);
+                }
+            }
+        });
+
+        if (!onlyLoadMissing) {
+            console.log('[Hikka Forge] Modules to Deactivate:', modulesToDeactivate);
+            modulesToDeactivate.forEach(id => this.unloadModule(id)); 
+        }
+
+        console.log('[Hikka Forge] Modules to Activate:', modulesToActivate.map(m => m.name));
+        modulesToActivate.forEach(moduleDef => this.loadModule(moduleDef)); 
+    }
+
+
+    private matchesUrlPatterns(url: string, patterns: string[]): boolean {
+        
+        return patterns.some(pattern => {
+            const regexPattern = pattern
+                .replace(/[.+?^${}()|[\]\\]/g, '\\$&') 
+                .replace(/\*/g, '.*'); 
+            try {
+                const regex = new RegExp(`^${regexPattern}$`);
+                return regex.test(url);
+            } catch (e) {
+                console.error(`[Hikka Forge] Invalid URL pattern: ${pattern}`, e);
+                return false;
+            }
+        });
+    }
+
+    private loadModule(moduleDef: ForgeModuleDef): void {
+        const isComponentActive = this.activeModuleRoots.has(moduleDef.id);
+        const areStylesActive = this.activeStyleTags.has(moduleDef.id);
+
+        if (moduleDef.styles && !areStylesActive) {
+            console.log(`[Hikka Forge] Injecting styles for module: ${moduleDef.name}`);
+            this.injectStyles(moduleDef);
+        }
+
+        
+        if (moduleDef.component && moduleDef.elementSelector && !isComponentActive) {
+            console.log(`[Hikka Forge] Attempting to load component for module: ${moduleDef.name}`);
+            
+            const elements = document.querySelectorAll(moduleDef.elementSelector.selector);
+            if (elements.length === 0) {
+                console.log(`[Hikka Forge] Selector "${moduleDef.elementSelector.selector}" not found for ${moduleDef.name}. Waiting...`);
+                this.waitForSelector(moduleDef);
+                return;
+            }
+            
+            this.injectModuleComponent(moduleDef, elements);
+        } else if (moduleDef.component && !moduleDef.elementSelector) {
+             console.warn(`[Hikka Forge] Module ${moduleDef.name} has a component but no elementSelector. Cannot inject component.`);
+        }
+    }
+
+    private injectStyles(moduleDef: ForgeModuleDef): void {
+        if (!moduleDef.styles) return; 
+
+        
+        this.removeStyles(moduleDef.id);
+
+        const styleElement = document.createElement('style');
+        styleElement.id = `hikka-forge-style-${moduleDef.id}`;
+        styleElement.textContent = moduleDef.styles;
+        document.head.appendChild(styleElement);
+        this.activeStyleTags.set(moduleDef.id, styleElement);
+        console.log(`[Hikka Forge] Styles for ${moduleDef.name} injected.`);
+    }
+
+    private removeStyles(moduleId: string): void {
+        const styleTag = this.activeStyleTags.get(moduleId);
+        if (styleTag) {
+            styleTag.remove();
+            this.activeStyleTags.delete(moduleId);
+            console.log(`[Hikka Forge] Styles for module ${moduleId} removed.`);
+        }
+    }
+
+    private injectModuleComponent(moduleDef: ForgeModuleDef, elements: NodeListOf<Element>): void {
+        
+        if (!moduleDef.elementSelector) {
+            console.error(`[Hikka Forge] injectModuleComponent called for ${moduleDef.name} without an elementSelector.`);
+            return;
+        }
+        
+        try {
+           
+           const index = moduleDef.elementSelector.index ?? 0;
+           let targetElement = elements[index] ?? elements[elements.length - 1];
+
+           if (!targetElement) {
+               console.error(`[Hikka Forge] Target element not found for ${moduleDef.name} (selector: ${moduleDef.elementSelector.selector}, index: ${index}). Retrying...`);
+               this.retryInjection(moduleDef);
+               return;
+           }
+
+           const existingContainer = document.getElementById(`hikka-forge-module-${moduleDef.id}`);
+           if (existingContainer) {
+               console.warn(`[Hikka Forge] Found existing container for ${moduleDef.name}. Removing before re-injection.`);
+               existingContainer.remove();
+           }
+            if (this.activeModuleRoots.has(moduleDef.id)) {
+                console.warn(`[Hikka Forge] Module ${moduleDef.name} root already exists before injection. Unmounting first.`);
+                this.unloadModule(moduleDef.id);
+            }
+
+           const container = document.createElement('div');
+           container.id = `hikka-forge-module-${moduleDef.id}`;
+           container.dataset.moduleId = moduleDef.id;
+           container.classList.add('hikka-forge-module-wrapper');
+
+           container.classList.add('animate');
+
+           
+           if (!moduleDef.component) {
+                console.error(`[Hikka Forge] Cannot inject component for ${moduleDef.name}: component is undefined.`);
+                return;
+           }
+
+           const root = createRoot(container);
+           root.render(React.createElement(moduleDef.component));
+           this.activeModuleRoots.set(moduleDef.id, { container, root });
+
+           console.log(`[Hikka Forge] Injecting ${moduleDef.name} ${moduleDef.elementSelector.position} ${moduleDef.elementSelector.selector}`);
+            
+           this.insertElement(container, targetElement, moduleDef.elementSelector.position);
+
+           requestAnimationFrame(() => {
+                    container.classList.add('visible'); 
+            });
+
+           console.log(`[Hikka Forge] Module ${moduleDef.name} loaded and rendered successfully.`);
+
+       } catch (error) {
+           console.error(`[Hikka Forge] Error injecting component for module ${moduleDef.name}:`, error);
+           this.activeModuleRoots.delete(moduleDef.id);
+            const failedContainer = document.getElementById(`hikka-forge-module-${moduleDef.id}`);
+            failedContainer?.remove();
+           this.retryInjection(moduleDef);
+       }
+   }
+
+     private insertElement(elementToInsert: HTMLElement, targetElement: Element, position: InsertPosition): void {
+        switch (position) {
+            case 'before':
+                targetElement.parentNode?.insertBefore(elementToInsert, targetElement);
+                break;
+            case 'after':
+                targetElement.parentNode?.insertBefore(elementToInsert, targetElement.nextSibling);
+                break;
+            case 'prepend':
+                targetElement.insertBefore(elementToInsert, targetElement.firstChild);
+                break;
+            case 'append':
+                targetElement.appendChild(elementToInsert);
+                break;
+            case 'replace':
+                 
+                 
+                console.warn(`[Hikka Forge] Using 'replace' for ${elementToInsert.dataset.moduleId}. This can be risky.`);
+                targetElement.parentNode?.replaceChild(elementToInsert, targetElement);
+                break;
+            default:
+                console.error(`[Hikka Forge] Invalid insert position: ${position}`);
+                targetElement.appendChild(elementToInsert); 
+        }
+    }
+
+
+    private retryInjection(moduleDef: ForgeModuleDef, attempt: number = 1): void {
+        
+        
+        if (!moduleDef.elementSelector) {
+            
+            
+            console.warn(`[Hikka Forge] Attempted to retry injection for ${moduleDef.name}, but it has no elementSelector.`);
+            return;
+        }
+        
+
+        if (attempt > 3) {
+            console.warn(`[Hikka Forge] Failed to inject ${moduleDef.name} after 3 attempts.`);
+            return;
+        }
+        console.log(`[Hikka Forge] Retrying injection for ${moduleDef.name} (attempt ${attempt})...`);
+        setTimeout(() => {
+            
+            const isEnabled = this.moduleEnabledStates.get(moduleDef.id) ?? false;
+            const matchesUrl = this.matchesUrlPatterns(this.currentUrl, moduleDef.urlPatterns);
+
+            
+            
+            if (!moduleDef.elementSelector) {
+                 console.error(`[Hikka Forge] Error during retry for ${moduleDef.name}: elementSelector became undefined unexpectedly.`);
+                 return;
+            }
+             
+             if (!isEnabled || !matchesUrl) {
+                console.log(`[Hikka Forge] Conditions no longer met for ${moduleDef.name} during retry. Aborting.`);
+                return;
+            }
+            
+
+            
+            const elements = document.querySelectorAll(moduleDef.elementSelector.selector);
+            
+
+            if (elements.length > 0) {
+                 console.log(`[Hikka Forge] Found elements for ${moduleDef.name} on retry.`);
+                
+                this.injectModuleComponent(moduleDef, elements);
+            } else {
+                
+                this.retryInjection(moduleDef, attempt + 1);
+            }
+        }, 500 * attempt);
+    }
+
+    private unloadModule(moduleId: string): void {
+        const moduleDef = this.moduleDefinitions.get(moduleId);
+        const name = moduleDef?.name ?? moduleId;
+
+        console.log(`[Hikka Forge] Unloading module: ${name}`);
+
+        
+        const activeInstance = this.activeModuleRoots.get(moduleId);
+        if (activeInstance) {
+            const container = activeInstance.container;
+
+            
+            container.classList.remove('visible'); 
+            
+
+             
+            setTimeout(() => {
+                console.log(`[Hikka Forge] Removing DOM after animation for ${name}`);
+                try {
+                    
+                    activeInstance.root.unmount();
+                } catch (error) {
+                    console.error(`[Hikka Forge] Error unmounting React root for ${name} during unload:`, error);
+                }
+                try {
+                    
+                    container.remove();
+                } catch (error) {
+                     console.error(`[Hikka Forge] Error removing container for ${name} during unload:`, error);
+                }
+                
+                 this.activeModuleRoots.delete(moduleId);
+            }, ANIMATION_DURATION_MS); 
+             
+
+        } else {
+             
+             this.activeModuleRoots.delete(moduleId);
+        }
+        
+
+        
+        this.removeStyles(moduleId);
+        
+
+        
+        this.observers.get(moduleId)?.disconnect();
+        this.observers.delete(moduleId);
+        
+
+        console.log(`[Hikka Forge] Unload process initiated for ${name}. DOM removal delayed for component.`);
+    }
+
+    private waitForSelector(moduleDef: ForgeModuleDef): void {
+        
+        if (!moduleDef.component || !moduleDef.elementSelector) {
+             return;
+        }
+        if (this.observers.has(moduleDef.id)) return;
+
+        
+        console.log(`[Hikka Forge] Setting up MutationObserver for ${moduleDef.name} (selector: ${moduleDef.elementSelector?.selector})`);
+        
+
+        const observer = new MutationObserver((mutationsList, obs) => {
+            
+            if (!moduleDef.elementSelector) {
+                obs.disconnect();
+                this.observers.delete(moduleDef.id);
+                return;
+            }
+            
+
+            const isEnabled = this.moduleEnabledStates.get(moduleDef.id) ?? false;
+            const matchesUrl = this.matchesUrlPatterns(this.currentUrl, moduleDef.urlPatterns);
+
+            if (!isEnabled || !matchesUrl) {
+                 console.log(`[Hikka Forge] Conditions no longer met for ${moduleDef.name} while waiting. Disconnecting observer.`);
+                 obs.disconnect();
+                 this.observers.delete(moduleDef.id);
+                 return;
+            }
+
+            
+            if (document.querySelector(moduleDef.elementSelector.selector)) {
+                 console.log(`[Hikka Forge] Selector found for ${moduleDef.name} via MutationObserver.`);
+                 obs.disconnect();
+                 this.observers.delete(moduleDef.id);
+                 if (!this.activeModuleRoots.has(moduleDef.id)) {
+                     this.loadModule(moduleDef);
+                 } else {
+                      console.log(`[Hikka Forge] Component for ${moduleDef.name} became active while waiting. Observer finished.`);
+                 }
+            }
+            
+        });
+
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+        this.observers.set(moduleDef.id, observer);
+    }
+
+
+    
+    
+     private initUrlChangeListener(): void {
+        const handleLocationChange = () => {
+            
+            requestAnimationFrame(() => {
+                const newUrl = window.location.href;
+                if (newUrl !== this.currentUrl) {
+                    console.log(`[Hikka Forge] URL change detected (event): ${this.currentUrl} -> ${newUrl}`);
+                    this.handleUrlChange(newUrl);
+                }
+            });
+        };
+
+        
+        window.addEventListener('popstate', handleLocationChange);
+
+        
+        const originalPushState = history.pushState;
+        history.pushState = function(...args) {
+            const result = originalPushState.apply(this, args);
+            window.dispatchEvent(new Event('historystatechanged')); 
+            return result;
+        };
+
+        const originalReplaceState = history.replaceState;
+        history.replaceState = function(...args) {
+            const result = originalReplaceState.apply(this, args);
+            window.dispatchEvent(new Event('historystatechanged')); 
+            return result;
+        };
+
+        window.addEventListener('historystatechanged', handleLocationChange);
     }
 
     private startUrlPolling(): void {
         let lastCheckedUrl = window.location.href;
         let pollInterval: number | null = null;
 
-        const handleVisibilityChange = () => {
-            if (document.hidden && pollInterval !== null) {
-                clearInterval(pollInterval);
-                pollInterval = null;
-            } else if (!document.hidden && pollInterval === null) {
-                lastCheckedUrl = window.location.href;
-                pollInterval = setInterval(checkUrl, 1500) as unknown as number;
-            }
-        };
-
         const checkUrl = () => {
+            if (document.hidden) return; 
+
             const currentUrl = window.location.href;
             if (currentUrl !== lastCheckedUrl) {
                 console.log(`[Hikka Forge] URL change detected (polling): ${lastCheckedUrl} -> ${currentUrl}`);
@@ -60,595 +484,119 @@ class ModuleManager {
             }
         };
 
-        pollInterval = setInterval(checkUrl, 1500) as unknown as number;
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-    }
-
-    registerModule(module: Module): void {
-        this.modules.set(module.id, module);
-        console.log(`[Hikka Forge] Module ${module.name} registered`);
-        if (module.enabled && this.matchesUrlPatterns(this.currentUrl, module.urlPatterns)) {
-            setTimeout(() => this.loadModule(module), 500);
+        
+        if (!document.hidden) {
+            pollInterval = setInterval(checkUrl, 1500) as unknown as number;
         }
-    }
 
-    unregisterModule(moduleId: string): void {
-        const module = this.modules.get(moduleId);
-        if (module) {
-            this.unloadModule(module);
-            this.modules.delete(moduleId);
-            console.log(`[Hikka Forge] Module ${module.name} unregistered`);
-        }
-    }
-
-    private matchesUrlPatterns(url: string, patterns: string[]): boolean {
-        return patterns.some(pattern => {
-            const regexPattern = pattern.replace(/\./g, '\\.').replace(/\*/g, '.*');
-            const regex = new RegExp(`^${regexPattern}$`);
-            return regex.test(url);
+        
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && pollInterval !== null) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+            } else if (!document.hidden && pollInterval === null) {
+                lastCheckedUrl = window.location.href; 
+                pollInterval = setInterval(checkUrl, 1500) as unknown as number;
+            }
         });
-    }
-
-    private loadModule(module: Module): void {
-        if (this.activeModules.has(module.id)) {
-            console.log(`[Hikka Forge] Module ${module.name} is already active. Skipping load.`);
-            return;
-        }
-        this.activeModules.add(module.id);
-        console.log(`[Hikka Forge] Loading module ${module.name}...`);
-
-        if (module.styles) {
-            this.injectStyles(module);
-        }
-
-        const elements = document.querySelectorAll(module.selector.selector);
-        if (elements.length === 0) {
-            console.log(`[Hikka Forge] Selector "${module.selector.selector}" not found for module ${module.name}, waiting...`);
-            this.activeModules.delete(module.id);
-            this.waitForSelector(module);
-            return;
-        }
-
-        this.injectContent(module, elements);
-
-        if (module.onLoad) {
-            try {
-                module.onLoad();
-            } catch (error) {
-                console.error(`[Hikka Forge] Error in onLoad of module ${module.name}:`, error);
-            }
-        }
-        console.log(`[Hikka Forge] Module ${module.name} loaded successfully.`);
-    }
-
-    private injectStyles(module: Module): void {
-        this.styleElements.get(module.id)?.remove();
-        const styleElement = document.createElement('style');
-        styleElement.id = `hikka-forge-style-${module.id}`;
-        styleElement.textContent = module.styles || '';
-        document.head.appendChild(styleElement);
-        this.styleElements.set(module.id, styleElement);
-    }
-
-    private injectContent(module: Module, elements: NodeListOf<Element>): void {
-        try {
-            const index = module.selector.index ?? 0;
-            let targetElement = elements[index] ?? elements[elements.length - 1];
-
-            if (!targetElement) {
-                console.error(`[Hikka Forge] No target element found for selector "${module.selector.selector}" (index: ${index}) for module ${module.name}.`);
-                this.retryInjection(module);
-                return;
-            }
-
-            const container = document.createElement('div');
-            container.id = `hikka-forge-content-${module.id}`;
-            container.className = 'hikka-forge-module';
-            container.dataset.moduleId = module.id;
-
-            let contentToAdd: Node | string;
-            if (typeof module.content === 'function') {
-                contentToAdd = module.content();
-            } else {
-                contentToAdd = module.content;
-            }
-
-            if (contentToAdd instanceof HTMLElement) {
-                container.appendChild(contentToAdd);
-            } else {
-                container.innerHTML = contentToAdd && "";
-            }
-
-            this.contentElements.set(module.id, container);
-
-            switch (module.selector.position) {
-                case 'before':
-                    targetElement.parentNode?.insertBefore(container, targetElement);
-                    break;
-                case 'after':
-                    targetElement.parentNode?.insertBefore(container, targetElement.nextSibling);
-                    break;
-                case 'prepend':
-                    targetElement.insertBefore(container, targetElement.firstChild);
-                    break;
-                case 'append':
-                    targetElement.appendChild(container);
-                    break;
-                case 'replace':
-                    const originalClone = targetElement.cloneNode(true) as HTMLElement;
-                    this.contentElements.set(`${module.id}-original`, originalClone);
-                    targetElement.parentNode?.replaceChild(container, targetElement);
-                    break;
-                default:
-                    console.error(`[Hikka Forge] Invalid insert position "${module.selector.position}" for module ${module.name}`);
-            }
-        } catch (error) {
-            console.error(`[Hikka Forge] Error injecting content for module ${module.name}:`, error);
-            this.contentElements.delete(module.id);
-            this.retryInjection(module);
-        }
-    }
-
-    private retryInjection(module: Module, attempt: number = 1): void {
-        if (attempt > 3) {
-            console.warn(`[Hikka Forge] Failed to inject module ${module.name} after 3 attempts.`);
-            this.activeModules.delete(module.id);
-            return;
-        }
-
-        console.log(`[Hikka Forge] Retrying injection for ${module.name} (attempt ${attempt})...`);
-        setTimeout(() => {
-            const elements = document.querySelectorAll(module.selector.selector);
-            if (elements.length > 0) {
-                this.injectContent(module, elements);
-            } else {
-                this.retryInjection(module, attempt + 1);
-            }
-        }, 500 * attempt);
-    }
-
-    private unloadModule(module: Module): void {
-        if (!this.activeModules.has(module.id)) return;
-
-        console.log(`[Hikka Forge] Unloading module ${module.name}...`);
-
-        this.observers.get(module.id)?.disconnect();
-        this.observers.delete(module.id);
-
-        this.styleElements.get(module.id)?.remove();
-        this.styleElements.delete(module.id);
-
-        const contentElement = this.contentElements.get(module.id);
-        if (contentElement) {
-            if (module.selector.position === 'replace') {
-                const originalElement = this.contentElements.get(`${module.id}-original`);
-                if (originalElement && contentElement.parentNode) {
-                    try {
-                       contentElement.parentNode.replaceChild(originalElement, contentElement);
-                    } catch(e) {
-                       console.warn(`[Hikka Forge] Failed to restore original element for ${module.name}, removing instead.`, e);
-                       contentElement.remove();
-                    }
-                } else {
-                   contentElement.remove();
-                }
-                this.contentElements.delete(`${module.id}-original`);
-            } else {
-                contentElement.remove();
-            }
-            this.contentElements.delete(module.id);
-        }
-
-        if (module.onUnload) {
-            try {
-                module.onUnload();
-            } catch (error) {
-                console.error(`[Hikka Forge] Error in onUnload of module ${module.name}:`, error);
-            }
-        }
-
-        this.activeModules.delete(module.id);
-        console.log(`[Hikka Forge] Module ${module.name} unloaded`);
-    }
-
-    private waitForSelector(module: Module): void {
-        if (this.observers.has(module.id)) {
-            this.observers.get(module.id)?.disconnect();
-        }
-
-        const maxAttempts = 15;
-        let attempts = 0;
-        let intervalId: number | null = null;
-        let observer: MutationObserver | null = null;
-
-        const tryLoad = (): boolean => {
-            attempts++;
-            const elements = document.querySelectorAll(module.selector.selector);
-
-            if (elements.length > 0) {
-                console.log(`[Hikka Forge] Selector "${module.selector.selector}" found for ${module.name} after ${attempts} checks.`);
-                if (this.activeModules.has(module.id)) {
-                     console.warn(`[Hikka Forge] Module ${module.name} became active before waitForSelector completed.`);
-                     cleanup();
-                     return true;
-                }
-
-                this.activeModules.add(module.id);
-                if (module.styles && !this.styleElements.has(module.id)) {
-                     this.injectStyles(module);
-                }
-                this.injectContent(module, elements);
-
-                if (module.onLoad) {
-                    try {
-                        module.onLoad();
-                    } catch (error) {
-                        console.error(`[Hikka Forge] Error in onLoad of module ${module.name} (loaded via wait):`, error);
-                    }
-                }
-                console.log(`[Hikka Forge] Module ${module.name} loaded via waitForSelector.`);
-                cleanup();
-                return true;
-            }
-
-            if (attempts >= maxAttempts) {
-                console.warn(`[Hikka Forge] Selector "${module.selector.selector}" not found for ${module.name} after ${maxAttempts} checks. Giving up.`);
-                cleanup();
-                return true;
-            }
-
-            return false;
-        };
-
-        const cleanup = () => {
-            if (intervalId !== null) {
-                clearInterval(intervalId);
-                intervalId = null;
-            }
-            observer?.disconnect();
-            this.observers.delete(module.id);
-            console.log(`[Hikka Forge] Cleaned up observer/interval for ${module.name}`);
-        };
-
-        if (tryLoad()) return;
-
-        observer = new MutationObserver(() => {
-            requestAnimationFrame(() => {
-               if(document.querySelector(module.selector.selector)) {
-                   tryLoad();
-               }
-            });
-        });
-
-        observer.observe(document.documentElement, { childList: true, subtree: true });
-        intervalId = setInterval(tryLoad, 750) as unknown as number;
-
-        this.observers.set(module.id, observer);
-        console.log(`[Hikka Forge] Observer and interval set up for ${module.name}`);
-    }
-
-    private initUrlChangeListener(): void {
-        const handleLocationChange = () => {
-            const newUrl = window.location.href;
-            if (newUrl !== this.currentUrl) {
-                requestAnimationFrame(() => {
-                    if (window.location.href === newUrl) {
-                         this.handleUrlChange(newUrl);
-                    }
-                });
-            }
-        };
-
-        const pushStateOriginal = history.pushState;
-        history.pushState = function (...args) {
-            const result = pushStateOriginal.apply(this, args);
-            window.dispatchEvent(new Event('locationchange'));
-            return result;
-        };
-
-        const replaceStateOriginal = history.replaceState;
-        history.replaceState = function (...args) {
-            const result = replaceStateOriginal.apply(this, args);
-            window.dispatchEvent(new Event('locationchange'));
-            return result;
-        };
-
-        window.addEventListener('popstate', handleLocationChange);
-        window.addEventListener('locationchange', handleLocationChange);
     }
 
     private handleUrlChange(newUrl: string): void {
         if (newUrl === this.currentUrl) return;
 
-        console.log(`[Hikka Forge] URL changed: ${this.currentUrl} -> ${newUrl}`);
-        const previousUrl = this.currentUrl;
+        console.log(`[Hikka Forge] Processing URL change: ${this.currentUrl} -> ${newUrl}`);
         this.currentUrl = newUrl;
 
-        const modulesToUnloadIds = new Set(this.activeModules);
-        console.log(`[Hikka Forge] Unloading modules active on previous URL (${previousUrl}):`, Array.from(modulesToUnloadIds));
-        modulesToUnloadIds.forEach(moduleId => {
-            const module = this.modules.get(moduleId);
-            if (module) {
-                this.unloadModule(module);
-            } else {
-                this.activeModules.delete(moduleId);
-            }
-        });
-
-        this.activeModules.clear();
+        
         this.observers.forEach(observer => observer.disconnect());
         this.observers.clear();
-        console.log(`[Hikka Forge] Cleared active modules and observers for new URL.`);
 
-        const modulesToLoad: Module[] = [];
-        this.modules.forEach(module => {
-            if (module.enabled && this.matchesUrlPatterns(newUrl, module.urlPatterns)) {
-                modulesToLoad.push(module);
-            }
-        });
-
-        const delay = 500;
-        if (modulesToLoad.length > 0) {
-             console.log(`[Hikka Forge] Scheduling load for ${modulesToLoad.length} modules on ${newUrl} after ${delay}ms`);
-             setTimeout(() => {
-                console.log(`[Hikka Forge] Attempting to load modules for ${newUrl}:`, modulesToLoad.map(m => m.name));
-                modulesToLoad.forEach(module => {
-                    if (this.currentUrl === newUrl && !this.activeModules.has(module.id)) {
-                         this.loadModule(module);
-                    } else if(this.activeModules.has(module.id)) {
-                        console.warn(`[Hikka Forge] Module ${module.name} was already active before scheduled load? Skipping.`);
-                    } else {
-                        console.log(`[Hikka Forge] URL changed again before module ${module.name} could load for ${newUrl}. Skipping.`);
-                    }
-                });
-            }, delay);
-        } else {
-             console.log(`[Hikka Forge] No modules match the new URL: ${newUrl}`);
-        }
+        
+        this.evaluateModulesForCurrentUrl();
     }
 
-    toggleModule(moduleId: string, enabled: boolean): void {
-        const module = this.modules.get(moduleId);
-        if (!module) {
-            console.warn(`[Hikka Forge] Attempted to toggle non-existent module: ${moduleId}`);
-            return;
-        }
 
-        if (module.enabled === enabled) return;
+    
+    private initMessageListener(): void {
+        chrome.runtime.onMessage.addListener((message: ContentMessage, sender, sendResponse) => {
+            console.log('[Hikka Forge] Content script received message:', message);
+            let isAsync = false;
 
-        module.enabled = enabled;
-        this.saveModuleState(moduleId, enabled);
-        console.log(`[Hikka Forge] Module ${module.name} toggled ${enabled ? 'ON' : 'OFF'}`);
+            try {
+                switch (message.type) {
+                    case 'SYNC_MODULES':
+                        
+                        this.syncModuleStates(message.enabledStates);
+                        sendResponse({ success: true });
+                        break;
 
-        if (enabled && this.matchesUrlPatterns(this.currentUrl, module.urlPatterns)) {
-            this.loadModule(module);
-        } else if (!enabled && this.activeModules.has(module.id)) {
-            this.unloadModule(module);
-        }
-    }
+                    case 'GET_CONTENT_MODULES_INFO':
+                         
+                        const modulesInfo = this.getModulesInfo();
+                        sendResponse({ success: true, modules: modulesInfo });
+                        break;
 
-    private saveModuleState(moduleId: string, enabled: boolean): void {
-        chrome.storage.sync.set({ [`module_${moduleId}`]: enabled })
-            .catch(error => console.error(`[Hikka Forge] Error saving state for module ${moduleId}:`, error));
-    }
+                    case 'MODULE_ACTION':
+                        if (message.action === 'REFRESH') {
+                            this.refreshAllActiveModules();
+                            sendResponse({ success: true });
+                        } else {
+                             sendResponse({ success: false, error: 'Unknown MODULE_ACTION action for content script' });
+                        }
+                        break;
 
-    async loadModuleStates(): Promise<void> {
-        console.log('[Hikka Forge] Loading module states from storage...');
-        try {
-            const moduleIds = Array.from(this.modules.keys());
-            if (moduleIds.length === 0) {
-                console.log('[Hikka Forge] No modules registered, skipping state load.');
-                return;
-            }
+                    
+                    
+                    
+                    
+                    
+                    
 
-            const keys = moduleIds.map(id => `module_${id}`);
-            const result = await chrome.storage.sync.get(keys);
-
-            let changed = false;
-            moduleIds.forEach(id => {
-                const stateKey = `module_${id}`;
-                const module = this.modules.get(id);
-                const storedState = result[stateKey];
-
-                if (module && storedState !== undefined) {
-                    if(module.enabled !== storedState) {
-                        console.log(`[Hikka Forge] Applying stored state for ${module.name}: ${storedState}`);
-                        module.enabled = storedState;
-                        changed = true;
-                    }
-                } else if (module && storedState === undefined) {
-                    this.saveModuleState(id, module.enabled);
+                    default:
+                        
+                         
+                         return false; 
                 }
-            });
-
-             if (changed) {
-                 this.handleUrlChange(this.currentUrl);
-             } else {
-                 console.log('[Hikka Forge] Module states match storage, no changes applied.');
-                 this.modules.forEach(module => {
-                     if (module.enabled &&
-                         this.matchesUrlPatterns(this.currentUrl, module.urlPatterns) &&
-                         !this.activeModules.has(module.id)) {
-                         this.loadModule(module);
-                     }
-                 });
-             }
-
-        } catch (error) {
-            console.error('[Hikka Forge] Error loading module states:', error);
-        }
+            } catch (error) {
+                console.error('[Hikka Forge] Error processing message in content script:', error);
+                if (!isAsync) {
+                    sendResponse({ success: false, error: String(error) });
+                }
+            }
+            
+            return isAsync;
+        });
     }
 
-    getModulesInfo(): Array<{ id: string, name: string, description: string, enabled: boolean, urlPatterns: string[] }> {
-        return Array.from(this.modules.values()).map(module => ({
-            id: module.id,
-            name: module.name,
-            description: module.description,
-            enabled: module.enabled,
-            urlPatterns: module.urlPatterns
+     getModulesInfo(): ModuleInfo[] {
+        return Array.from(this.moduleDefinitions.values()).map(moduleDef => ({
+            id: moduleDef.id,
+            name: moduleDef.name,
+            description: moduleDef.description,
+            enabled: this.moduleEnabledStates.get(moduleDef.id) ?? false,
+            urlPatterns: moduleDef.urlPatterns,
         }));
     }
 
-    refreshAllModules(): void {
+     refreshAllActiveModules(): void {
         console.log('[Hikka Forge] Refreshing all active modules...');
-        const activeModuleIds = Array.from(this.activeModules);
-        const currentUrl = this.currentUrl;
+        const activeModuleIds = Array.from(this.activeModuleRoots.keys());
 
-        activeModuleIds.forEach(id => {
-            const module = this.modules.get(id);
-            if (module) {
-                this.unloadModule(module);
-            }
-        });
+        
+        activeModuleIds.forEach(id => this.unloadModule(id));
 
+        
         setTimeout(() => {
-            console.log('[Hikka Forge] Reloading previously active modules...');
-            activeModuleIds.forEach(id => {
-                const module = this.modules.get(id);
-                if (module && module.enabled && this.currentUrl === currentUrl && this.matchesUrlPatterns(currentUrl, module.urlPatterns)) {
-                    this.loadModule(module);
-                } else if (module) {
-                     console.log(`[Hikka Forge] Skipping reload for ${module.name} (disabled, URL changed, or pattern no longer matches)`);
-                }
-            });
-        }, 300);
+            console.log('[Hikka Forge] Re-evaluating modules after refresh...');
+            
+             this.evaluateModulesForCurrentUrl();
+        }, 100); 
     }
 }
+
 
 const moduleManager = new ModuleManager();
 
-function createSafeContentFunction(htmlContent: string): () => HTMLElement {
-    return () => {
-        const template = document.createElement('template');
-        template.innerHTML = htmlContent.trim();
-        if (template.content.childNodes.length === 1 && template.content.firstChild instanceof HTMLElement) {
-            return template.content.firstChild as HTMLElement;
-        } else {
-            const container = document.createElement('div');
-            container.append(...template.content.childNodes);
-            return container;
-        }
-    };
-}
-
-function createReactModule(moduleId: string, Component: React.ComponentType): Module {
-    const rootRefs: Map<string, any> = new Map();
-    
-    return {
-        id: 'anime-module',
-        name: 'Anime Module',
-        description: 'Adds information to anime pages',
-        urlPatterns: ['https://hikka.io/anime/*'],
-        enabled: true,
-        selector: {
-            selector: 'div.flex.justify-between.gap-4',
-            position: 'prepend'
-        },
-        content: () => {
-            const container = document.createElement('div');
-            container.id = `react-module-container-${moduleId}`;
-
-            setTimeout(() => {
-                const root = createRoot(container);
-                root.render(<Component />);
-                rootRefs.set(container.id, root);
-            }, 0);
-            
-            return container;
-        },
-        onLoad: () => console.log(`[Hikka Forge] React module ${moduleId} loaded`),
-        onUnload: () => {
-            const containerId = `react-module-container-${moduleId}`;
-            const root = rootRefs.get(containerId);
-            if (root) {
-                root.unmount();
-                rootRefs.delete(containerId);
-            }
-            console.log(`[Hikka Forge] React module ${moduleId} unloaded`);
-        }
-    };
-}
-
-const ButtonComponent = () => {
-    return (
-        <div className="p-4 bg-white dark:bg-gray-800 rounded-md shadow">
-            <h3 className="mb-3 text-lg font-medium">Shadcn Button Example</h3>
-            <Button 
-                onClick={() => alert('Shadcn button clicked!')}
-                variant="default"
-            >
-                Click Me
-            </Button>
-        </div>
-    );
-};
-
-const shadcnButtonModule = createReactModule('shadcn-button-module', ButtonComponent);
-moduleManager.registerModule(shadcnButtonModule);
-
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log('[Hikka Forge] Received message:', message);
-    let isAsync = false;
-
-    try {
-        switch (message.type) {
-            case 'MODULE_ACTION':
-                if (message.moduleId && typeof message.action === 'string') {
-                    if (message.action === 'TOGGLE' && typeof message.enabled === 'boolean') {
-                        moduleManager.toggleModule(message.moduleId, message.enabled);
-                        sendResponse({ success: true });
-                    } else if (message.action === 'REFRESH') {
-                        moduleManager.refreshAllModules();
-                        sendResponse({ success: true });
-                    } else {
-                        sendResponse({ success: false, error: 'Unknown or invalid action parameters' });
-                    }
-                } else {
-                     sendResponse({ success: false, error: 'Missing parameters for MODULE_ACTION' });
-                }
-                break;
-
-            case 'GET_MODULE_INFO':
-                const modulesInfo = moduleManager.getModulesInfo();
-                sendResponse({ success: true, modules: modulesInfo });
-                break;
-
-            case 'SYNC_MODULES':
-                isAsync = true;
-                moduleManager.loadModuleStates().then(() => {
-                     sendResponse({ success: true });
-                 }).catch(error => {
-                     console.error("[Hikka Forge] Error during SYNC_MODULES:", error);
-                     sendResponse({ success: false, error: String(error) });
-                 });
-                break;
-
-
-            default:
-                console.warn(`[Hikka Forge] Unknown message type received: ${message.type}`);
-                sendResponse({ success: false, error: 'Unknown message type' });
-        }
-    } catch (error) {
-        console.error('[Hikka Forge] Error processing message:', error);
-        if (!isAsync) {
-            sendResponse({ success: false, error: String(error) });
-        }
-    }
-
-    return isAsync;
-});
-
-function initializeForge() {
-     setTimeout(() => {
-         moduleManager.loadModuleStates();
-     }, 1500);
-}
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeForge);
-} else {
-    initializeForge();
-}
 
 declare global {
     interface Window {
@@ -658,10 +606,9 @@ declare global {
         };
     }
 }
-
 window.HikkaForge = {
     moduleManager,
-    version: '1.0.1'
+    version: '1.1.0-modular' 
 };
 
 console.log('[Hikka Forge] Content script loaded and HikkaForge exposed.');

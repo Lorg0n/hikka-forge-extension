@@ -1,6 +1,7 @@
 export interface CommentItem {
     text: string;
-    source: string;
+    source_type: string;
+    source_slug: string;
 }
 
 export interface UserCommentsApiResponse {

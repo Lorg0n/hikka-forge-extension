@@ -1,6 +1,6 @@
 import { UserCommentsApiResponse, ApiErrorResponse } from '@/types';
 
-const API_BASE_URL = 'https://api.lorgon.org';
+import { API_BACKEND_BASE } from '@/constants';
 
 interface FetchUserCommentsParams {
     username: string;
@@ -13,7 +13,7 @@ export const fetchUserComments = async ({
     page,
     size,
 }: FetchUserCommentsParams): Promise<UserCommentsApiResponse> => {
-    const url = new URL(`${API_BASE_URL}/users/${username}/comments`);
+    const url = new URL(`${API_BACKEND_BASE}/users/${username}/comments`);
 
     if (page !== undefined) {
         url.searchParams.append('page', page.toString());

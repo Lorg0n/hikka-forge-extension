@@ -21,7 +21,7 @@ interface UseUserCommentsReturn {
 
 export const useUserComments = ({
     username,
-    initialPage = 1, 
+    initialPage = 0, 
     initialSize = 10,
 }: UseUserCommentsProps): UseUserCommentsReturn => {
     const [data, setData] = useState<UserCommentsApiResponse | null>(null);

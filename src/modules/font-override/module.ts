@@ -15,6 +15,7 @@ const fontOverrideModule: ForgeModuleDef = {
   urlPatterns: ['https://hikka.io/*'],
 
   styles: fontOverrideStyles,
+  persistentStyles: true, 
 };
 
 export default fontOverrideModule;

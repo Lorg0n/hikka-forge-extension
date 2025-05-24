@@ -18,7 +18,7 @@ export interface ForgeModuleDef {
   elementSelector?: ModuleSelector;
   component?: React.FC<any>;
   styles?: string;
-
+  persistentStyles?: boolean;
 }
 
 export interface ModuleInfo {

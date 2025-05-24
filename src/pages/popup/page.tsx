@@ -214,6 +214,64 @@ function App() {
 		}
 	};
 
+	const handleResetSettings = async (moduleId: string) => {
+		console.log(`Popup: Resetting settings for module ${moduleId}`);
+		const moduleDef = modules.find((m) => m.id === moduleId);
+		if (!moduleDef || !moduleDef.settings) {
+			console.warn(
+				`Popup: Module ${moduleId} not found or has no settings to reset.`
+			);
+			return;
+		}
+
+		const newModuleSettings: Record<string, any> = {};
+		const promises: Promise<SimpleActionResponse>[] = [];
+
+		moduleDef.settings.forEach((setting) => {
+			const defaultValue = setting.defaultValue;
+			newModuleSettings[setting.id] = defaultValue;
+
+			const timerKey = `${moduleId}-${setting.id}`;
+			if (settingUpdateTimers.current[timerKey]) {
+				clearTimeout(settingUpdateTimers.current[timerKey]);
+				delete settingUpdateTimers.current[timerKey];
+			}
+
+			promises.push(
+				browser.runtime.sendMessage({
+					type: "MODULE_ACTION",
+					action: "UPDATE_SETTING",
+					moduleId,
+					settingId: setting.id,
+					value: defaultValue,
+				} as PopupMessage)
+			);
+		});
+
+		setModuleSettings((prev) => ({
+			...prev,
+			[moduleId]: newModuleSettings,
+		}));
+
+		try {
+			await Promise.all(promises);
+			console.log(`Popup: All settings for ${moduleId} reset in storage.`);
+			setError(null);
+
+			await handleRefresh();
+			console.log(
+				`Popup: Refresh triggered after settings reset for ${moduleId}.`
+			);
+		} catch (err: any) {
+			console.error(`Popup: Error resetting settings for ${moduleId}:`, err);
+			setError(
+				`Failed to reset settings for ${moduleDef.name}. ${err.message}`
+			);
+
+			loadModules();
+		}
+	};
+
 	const toggleModuleExpansion = (moduleId: string) => {
 		setExpandedModules((prev) => {
 			const newSet = new Set(prev);
@@ -233,15 +291,17 @@ function App() {
 		switch (setting.type) {
 			case "slider":
 				return (
-					<FormItem key={setting.id} className="space-y-2">
-						<FormLabel className="text-sm font-medium">
-							{setting.label}
-						</FormLabel>
-						{setting.description && (
-							<FormDescription className="text-xs">
-								{setting.description}
-							</FormDescription>
-						)}
+					<FormItem key={setting.id} className="space-y-1">
+						<div className="flex flex-col gap-0">
+							<FormLabel className="text-sm font-medium">
+								{setting.label}
+							</FormLabel>
+							{setting.description && (
+								<FormDescription className="text-xs">
+									{setting.description}
+								</FormDescription>
+							)}
+						</div>
 						<div className="flex items-center gap-3">
 							<Slider
 								value={[currentValue]}
@@ -263,15 +323,17 @@ function App() {
 
 			case "colorPicker":
 				return (
-					<FormItem key={setting.id} className="space-y-2">
-						<FormLabel className="text-sm font-medium">
-							{setting.label}
-						</FormLabel>
-						{setting.description && (
-							<FormDescription className="text-xs">
-								{setting.description}
-							</FormDescription>
-						)}
+					<FormItem key={setting.id} className="space-y-1">
+						<div className="flex flex-col gap-0">
+							<FormLabel className="text-sm font-medium">
+								{setting.label}
+							</FormLabel>
+							{setting.description && (
+								<FormDescription className="text-xs">
+									{setting.description}
+								</FormDescription>
+							)}
+						</div>
 						<div className="flex items-center gap-2">
 							<Input
 								type="color"
@@ -300,7 +362,7 @@ function App() {
 						key={setting.id}
 						className="flex flex-row items-center justify-between space-y-0 py-2"
 					>
-						<div className="space-y-0.5">
+						<div className="flex flex-col gap-0">
 							<FormLabel className="text-sm font-medium">
 								{setting.label}
 							</FormLabel>
@@ -321,15 +383,17 @@ function App() {
 
 			case "select":
 				return (
-					<FormItem key={setting.id} className="space-y-2">
-						<FormLabel className="text-sm font-medium">
-							{setting.label}
-						</FormLabel>
-						{setting.description && (
-							<FormDescription className="text-xs">
-								{setting.description}
-							</FormDescription>
-						)}
+					<FormItem key={setting.id} className="space-y-1">
+						<div className="flex flex-col gap-0">
+							<FormLabel className="text-sm font-medium">
+								{setting.label}
+							</FormLabel>
+							{setting.description && (
+								<FormDescription className="text-xs">
+									{setting.description}
+								</FormDescription>
+							)}
+						</div>
 						<Select
 							value={currentValue}
 							onValueChange={(value) =>
@@ -352,15 +416,17 @@ function App() {
 
 			case "text":
 				return (
-					<FormItem key={setting.id} className="space-y-2">
-						<FormLabel className="text-sm font-medium">
-							{setting.label}
-						</FormLabel>
-						{setting.description && (
-							<FormDescription className="text-xs">
-								{setting.description}
-							</FormDescription>
-						)}
+					<FormItem key={setting.id} className="space-y-1">
+						<div className="flex flex-col gap-0">
+							<FormLabel className="text-sm font-medium">
+								{setting.label}
+							</FormLabel>
+							{setting.description && (
+								<FormDescription className="text-xs">
+									{setting.description}
+								</FormDescription>
+							)}
+						</div>
 						<Input
 							type="text"
 							value={currentValue}
@@ -470,10 +536,21 @@ function App() {
 											open={expandedModules.has(moduleInfo.id)}
 											onOpenChange={() => toggleModuleExpansion(moduleInfo.id)}
 										>
-											<CollapsibleContent className="border-l border-r border-b rounded-b-lg p-4 space-y-4 bg-muted/30">
+											<CollapsibleContent className="border-l border-r border-b rounded-b-lg p-4 space-y-6 bg-muted/30">
 												{moduleInfo.settings.map((setting) =>
 													renderSetting(moduleInfo.id, setting)
 												)}
+
+												<div className="pt-4 border-t border-border mt-4">
+													<Button
+														variant="outline"
+														size="sm"
+														onClick={() => handleResetSettings(moduleInfo.id)}
+														className="w-full"
+													>
+														Скинути налаштування
+													</Button>
+												</div>
 											</CollapsibleContent>
 										</Collapsible>
 									)}

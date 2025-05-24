@@ -734,12 +734,10 @@ declare global {
 	interface Window {
 		HikkaForge?: {
 			moduleManager: ModuleManager;
-			version: string;
 		};
 	}
 }
 window.HikkaForge = {
-	moduleManager,
-	version: "1.1.0-modular",
+	moduleManager
 };
 console.log("[Hikka Forge] Content script loaded and HikkaForge exposed.");

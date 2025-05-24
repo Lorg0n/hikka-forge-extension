@@ -15,6 +15,7 @@ const ANIMATION_DURATION_MS = 300;
 class ModuleManager {
 	private moduleDefinitions: Map<string, ForgeModuleDef> = new Map();
 	private moduleEnabledStates: Map<string, boolean> = new Map();
+	private moduleSettings: Record<string, Record<string, any>> = {};
 	private activeModuleRoots: Map<
 		string,
 		{ container: HTMLElement; root: Root }
@@ -38,6 +39,13 @@ class ModuleManager {
 			if (moduleDef && moduleDef.id) {
 				this.moduleDefinitions.set(moduleDef.id, moduleDef);
 				this.moduleEnabledStates.set(moduleDef.id, false);
+				this.moduleSettings[moduleDef.id] = {};
+				if (moduleDef.settings) {
+					moduleDef.settings.forEach((setting) => {
+						this.moduleSettings[moduleDef.id][setting.id] =
+							setting.defaultValue;
+					});
+				}
 				console.log(
 					`[Hikka Forge] Registered module definition: ${moduleDef.name} (${moduleDef.id})`
 				);
@@ -64,7 +72,7 @@ class ModuleManager {
 					response.modules.forEach((modInfo: ModuleInfo) => {
 						states[modInfo.id] = modInfo.enabled;
 					});
-					this.syncModuleStates(states);
+					this.syncModuleStates(states, (response as any).moduleSettings || {});
 				} else {
 					console.warn(
 						"[Hikka Forge] Failed to get initial module states from background.",
@@ -78,8 +86,15 @@ class ModuleManager {
 				this.evaluateModulesForCurrentUrl();
 			});
 	}
-	private syncModuleStates(enabledStates: Record<string, boolean>): void {
-		console.log("[Hikka Forge] Syncing module states:", enabledStates);
+	private syncModuleStates(
+		enabledStates: Record<string, boolean>,
+		moduleSettings: Record<string, Record<string, any>>
+	): void {
+		console.log(
+			"[Hikka Forge] Syncing module states:",
+			enabledStates,
+			moduleSettings
+		);
 		let changed = false;
 		this.moduleDefinitions.forEach((moduleDef) => {
 			const newState = enabledStates[moduleDef.id];
@@ -100,16 +115,36 @@ class ModuleManager {
 					`[Hikka Forge] State for ${moduleDef.name} not provided in sync, keeping current.`
 				);
 			}
+
+			if (moduleSettings[moduleDef.id]) {
+				const currentModuleSettings = this.moduleSettings[moduleDef.id] || {};
+				let settingsChangedForModule = false;
+				for (const settingId in moduleSettings[moduleDef.id]) {
+					if (
+						moduleSettings[moduleDef.id][settingId] !==
+						currentModuleSettings[settingId]
+					) {
+						currentModuleSettings[settingId] =
+							moduleSettings[moduleDef.id][settingId];
+						settingsChangedForModule = true;
+					}
+				}
+				if (settingsChangedForModule) {
+					this.moduleSettings[moduleDef.id] = currentModuleSettings;
+					changed = true;
+					console.log(`[Hikka Forge] Settings updated for ${moduleDef.name}.`);
+				}
+			}
 		});
 		this.manageModuleStyles();
 		if (changed) {
 			console.log(
-				"[Hikka Forge] Module states changed, re-evaluating modules for current URL."
+				"[Hikka Forge] Module states or settings changed, re-evaluating modules for current URL."
 			);
 			this.evaluateModulesForCurrentUrl();
 		} else {
 			console.log(
-				"[Hikka Forge] No module state changes detected during sync."
+				"[Hikka Forge] No module state or setting changes detected during sync."
 			);
 			this.evaluateModulesForCurrentUrl(true);
 		}
@@ -182,6 +217,7 @@ class ModuleManager {
 				"[Hikka Forge] Components to Activate:",
 				modulesToActivate.map((m) => m.name)
 			);
+
 			setTimeout(() => {
 				modulesToActivate.forEach((moduleDef) => {
 					if (moduleDef.component) {
@@ -200,7 +236,7 @@ class ModuleManager {
 						}
 					}
 				});
-			}, 50);
+			}, ANIMATION_DURATION_MS + 50);
 		} else {
 			console.log("[Hikka Forge] No components to activate.");
 		}
@@ -271,7 +307,14 @@ class ModuleManager {
 		this.removeStyles(moduleDef.id);
 		const styleElement = document.createElement("style");
 		styleElement.id = `hikka-forge-style-${moduleDef.id}`;
-		styleElement.textContent = moduleDef.styles;
+
+		if (typeof moduleDef.styles === "function") {
+			const currentModuleSettings = this.moduleSettings[moduleDef.id] || {};
+			styleElement.textContent = moduleDef.styles(currentModuleSettings);
+		} else {
+			styleElement.textContent = moduleDef.styles;
+		}
+
 		document.head.appendChild(styleElement);
 		this.activeStyleTags.set(moduleDef.id, styleElement);
 		console.log(`[Hikka Forge] Styles for ${moduleDef.name} injected.`);
@@ -331,7 +374,12 @@ class ModuleManager {
 				return;
 			}
 			const root = createRoot(container);
-			root.render(React.createElement(moduleDef.component));
+			const currentModuleSettings = this.moduleSettings[moduleDef.id] || {};
+			root.render(
+				React.createElement(moduleDef.component, {
+					settings: currentModuleSettings,
+				})
+			);
 			this.activeModuleRoots.set(moduleDef.id, { container, root });
 			console.log(
 				`[Hikka Forge] Injecting ${moduleDef.name} ${moduleDef.elementSelector.position} ${moduleDef.elementSelector.selector}`
@@ -643,8 +691,19 @@ class ModuleManager {
 				try {
 					switch (message.type) {
 						case "SYNC_MODULES":
-							this.syncModuleStates(message.enabledStates);
-							sendResponse({ success: true });
+							if (message.enabledStates && message.moduleSettings) {
+								this.syncModuleStates(
+									message.enabledStates,
+									message.moduleSettings
+								);
+								sendResponse({ success: true });
+							} else {
+								sendResponse({
+									success: false,
+									error:
+										"Missing enabledStates or moduleSettings in SYNC_MODULES message.",
+								});
+							}
 							break;
 						case "GET_CONTENT_MODULES_INFO":
 							const modulesInfo = this.getModulesInfo();
@@ -684,16 +743,18 @@ class ModuleManager {
 			description: moduleDef.description,
 			enabled: this.moduleEnabledStates.get(moduleDef.id) ?? false,
 			urlPatterns: moduleDef.urlPatterns,
+			settings: moduleDef.settings,
 		}));
 	}
 	refreshAllActiveModules(): void {
 		console.log("[Hikka Forge] Refreshing all active modules...");
 		const activeModuleIds = Array.from(this.activeModuleRoots.keys());
 		activeModuleIds.forEach((id) => this.unloadModuleComponent(id));
+
 		setTimeout(() => {
 			console.log("[Hikka Forge] Re-evaluating modules after refresh...");
 			this.evaluateModulesForCurrentUrl();
-		}, 100);
+		}, ANIMATION_DURATION_MS + 50);
 	}
 
 	private manageModuleStyles(): void {
@@ -714,9 +775,16 @@ class ModuleManager {
 					);
 					this.injectStyles(moduleDef);
 				} else {
-					console.log(
-						`[Hikka Forge] Styles for ${moduleDef.name} already active.`
-					);
+					if (typeof moduleDef.styles === "function") {
+						console.log(
+							`[Hikka Forge] Re-injecting dynamic styles for ${moduleDef.name} due to potential setting change.`
+						);
+						this.injectStyles(moduleDef);
+					} else {
+						console.log(
+							`[Hikka Forge] Styles for ${moduleDef.name} already active.`
+						);
+					}
 				}
 			} else {
 				if (this.activeStyleTags.has(moduleDef.id)) {
@@ -738,6 +806,6 @@ declare global {
 	}
 }
 window.HikkaForge = {
-	moduleManager
+	moduleManager,
 };
 console.log("[Hikka Forge] Content script loaded and HikkaForge exposed.");

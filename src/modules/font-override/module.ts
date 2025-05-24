@@ -10,8 +10,8 @@ const fontOverrideStyles = `
 
 const fontOverrideModule: ForgeModuleDef = {
   id: 'font-override',
-  name: 'Font Replacement (Inter)',
-  description: 'Replaces all fonts on the website with Inter, preserving font weights.',
+  name: 'Заміна шрифту (Inter)',
+  description: 'Замінює всі шрифти на вебсайті шрифтом Inter, зберігаючи їхню товщину.',
   urlPatterns: ['https://hikka.io/*'],
 
   styles: fontOverrideStyles,

@@ -40,14 +40,14 @@ const UserCommentCard: React.FC<UserCommentCardProps> = ({ comment }) => {
                     </Badge>
                 </Link>
                 <div className="flex flex-row gap-0">
-                    <Button
+                    {/* <Button
                         variant="ghost"
                         size="sm"
                         className="pointer-events-none gap-1 text-muted-foreground"
                     >
                         <Icon icon="tabler:message-filled" className="size-3" />
                         {comment.total_replies}
-                    </Button>
+                    </Button> */}
                     <Button
                         variant="ghost"
                         size="sm"

@@ -34,7 +34,14 @@ export function ModuleCard({
 
 	return (
 		<div>
-			<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm hover:bg-accent/50 transition-colors">
+			<FormItem
+				className={`flex flex-row items-center justify-between p-3 shadow-sm hover:bg-accent/50 transition-colors 
+					${
+						isExpanded && hasSettings
+							? "border-l border-r border-t rounded-t-lg rounded-bl-none rounded-br-none"
+							: "border rounded-lg"
+					}`}
+			>
 				<div className="space-y-0.5 mr-4 flex-1">
 					<FormLabel className="text-base">{moduleInfo.name}</FormLabel>
 					<FormDescription>{moduleInfo.description}</FormDescription>

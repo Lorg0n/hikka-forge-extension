@@ -2,19 +2,12 @@
 
 import type React from "react";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
-
-interface ColorPickerProps {
-	value?: string;
-	onChange?: (color: string) => void;
-	className?: string;
-}
 
 const hslToHex = (h: number, s: number, l: number): string => {
 	h = h / 360;
@@ -66,13 +59,18 @@ const hexToHsl = (hex: string): [number, number, number] => {
 	return [h * 360, s * 100, l * 100];
 };
 
+interface ColorPickerProps {
+	value?: string;
+	onChange?: (color: string) => void;
+	className?: string;
+}
+
 export function ColorPicker({
 	value = "#3b82f6",
 	onChange,
 	className,
 }: ColorPickerProps) {
 	const [internalHsl, setInternalHsl] = useState(() => hexToHsl(value));
-
 	const [open, setOpen] = useState(false);
 	const areaRef = useRef<HTMLDivElement>(null);
 	const hueRef = useRef<HTMLDivElement>(null);
@@ -83,7 +81,7 @@ export function ColorPicker({
 
 	const hexColorDisplay = useMemo(
 		() => hslToHex(internalHsl[0], internalHsl[1], internalHsl[2]),
-		[internalHsl]
+		[internalHsl],
 	);
 
 	useEffect(() => {
@@ -109,7 +107,7 @@ export function ColorPicker({
 			onChange?.(newHex);
 			setHexInputValue(newHex);
 		},
-		[onChange]
+		[onChange],
 	);
 
 	const updateColorFromPosition = useCallback(
@@ -148,7 +146,7 @@ export function ColorPicker({
 				commitHslChange([h, s_hsl_percent, l_hsl_percent]);
 			}
 		},
-		[internalHsl, commitHslChange]
+		[internalHsl, commitHslChange],
 	);
 
 	const updateHueFromPosition = useCallback(
@@ -163,7 +161,7 @@ export function ColorPicker({
 				commitHslChange([hue, internalHsl[1], internalHsl[2]]);
 			}
 		},
-		[internalHsl, commitHslChange]
+		[internalHsl, commitHslChange],
 	);
 
 	const handleMouseDown = useCallback(
@@ -171,7 +169,7 @@ export function ColorPicker({
 			setIsDragging(true);
 			updateColorFromPosition(e.clientX, e.clientY);
 		},
-		[updateColorFromPosition]
+		[updateColorFromPosition],
 	);
 
 	const handleHueMouseDown = useCallback(
@@ -179,7 +177,7 @@ export function ColorPicker({
 			setIsDraggingHue(true);
 			updateHueFromPosition(e.clientX);
 		},
-		[updateHueFromPosition]
+		[updateHueFromPosition],
 	);
 
 	useEffect(() => {
@@ -251,13 +249,19 @@ export function ColorPicker({
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
-				<Button
-					variant="outline"
-					className={`h-10 w-10 p-0 ${className}`}
-					style={{ backgroundColor: hexColorDisplay }}
-				>
-					<span className="sr-only">Pick color</span>
-				</Button>
+				<div className={`flex items-center gap-2 ${className}`}>
+					<div
+						className="h-8 w-8 rounded-md border"
+						style={{ backgroundColor: hexColorDisplay }}
+					/>
+					<Input
+						value={hexInputValue}
+						onChange={handleHexInputChange}
+						className="flex-1 h-9 text-xs font-mono"
+						placeholder="#000000"
+						maxLength={7}
+					/>
+				</div>
 			</PopoverTrigger>
 			<PopoverContent className="w-64 p-3" align="start">
 				<div className="space-y-3">

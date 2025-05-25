@@ -9,30 +9,21 @@ import {
 	PopoverTrigger,
 } from "@/components/ui/popover";
 
-const hslToHex = (h: number, s: number, l: number): string => {
-	h = h / 360;
-	s = s / 100;
-	l = l / 100;
-
-	const a = s * Math.min(l, 1 - l);
-	const f = (n: number) => {
-		const k = (n + h * 12) % 12;
-		const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-		return Math.round(255 * color)
-			.toString(16)
-			.padStart(2, "0");
-	};
-	return `#${f(0)}${f(8)}${f(4)}`;
+const hexToRgb = (hex: string): [number, number, number] => {
+	const r = Number.parseInt(hex.slice(1, 3), 16);
+	const g = Number.parseInt(hex.slice(3, 5), 16);
+	const b = Number.parseInt(hex.slice(5, 7), 16);
+	return [r, g, b];
 };
 
-const hexToHsl = (hex: string): [number, number, number] => {
-	if (!/^#[0-9A-Fa-f]{6}$/i.test(hex)) {
-		return [0, 0, 0];
-	}
+const rgbToHex = (r: number, g: number, b: number): string => {
+	return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).padStart(6, "0")}`;
+};
 
-	const r = Number.parseInt(hex.slice(1, 3), 16) / 255;
-	const g = Number.parseInt(hex.slice(3, 5), 16) / 255;
-	const b = Number.parseInt(hex.slice(5, 7), 16) / 255;
+const rgbToHsl = (r: number, g: number, b: number): [number, number, number] => {
+	r /= 255;
+	g /= 255;
+	b /= 255;
 
 	const max = Math.max(r, g, b);
 	const min = Math.min(r, g, b);
@@ -59,6 +50,123 @@ const hexToHsl = (hex: string): [number, number, number] => {
 	return [h * 360, s * 100, l * 100];
 };
 
+const hslToRgb = (h: number, s: number, l: number): [number, number, number] => {
+	h /= 360;
+	s /= 100;
+	l /= 100;
+
+	const hue2rgb = (p: number, q: number, t: number) => {
+		if (t < 0) t += 1;
+		if (t > 1) t -= 1;
+		if (t < 1 / 6) return p + (q - p) * 6 * t;
+		if (t < 1 / 2) return q;
+		if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+		return p;
+	};
+
+	let r, g, b;
+	if (s === 0) {
+		r = g = b = l;
+	} else {
+		const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+		const p = 2 * l - q;
+		r = hue2rgb(p, q, h + 1 / 3);
+		g = hue2rgb(p, q, h);
+		b = hue2rgb(p, q, h - 1 / 3);
+	}
+	return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+};
+
+const rgbToHsv = (r: number, g: number, b: number): [number, number, number] => {
+	r /= 255;
+	g /= 255;
+	b /= 255;
+
+	const max = Math.max(r, g, b);
+	const min = Math.min(r, g, b);
+	let h = 0;
+	let s = 0;
+	const v = max;
+
+	const d = max - min;
+	s = max === 0 ? 0 : d / max;
+
+	if (max !== min) {
+		switch (max) {
+			case r:
+				h = (g - b) / d + (g < b ? 6 : 0);
+				break;
+			case g:
+				h = (b - r) / d + 2;
+				break;
+			case b:
+				h = (r - g) / d + 4;
+				break;
+		}
+		h /= 6;
+	}
+	return [h * 360, s * 100, v * 100];
+};
+
+const hsvToRgb = (h: number, s: number, v: number): [number, number, number] => {
+	s /= 100;
+	v /= 100;
+	let r = 0,
+		g = 0,
+		b = 0;
+	const i = Math.floor(h / 60);
+	const f = h / 60 - i;
+	const p = v * (1 - s);
+	const q = v * (1 - f * s);
+	const t = v * (1 - (1 - f) * s);
+	switch (i % 6) {
+		case 0:
+			r = v;
+			g = t;
+			b = p;
+			break;
+		case 1:
+			r = q;
+			g = v;
+			b = p;
+			break;
+		case 2:
+			r = p;
+			g = v;
+			b = t;
+			break;
+		case 3:
+			r = p;
+			g = q;
+			b = v;
+			break;
+		case 4:
+			r = t;
+			g = p;
+			b = v;
+			break;
+		case 5:
+			r = v;
+			g = p;
+			b = q;
+			break;
+	}
+	return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+};
+
+const hslToHex = (h: number, s: number, l: number): string => {
+	const [r, g, b] = hslToRgb(h, s, l);
+	return rgbToHex(r, g, b);
+};
+
+const hexToHsl = (hex: string): [number, number, number] => {
+	if (!/^#[0-9A-Fa-f]{6}$/i.test(hex)) {
+		return [0, 0, 0];
+	}
+	const [r, g, b] = hexToRgb(hex);
+	return rgbToHsl(r, g, b);
+};
+
 interface ColorPickerProps {
 	value?: string;
 	onChange?: (color: string) => void;
@@ -71,6 +179,17 @@ export function ColorPicker({
 	className,
 }: ColorPickerProps) {
 	const [internalHsl, setInternalHsl] = useState(() => hexToHsl(value));
+
+	const initialPointerPositions = useMemo(() => {
+		const [h, s, l] = hexToHsl(value);
+		const [r, g, b] = hslToRgb(h, s, l);
+		const [, s_hsv, v_hsv] = rgbToHsv(r, g, b);
+		return { s: s_hsv, v: v_hsv };
+	}, [value]);
+
+	const [pointerS, setPointerS] = useState(initialPointerPositions.s);
+	const [pointerV, setPointerV] = useState(initialPointerPositions.v);
+
 	const [open, setOpen] = useState(false);
 	const areaRef = useRef<HTMLDivElement>(null);
 	const hueRef = useRef<HTMLDivElement>(null);
@@ -91,6 +210,11 @@ export function ColorPicker({
 		if (value.toLowerCase() !== currentHexFromInternalHsl.toLowerCase()) {
 			setInternalHsl(newHslFromProp);
 			setHexInputValue(value);
+
+			const [r, g, b] = hslToRgb(newHslFromProp[0], newHslFromProp[1], newHslFromProp[2]);
+            const [, s_hsv, v_hsv] = rgbToHsv(r, g, b);
+            setPointerS(s_hsv);
+            setPointerV(v_hsv);
 		}
 	}, [value, hexColorDisplay]);
 
@@ -98,14 +222,13 @@ export function ColorPicker({
 		if (hexInputValue.toLowerCase() !== hexColorDisplay.toLowerCase()) {
 			setHexInputValue(hexColorDisplay);
 		}
-	}, [hexColorDisplay]);
+	}, [hexColorDisplay, hexInputValue]);
 
 	const commitHslChange = useCallback(
 		(newHsl: [number, number, number]) => {
 			setInternalHsl(newHsl);
 			const newHex = hslToHex(newHsl[0], newHsl[1], newHsl[2]);
 			onChange?.(newHex);
-			setHexInputValue(newHex);
 		},
 		[onChange],
 	);
@@ -121,29 +244,25 @@ export function ColorPicker({
 			const clampedX = Math.max(0, Math.min(x, rect.width));
 			const clampedY = Math.max(0, Math.min(y, rect.height));
 
-			const s_hsv = clampedX / rect.width;
-			const v_hsv = 1 - clampedY / rect.height;
+			const newS_hsv_percent = (clampedX / rect.width) * 100;
+			const newV_hsv_percent = (1 - clampedY / rect.height) * 100;
 
-			const h = internalHsl[0];
+			setPointerS(newS_hsv_percent);
+			setPointerV(newV_hsv_percent);
 
-			let s_hsl_norm: number;
-			let l_hsl_norm: number = v_hsv * (1 - s_hsv / 2);
-
-			if (l_hsl_norm === 0 || l_hsl_norm === 1) {
-				s_hsl_norm = 0;
-			} else {
-				s_hsl_norm = (v_hsv * s_hsv) / (1 - Math.abs(2 * l_hsl_norm - 1));
-				s_hsl_norm = Math.max(0, Math.min(1, s_hsl_norm));
-			}
-
-			const s_hsl_percent = s_hsl_norm * 100;
-			const l_hsl_percent = l_hsl_norm * 100;
+			const [r, g, b] = hsvToRgb(
+				internalHsl[0],
+				newS_hsv_percent,
+				newV_hsv_percent,
+			);
+			const newHsl = rgbToHsl(r, g, b);
 
 			if (
-				Math.abs(s_hsl_percent - internalHsl[1]) > 0.01 ||
-				Math.abs(l_hsl_percent - internalHsl[2]) > 0.01
+				Math.abs(newHsl[0] - internalHsl[0]) > 0.01 ||
+				Math.abs(newHsl[1] - internalHsl[1]) > 0.01 ||
+				Math.abs(newHsl[2] - internalHsl[2]) > 0.01
 			) {
-				commitHslChange([h, s_hsl_percent, l_hsl_percent]);
+				commitHslChange(newHsl);
 			}
 		},
 		[internalHsl, commitHslChange],
@@ -159,6 +278,11 @@ export function ColorPicker({
 
 			if (Math.abs(hue - internalHsl[0]) > 0.01) {
 				commitHslChange([hue, internalHsl[1], internalHsl[2]]);
+
+				const [r, g, b] = hslToRgb(hue, internalHsl[1], internalHsl[2]);
+                const [, s_hsv, v_hsv] = rgbToHsv(r, g, b);
+                setPointerS(s_hsv);
+                setPointerV(v_hsv);
 			}
 		},
 		[internalHsl, commitHslChange],
@@ -216,35 +340,20 @@ export function ColorPicker({
 		setHexInputValue(newHex);
 
 		if (/^#[0-9A-Fa-f]{6}$/i.test(newHex)) {
-			commitHslChange(hexToHsl(newHex));
+			const newHsl = hexToHsl(newHex);
+			commitHslChange(newHsl);
+
+			const [r, g, b] = hslToRgb(newHsl[0], newHsl[1], newHsl[2]);
+            const [, s_hsv, v_hsv] = rgbToHsv(r, g, b);
+            setPointerS(s_hsv);
+            setPointerV(v_hsv);
 		}
 	};
 
 	const [h] = internalHsl;
 
-	const currentS_hsl_norm = internalHsl[1] / 100;
-	const currentL_hsl_norm = internalHsl[2] / 100;
-
-	let currentS_hsv_calc = 0;
-	let currentV_hsv_calc = 0;
-
-	if (currentL_hsl_norm === 0) {
-		currentV_hsv_calc = 0;
-		currentS_hsv_calc = 0;
-	} else if (currentL_hsl_norm === 1) {
-		currentV_hsv_calc = 1;
-		currentS_hsv_calc = 0;
-	} else {
-		currentV_hsv_calc =
-			currentL_hsl_norm +
-			currentS_hsl_norm * Math.min(currentL_hsl_norm, 1 - currentL_hsl_norm);
-		if (currentV_hsv_calc !== 0) {
-			currentS_hsv_calc = 2 * (1 - currentL_hsl_norm / currentV_hsv_calc);
-		}
-	}
-
-	const left_pos_pointer = currentS_hsv_calc * 100;
-	const top_pos_pointer = (1 - currentV_hsv_calc) * 100;
+	const left_pos_pointer = pointerS;
+	const top_pos_pointer = 100 - pointerV;
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>

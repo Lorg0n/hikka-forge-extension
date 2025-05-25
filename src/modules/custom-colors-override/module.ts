@@ -76,7 +76,7 @@ const customColorsModule: ForgeModuleDef = {
 		const primaryHsl = getHslCssValue("primaryColor", "#3B88C4");
 		const backgroundHsl = getHslCssValue("backgroundColor", "#000000");
 		
-		const gradientStartHsl = getHslCssValue("gradientStartColor", "#1B44C1");
+		const gradientStartHsl = getHslCssValue("gradientStartColor", "#0f1629");
 
 		const gradientStart = "0%";
 		const gradientEnd = "60%";

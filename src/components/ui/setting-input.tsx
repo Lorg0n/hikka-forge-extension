@@ -10,6 +10,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import type { ModuleSetting } from "@/types/module";
+import { ColorPicker } from "@/components/ui/color-picker";
 
 interface SettingInputProps {
 	moduleId: string;
@@ -61,21 +62,10 @@ export function SettingInput({
 
 					case "colorPicker":
 						return (
-							<div className="flex items-center gap-2">
-								<Input
-									type="color"
-									value={currentValue}
-									onChange={(e) => handleInputChange(e.target.value)}
-									className="w-12 h-8 p-1 rounded border"
-								/>
-								<Input
-									type="text"
-									value={currentValue}
-									onChange={(e) => handleInputChange(e.target.value)}
-									className="flex-1 text-sm"
-									placeholder="#000000"
-								/>
-							</div>
+							<ColorPicker
+								value={currentValue}
+								onChange={handleInputChange}
+							/>
 						);
 
 					case "toggle":

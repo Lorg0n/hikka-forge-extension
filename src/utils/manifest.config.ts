@@ -3,7 +3,6 @@ const getBaseManifest = () => ({
     name: "Hikka Forge",
     version: "null", 
     description: "Unlock custom features and personalized styles for Hikka with this extension.",
-    default_locale: "uk",
     action: {
         default_popup: "src/pages/popup/popup.html",
         default_icon: {

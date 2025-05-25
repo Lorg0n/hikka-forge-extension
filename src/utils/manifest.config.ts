@@ -17,7 +17,7 @@ const getBaseManifest = () => ({
         "webNavigation",
         "tabs",
     ],
-    host_permissions: ["https://hikka.io/*", "https://forge.lorgon.org/*"],
+    host_permissions: ["https://hikka.io/*", "https://hikka-forge.lorgon.org/*"],
     content_scripts: [
         {
             matches: ["https://hikka.io/*"],

@@ -38,7 +38,7 @@ deploy_to_mozilla_amo:
     - echo "Installing web-ext tool globally..."
     - npm install -g web-ext
     - echo "Submitting add-on to Mozilla AMO for review..."
-    - web-ext sign --api-key $WEB_EXT_API_KEY --api-secret $WEB_EXT_API_SECRET --source-dir $SOURCE_DIR
+    - web-ext sign --api-key $WEB_EXT_API_KEY --api-secret $WEB_EXT_API_SECRET --source-dir $SOURCE_DIR --channel unlisted
     - echo "Add-on submission process initiated. Check AMO developer hub for the status of your submission."
   rules:
     - if: $CI_COMMIT_TAG

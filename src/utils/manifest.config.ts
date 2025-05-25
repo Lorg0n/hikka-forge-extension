@@ -1,8 +1,8 @@
 const getBaseManifest = () => ({
     manifest_version: 3,
     name: "Hikka Forge",
-    version: "null", 
-    description: "Universal extension",
+    version: "0.2.0", 
+    description: "Unlock custom features and personalized styles for Hikka.io with this extension.",
     action: {
         default_popup: "src/pages/popup/popup.html",
         default_icon: {
@@ -12,7 +12,6 @@ const getBaseManifest = () => ({
         },
     },
     permissions: [
-        "activeTab",
         "scripting",
         "storage",
         "webNavigation",

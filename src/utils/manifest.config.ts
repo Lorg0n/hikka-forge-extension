@@ -60,7 +60,7 @@ export const generateManifest = (browser: string) => {
             },
             browser_specific_settings: {
                 gecko: {
-                    id: "hikka-forge@hikka.io",
+                    id: "forge@hikka.io",
                     strict_min_version: "109.0",
                 },
             },

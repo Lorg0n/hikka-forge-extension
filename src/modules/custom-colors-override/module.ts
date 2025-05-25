@@ -176,7 +176,7 @@ const customColorsModule: ForgeModuleDef = {
 			label: "Початковий колір градієнта фону",
 			description: "Виберіть колір, з якого починається градієнт фону.",
 			type: "colorPicker",
-			defaultValue: "#1B44C1",
+			defaultValue: "#050e2a",
 		},
 		{
 			id: "foregroundColor",

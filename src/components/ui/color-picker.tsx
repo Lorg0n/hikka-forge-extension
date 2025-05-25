@@ -9,7 +9,6 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
-import { Copy, Check } from "lucide-react";
 
 interface ColorPickerProps {
 	value?: string;
@@ -34,6 +33,10 @@ const hslToHex = (h: number, s: number, l: number): string => {
 };
 
 const hexToHsl = (hex: string): [number, number, number] => {
+	if (!/^#[0-9A-Fa-f]{6}$/i.test(hex)) {
+		return [0, 0, 0];
+	}
+
 	const r = Number.parseInt(hex.slice(1, 3), 16) / 255;
 	const g = Number.parseInt(hex.slice(3, 5), 16) / 255;
 	const b = Number.parseInt(hex.slice(5, 7), 16) / 255;
@@ -69,12 +72,14 @@ export function ColorPicker({
 	className,
 }: ColorPickerProps) {
 	const [internalHsl, setInternalHsl] = useState(() => hexToHsl(value));
-	const [copied, setCopied] = useState(false);
+
 	const [open, setOpen] = useState(false);
 	const areaRef = useRef<HTMLDivElement>(null);
 	const hueRef = useRef<HTMLDivElement>(null);
 	const [isDragging, setIsDragging] = useState(false);
 	const [isDraggingHue, setIsDraggingHue] = useState(false);
+
+	const [hexInputValue, setHexInputValue] = useState(value);
 
 	const hexColorDisplay = useMemo(
 		() => hslToHex(internalHsl[0], internalHsl[1], internalHsl[2]),
@@ -87,13 +92,22 @@ export function ColorPicker({
 
 		if (value.toLowerCase() !== currentHexFromInternalHsl.toLowerCase()) {
 			setInternalHsl(newHslFromProp);
+			setHexInputValue(value);
 		}
 	}, [value, hexColorDisplay]);
+
+	useEffect(() => {
+		if (hexInputValue.toLowerCase() !== hexColorDisplay.toLowerCase()) {
+			setHexInputValue(hexColorDisplay);
+		}
+	}, [hexColorDisplay]);
 
 	const commitHslChange = useCallback(
 		(newHsl: [number, number, number]) => {
 			setInternalHsl(newHsl);
-			onChange?.(hslToHex(newHsl[0], newHsl[1], newHsl[2]));
+			const newHex = hslToHex(newHsl[0], newHsl[1], newHsl[2]);
+			onChange?.(newHex);
+			setHexInputValue(newHex);
 		},
 		[onChange]
 	);
@@ -121,7 +135,6 @@ export function ColorPicker({
 				s_hsl_norm = 0;
 			} else {
 				s_hsl_norm = (v_hsv * s_hsv) / (1 - Math.abs(2 * l_hsl_norm - 1));
-
 				s_hsl_norm = Math.max(0, Math.min(1, s_hsl_norm));
 			}
 
@@ -200,18 +213,9 @@ export function ColorPicker({
 		updateHueFromPosition,
 	]);
 
-	const copyToClipboard = async () => {
-		try {
-			await navigator.clipboard.writeText(hexColorDisplay);
-			setCopied(true);
-			setTimeout(() => setCopied(false), 1500);
-		} catch (err) {
-			console.error("Failed to copy:", err);
-		}
-	};
-
 	const handleHexInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const newHex = e.target.value;
+		setHexInputValue(newHex);
 
 		if (/^#[0-9A-Fa-f]{6}$/i.test(newHex)) {
 			commitHslChange(hexToHsl(newHex));
@@ -262,8 +266,8 @@ export function ColorPicker({
 						className="relative h-32 w-full cursor-crosshair select-none overflow-hidden rounded-md"
 						style={{
 							background: `
-                linear-gradient(to top, #000, transparent), /* Fades to black towards bottom */
-                linear-gradient(to right, #fff, hsl(${h}, 100%, 50%)) /* Fades from white to pure hue horizontally */
+                linear-gradient(to top, #000, transparent),
+                linear-gradient(to right, #fff, hsl(${h}, 100%, 50%))
               `,
 						}}
 						onMouseDown={handleMouseDown}
@@ -310,25 +314,14 @@ export function ColorPicker({
 							className="h-4 w-4 rounded border border-gray-300"
 							style={{ backgroundColor: hexColorDisplay }}
 						/>
-						<span className="text-xs text-gray-600">Selected:</span>
+
 						<Input
-							value={hexColorDisplay}
+							value={hexInputValue}
 							onChange={handleHexInputChange}
 							className="h-7 flex-1 font-mono text-xs"
 							placeholder="#000000"
+							maxLength={7}
 						/>
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={copyToClipboard}
-							className="h-7 w-7 p-0"
-						>
-							{copied ? (
-								<Check className="h-3 w-3" />
-							) : (
-								<Copy className="h-3 w-3" />
-							)}
-						</Button>
 					</div>
 				</div>
 			</PopoverContent>

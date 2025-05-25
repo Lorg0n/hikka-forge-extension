@@ -15,7 +15,7 @@ function hexToHsl(hex: string): string {
 		b = parseInt(hex.substring(5, 7), 16);
 	} else {
 		console.warn(`[Hikka Forge] Invalid HEX color format: ${hex}`);
-		return "0, 0%, 0%";
+		return "0, 0%, 0%"; 
 	}
 
 	r /= 255;
@@ -51,6 +51,10 @@ function hexToHsl(hex: string): string {
 	s = Math.round(s * 100);
 	l = Math.round(l * 100);
 
+    h = isNaN(h) ? 0 : Math.max(0, Math.min(360, h));
+    s = isNaN(s) ? 0 : Math.max(0, Math.min(100, s));
+    l = isNaN(l) ? 0 : Math.max(0, Math.min(100, l));
+
 	return `${h}, ${s}%, ${l}%`;
 }
 
@@ -70,44 +74,34 @@ const customColorsModule: ForgeModuleDef = {
 		};
 
 		const primaryHsl = getHslCssValue("primaryColor", "#3B88C4");
-		const [hStr, sStr, lStr] = primaryHsl.split(" ").map((s) => s.trim());
-		const h = parseFloat(hStr);
-		const s = parseFloat(sStr.replace("%", ""));
-		const l = parseFloat(lStr.replace("%", ""));
-
-		const gradientDarkL = Math.max(5, l * 0.15);
-		const gradientStartHsl = `${h} ${s}% ${gradientDarkL}%`;
+		const backgroundHsl = getHslCssValue("backgroundColor", "#000000");
+		
+		const gradientStartHsl = getHslCssValue("gradientStartColor", "#1B44C1");
 
 		const gradientStart = "0%";
 		const gradientEnd = "60%";
 
 		return `
       :root {
-        /* Base colors */
         --background: ${getHslCssValue("backgroundColor", "#000000")};
         --foreground: ${getHslCssValue("foregroundColor", "#FAFAFA")};
 
-        /* Card component colors */
         --card: ${getHslCssValue("cardColor", "#0A0A0B")};
-        --card-foreground: var(--foreground); /* Linked to foreground */
+        --card-foreground: var(--foreground);
 
-        /* Popover component colors */
-        --popover: var(--card); /* Linked to card */
-        --popover-foreground: var(--foreground); /* Linked to foreground */
+        --popover: var(--card);
+        --popover-foreground: var(--foreground);
 
-        /* Primary (accent) color */
-        --primary: ${primaryHsl}; /* Uses the primaryColor setting */
+        --primary: ${primaryHsl};
         --primary-foreground: ${getHslCssValue(
 					"primaryForegroundColor",
 					"#050004"
 				)};
 
-        /* Secondary colors */
         --secondary: ${getHslCssValue("secondaryColor", "#28282B")};
-        --secondary-foreground: var(--foreground); /* Linked to foreground */
+        --secondary-foreground: var(--foreground);
 
-        /* Muted colors */
-        --muted: var(--secondary); /* Linked to secondary */
+        --muted: var(--secondary);
         --muted-foreground: ${getHslCssValue(
 					"mutedForegroundColor",
 					"#A0A0A9"
@@ -123,13 +117,13 @@ const customColorsModule: ForgeModuleDef = {
 				)};
 
         --warning: ${getHslCssValue("warningColor", "#FAAD14")};
-        --warning-foreground: var(--background); /* Linked to background */
+        --warning-foreground: var(--background);
 
         --success: ${getHslCssValue("successColor", "#4FD18C")};
-        --success-foreground: var(--background); /* Linked to background */
+        --success-foreground: var(--background);
 
         --info: ${getHslCssValue("infoColor", "#3399FF")};
-        --info-foreground: var(--background); /* Linked to background */
+        --info-foreground: var(--background);
 
         --border: ${getHslCssValue("borderColor", "#19191A")};
         --input: var(--border); 
@@ -152,8 +146,8 @@ const customColorsModule: ForgeModuleDef = {
         background-image: linear-gradient(
             180deg,
             hsl(${gradientStartHsl}) ${gradientStart}, 
-            #000 ${gradientEnd}, 
-            #000 100%
+            hsl(${backgroundHsl}) ${gradientEnd}, 
+            hsl(${backgroundHsl}) 100%
         ) !important;
       }
       .no-gradient {
@@ -176,6 +170,13 @@ const customColorsModule: ForgeModuleDef = {
 			description: "Основний колір фону.",
 			type: "colorPicker",
 			defaultValue: "#000000",
+		},
+		{
+			id: "gradientStartColor",
+			label: "Початковий колір градієнта фону",
+			description: "Виберіть колір, з якого починається градієнт фону.",
+			type: "colorPicker",
+			defaultValue: "#1B44C1",
 		},
 		{
 			id: "foregroundColor",

@@ -11,7 +11,8 @@
     "build:firefox": "BROWSER=firefox pnpm build",
     "build:extension": "BROWSER=chrome pnpm build",
     "build:watch": "BROWSER=firefox vite build --watch",
-    "build:watch:chrome": "BROWSER=chrome vite build --watch"
+    "build:watch:chrome": "BROWSER=chrome vite build --watch",
+    "build:watch:firefox": "BROWSER=firefox vite build --watch"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",

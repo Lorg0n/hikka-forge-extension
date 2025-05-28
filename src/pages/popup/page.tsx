@@ -272,7 +272,7 @@ function App() {
 					variant="ghost"
 					size="sm"
 					onClick={handleRefresh}
-					title="Refresh active modules on page"
+					title="Оновити"
 				>
 					Refresh Content
 				</Button>

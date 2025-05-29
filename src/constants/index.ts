@@ -21,4 +21,5 @@ export const CONTENT_TYPE = {
 } as const;
 
 export const HIKKA_BASE = "https://hikka.io" as const;
+export const API_HIKKA_BASE = "https://api.hikka.io" as const;
 export const API_BACKEND_BASE = "https://hikka-forge.lorgon.org" as const;

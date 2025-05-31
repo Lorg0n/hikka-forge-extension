@@ -1,6 +1,6 @@
 # Hikka Forge
 
-![Version](https://img.shields.io/badge/version-0.2.3-blue.svg)
+![Version](https://img.shields.io/badge/version-0.2.4-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Browser Support](https://img.shields.io/badge/browsers-Chrome%20%7C%20Firefox-orange.svg)
 
@@ -28,7 +28,7 @@ To get a local copy up and running, follow these simple steps.
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://gitlab.com/hikka-forge/hikka-forge-extension.git
+    git clone hhttps://github.com/Lorg0n/hikka-forge-extension.git
     cd hikka-forge-extension
     ```
 2.  **Install dependencies:**

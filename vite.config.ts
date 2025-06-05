@@ -16,7 +16,7 @@ export default defineConfig({
   },
   publicDir: false,
   build: {
-    outDir,
+    outDir: '/mnt/c/Users/lolgo/HikkaProjects/hikka-forge-extension-dist',
     rollupOptions: {
       input: {
         popup: path.resolve(__dirname, "src/pages/popup/popup.html"),

@@ -12,7 +12,6 @@ const getBaseManifest = () => ({
         },
     },
     permissions: [
-        "scripting",
         "storage",
         "webNavigation",
         "tabs",

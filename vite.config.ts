@@ -23,6 +23,7 @@ export default defineConfig({
         background: path.resolve(__dirname, "src/background.ts"),
         content_loader: path.resolve(__dirname, "src/utils/content-loader.js"), 
         content: path.resolve(__dirname, "src/content.tsx"), 
+        manga_reader: path.resolve(__dirname, "src/pages/manga-reader/manga-reader.html"),
       },
       output: {
         entryFileNames: `src/[name].js`,

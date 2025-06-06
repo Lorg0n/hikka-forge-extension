@@ -33,7 +33,7 @@ const getBaseManifest = () => ({
             resources: [
                 "src/content.js",
                 "src/*.js",
-                "assets/*"
+                "assets/*",
             ],
             matches: ["<all_urls>"],
         },

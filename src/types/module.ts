@@ -124,18 +124,25 @@ interface SyncModulesMessage {
 	moduleSettings: Record<string, Record<string, any>>;
 }
 
+interface OpenExtensionPageAction {
+    type: "OPEN_EXTENSION_PAGE";
+    pagePath: string; 
+}
+
 export type BackgroundMessage =
 	| ModuleToggleAction
 	| ModuleUpdateSettingAction
 	| ModuleRefreshAction
 	| GetModuleDefinitions
-	| GetContentModulesInfo;
+	| GetContentModulesInfo
+	| OpenExtensionPageAction;
 
 export type ContentMessage =
 	| ModuleRefreshAction
 	| GetContentModulesInfo
 	| SyncModulesMessage
-	| UrlChangedMessage;
+	| UrlChangedMessage
+	| OpenExtensionPageAction;
 
 export type PopupMessage =
 	| ModuleToggleAction

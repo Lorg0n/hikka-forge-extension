@@ -160,7 +160,51 @@ class BackgroundManager {
 						);
 						sendResponse({ success: false, error: "Invalid module action" });
 					}
+				} else if (message.type === "OPEN_EXTENSION_PAGE") {
+					isAsync = true;
+
+					if (message.pagePath && message.params) {
+						console.log(
+							"[Background]: Received OPEN_EXTENSION_PAGE message.",
+							message
+						); 
+						const baseUrl = chrome.runtime.getURL(message.pagePath);
+
+						const urlParams = new URLSearchParams(message.params);
+
+						const fullUrl = `${baseUrl}?${urlParams.toString()}`; 
+						console.log(
+							"[Background]: Constructed full URL for new tab:",
+							fullUrl
+						); 
+
+						chrome.tabs
+							.create({ url: fullUrl })
+							.then(() => {
+								console.log(
+									`[Hikka Forge Background] Opened extension page: ${fullUrl}`
+								);
+								sendResponse({ success: true });
+							})
+							.catch((error) => {
+								console.error(
+									`[Hikka Forge Background] Failed to open extension page ${fullUrl}:`,
+									error
+								);
+								sendResponse({ success: false, error: error.message });
+							});
+					} else {
+						console.warn(
+							"[Hikka Forge Background] OPEN_EXTENSION_PAGE message received without 'pagePath' or 'params'."
+						);
+						sendResponse({
+							success: false,
+							error:
+								"Missing 'pagePath' or 'params' property in OPEN_EXTENSION_PAGE message.",
+						});
+					}
 				}
+
 				return isAsync;
 			}
 		);

@@ -29,8 +29,8 @@ const getSourceName = (sourceType: string): string => {
 
 const UserCommentCard: React.FC<UserCommentCardProps> = ({ comment }) => {
     return (
-        <Card className="flex flex-col md:w-1/3 bg-secondary/20 p-4 isolate rounded-lg justify-between">
-            <MDViewer className="text-[0.9375rem] line-clamp-4">
+        <Card className="flex flex-col md:w-1/3 p-4 isolate rounded-lg justify-between">
+            <MDViewer className="text-sm font-medium line-clamp-4">
                 {comment.text}
             </MDViewer>
             <div className="flex flex-row justify-between items-center w-full">

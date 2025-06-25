@@ -17,7 +17,7 @@ const UserCommentComponent: React.FC<UserCommentComponentProps> = () => {
   if (loading) {
     return (
       <div className="flex flex-col gap-8">
-        <h3 className="font-display text-xl font-bold">Коментарі</h3>
+        <h3 className="font-display text-lg font-bold">Коментарі</h3>
         <div className="flex flex-row w-full gap-4">
           {Array.from({ length: 3 }).map((_, index) => (
             <Card key={index} className="flex flex-col w-1/3 bg-secondary/20 p-4 isolate gap-6 overflow-hidden rounded-none md:rounded-lg">
@@ -38,7 +38,7 @@ const UserCommentComponent: React.FC<UserCommentComponentProps> = () => {
   if (croppedComments.length === 0 || error) {
     return (
       <div className="flex flex-col gap-8">
-        <h3 className="font-display text-xl font-bold">Коментарі</h3>
+        <h3 className="font-display text-lg font-bold">Коментарі</h3>
         <NotFound
           title="Коментарів поки немає"
           description="Можливо, вони ще не оновилися або їх ще ніхто не залишив"
@@ -50,7 +50,7 @@ const UserCommentComponent: React.FC<UserCommentComponentProps> = () => {
 
   return (
     <div className="flex flex-col gap-8">
-      <h3 className="font-display text-xl font-bold">Коментарі</h3>
+      <h3 className="font-display text-lg font-bold">Коментарі</h3>
       <div className="flex flex-col md:flex-row w-full gap-4">
         {croppedComments.map((comment, index) => (
           <UserCommentCard key={index} comment={comment} />

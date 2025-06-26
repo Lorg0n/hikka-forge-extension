@@ -113,4 +113,5 @@ jobs:
           source-path: source-code-${{ github.ref_name }}.zip
           auth-api-issuer: ${{ secrets.AMO_JWT_ISSUER }}
           auth-api-secret: ${{ secrets.AMO_JWT_SECRET }}
+          license: 'MIT'
           release-note: "Release ${{ github.ref_name }}"

@@ -3,8 +3,8 @@ name: Publish Hikka Forge Extension
 on:
   push:
     tags:
-      - 'v*'  # Triggers on tags like v0.2.5
-  workflow_dispatch:  # Manual trigger
+      - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -41,15 +41,17 @@ jobs:
       - name: Build for Firefox
         run: |
           pnpm build:firefox
-          zip -r .output/firefox-extension.xpi dist/firefox/
-          zip -r .output/firefox-sources.zip .
+          # Package the extension itself
+          cd dist/firefox && zip -r ../../.output/firefox-extension.xpi . && cd ../..
+          # Package the full source code for review
+          zip -r .output/firefox-sources.zip . -x ".git/*" -x ".github/*" -x "node_modules/*"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: extension-builds
           path: .output/
-
+          
   publish-to-stores:
     needs: build
     runs-on: ubuntu-latest

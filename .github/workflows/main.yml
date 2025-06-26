@@ -3,7 +3,7 @@ name: Build and Publish Extension
 on:
   push:
     tags:
-      - 'v*' 
+      - 'v*'
 
 jobs:
   build:
@@ -18,14 +18,12 @@ jobs:
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 10 
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'pnpm'
+          cache: 'pnpm' # Cache dependencies for pnpm
 
       - name: Install dependencies
         run: pnpm install
@@ -46,11 +44,9 @@ jobs:
           cd dist/firefox
           zip -r ../hikka-forge-firefox-${{ github.ref_name }}.zip .
 
-      # Package the source code for Mozilla review
       - name: Package Source Code
         run: git archive -o dist/source-code-${{ github.ref_name }}.zip HEAD
 
-      # Upload all artifacts for the publish jobs
       - name: Upload Chrome Artifact
         uses: actions/upload-artifact@v4
         with:

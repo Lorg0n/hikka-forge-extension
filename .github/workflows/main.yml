@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 jobs:
-  setup-environment:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -30,12 +30,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-  build-and-zip:
-    needs: setup-environment
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Create output directory
+        run: mkdir -p .output
 
       - name: Build for Chrome
         run: |
@@ -46,14 +42,23 @@ jobs:
         run: |
           pnpm build:firefox
           zip -r .output/firefox-extension.xpi dist/firefox/
-          zip -r .output/firefox-sources.zip dist/firefox/
+          zip -r .output/firefox-sources.zip .
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-builds
+          path: .output/
 
   publish-to-stores:
-    needs: build-and-zip
+    needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-builds
+          path: .output
 
       - name: Publish to Chrome Web Store
         uses: mnao305/chrome-extension-upload@v5.0.0

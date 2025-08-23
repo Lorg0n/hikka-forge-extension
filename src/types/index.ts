@@ -1,22 +1,32 @@
 export interface ApiErrorResponse {
+    timestamp?: string;
+    status?: number;
     error: string;
+    message?: string;
+    path?: string;
+    details?: any; 
 }
 
 export interface CommentItem {
     text: string;
-    source_type: string;
-    source_slug: string;
-    vote_score: number;
-    total_replies: number;
+    voteScore: number;
+    totalReplies: number;
+    createdAt: string; 
+    authorUsername: string;
+    authorAvatarUrl: string;
+    contentSlug: string;
+    contentTitle: string;
+    contentImageUrl: string | null;
+    contentType: string;
 }
 
+
 export interface UserCommentsApiResponse {
-    comments: CommentItem[];
-    author_username: string;
-    author_reference: string;
-    author_avatar: string; // URL
-    vote_score: number;
-    total_replies: number;
+    content: CommentItem[];
+    totalElements: number;
+    totalPages: number;
+    currentPage: number;
+    last: boolean;
 }
 
 export interface SimilarAnimeItem {

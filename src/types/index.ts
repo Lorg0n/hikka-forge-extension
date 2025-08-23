@@ -1,3 +1,5 @@
+import { CONTENT_TYPE_URL } from "@/constants";
+
 export interface ApiErrorResponse {
     timestamp?: string;
     status?: number;
@@ -17,7 +19,7 @@ export interface CommentItem {
     contentSlug: string;
     contentTitle: string;
     contentImageUrl: string | null;
-    contentType: string;
+    contentType: keyof typeof CONTENT_TYPE_URL;
 }
 
 

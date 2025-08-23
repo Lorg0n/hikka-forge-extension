@@ -5,14 +5,14 @@ import Link from '@/components/typography/link';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@iconify/react';
 import { CommentItem } from '@/types'; 
-import { HIKKA_BASE } from '@/constants'; 
+import { CONTENT_TYPE_URL, HIKKA_BASE } from '@/constants'; 
 
 interface UserCommentCardProps {
   comment: CommentItem;
 }
 
 const UserCommentCard: React.FC<UserCommentCardProps> = ({ comment }) => {
-  const contentUrl = `${HIKKA_BASE}/${comment.contentType}/${comment.contentSlug}`;
+  const contentUrl = `${HIKKA_BASE}/${CONTENT_TYPE_URL[comment.contentType]}/${comment.contentSlug}`;
 
   return (
     <Card className="flex flex-col md:w-1/3 p-4 isolate rounded-lg justify-between gap-4">

@@ -9,13 +9,13 @@ interface SimilarAnimeCardProps {
 }
 
 const getSimilarityText = (distance: number): string => {
-    if (distance <= 0.3) {
+    if (distance >= 0.9) {
         return "Дуже схоже";
     }
-    if (distance <= 0.4) {
+    if (distance >= 0.65) {
         return "Схоже";
     }
-    if (distance <= 0.5) {
+    if (distance >= 0.5) {
         return "Слабо схоже";
     }
     return "Мало спільного";
@@ -29,7 +29,7 @@ const SimilarAnimeCard: React.FC<SimilarAnimeCardProps> = ({ anime }) => {
             <Link href={`/anime/${anime.slug}`}>
                 <AspectRatio ratio={2 / 3} className="bg-secondary/20 rounded-lg">
                     <Image
-                        src={anime.poster}
+                        src={anime.imageUrl}
                         alt={anime.title}
                         width={200}
                         height={300}
@@ -45,7 +45,7 @@ const SimilarAnimeCard: React.FC<SimilarAnimeCardProps> = ({ anime }) => {
             </Link>
             <div>
                 <p className="mb-1 truncate text-xs text-muted-foreground">
-                    {getSimilarityText(anime.distance)}
+                    {getSimilarityText(anime.similarityScore)}
                 </p>
                 <p className="text-sm font-medium line-clamp-2">{anime.title}</p>
             </div>

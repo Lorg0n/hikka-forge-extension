@@ -30,14 +30,20 @@ export interface UserCommentsApiResponse {
 }
 
 export interface SimilarAnimeItem {
-    description: string;
-    title: string;
-    genres: string[];
-    malId: number;
-    mediaType: string;
     slug: string;
-    poster: string;
-    distance: number;
+    title: string;
+    imageUrl: string;
+    year: number;
+    score: number;
+    similarityScore: number;
+}
+
+export interface SimilarAnimeApiResponse {
+    content: SimilarAnimeItem[];
+    totalElements: number;
+    totalPages: number;
+    currentPage: number;
+    last: boolean;
 }
 
 export interface SortInfo {
@@ -53,18 +59,4 @@ export interface Pageable {
     offset: number;
     paged: boolean;
     unpaged: boolean;
-}
-
-export interface SimilarAnimeApiResponse {
-    content: SimilarAnimeItem[];
-    pageable: Pageable;
-    last: boolean;
-    totalElements: number;
-    totalPages: number;
-    first: boolean;
-    size: number;
-    number: number;
-    sort: SortInfo;
-    numberOfElements: number;
-    empty: boolean;
 }

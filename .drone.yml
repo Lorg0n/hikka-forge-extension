@@ -46,8 +46,6 @@ steps:
   - name: publish-to-firefox-store
     image: node:20-slim
     environment:
-      AMO_EXTENSION_ID:
-        from_secret: AMO_EXTENSION_ID
       AMO_JWT_ISSUER:
         from_secret: AMO_JWT_ISSUER
       AMO_JWT_SECRET:
@@ -60,4 +58,3 @@ steps:
         --channel=listed
         --api-key=$AMO_JWT_ISSUER
         --api-secret=$AMO_JWT_SECRET
-        --id=$AMO_EXTENSION_ID

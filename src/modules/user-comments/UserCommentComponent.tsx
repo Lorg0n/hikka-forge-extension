@@ -50,12 +50,9 @@ const UserCommentComponent: React.FC = () => {
   return (
     <div className="flex flex-col gap-8">
       <h3 className="font-display text-lg font-bold">Коментарі</h3>
-      <div className="flex flex-col md:flex-row w-full gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
         {comments.map((comment) => (
-          <UserCommentCard
-            key={`${comment.contentSlug}-${comment.createdAt}`}
-            comment={comment}
-          />
+          <UserCommentCard key={`${comment.contentSlug}-${comment.createdAt}`} comment={comment} />
         ))}
       </div>
     </div>

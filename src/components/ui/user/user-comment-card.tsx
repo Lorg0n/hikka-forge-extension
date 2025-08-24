@@ -6,16 +6,21 @@ import { Button } from '@/components/ui/button';
 import { Icon } from '@iconify/react';
 import { CommentItem } from '@/types'; 
 import { CONTENT_TYPE_URL, HIKKA_BASE } from '@/constants'; 
+import { cn } from '@/lib/utils';
 
 interface UserCommentCardProps {
   comment: CommentItem;
+  className?: string;
 }
 
-const UserCommentCard: React.FC<UserCommentCardProps> = ({ comment }) => {
+const UserCommentCard: React.FC<UserCommentCardProps> = ({ comment, className }) => {
   const contentUrl = `${HIKKA_BASE}/${CONTENT_TYPE_URL[comment.contentType]}/${comment.contentSlug}`;
 
   return (
-    <Card className="flex flex-col md:w-1/3 p-4 isolate rounded-lg justify-between gap-4">
+    <Card className={cn(
+      "flex flex-col min-w-0 p-4 isolate rounded-lg justify-between gap-4",
+      className
+    )} >
       <MDViewer className="text-sm font-medium line-clamp-4">
         {comment.text}
       </MDViewer>

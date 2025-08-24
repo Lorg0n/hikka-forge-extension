@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import {
   DndContext,
   DragEndEvent,
-  DragOverEvent, // NEW: Імпортуємо DragOverEvent
+  DragOverEvent,
   DragStartEvent,
   DragOverlay,
   DropAnimation,
@@ -17,7 +17,8 @@ import { DraggableElement } from './components/DraggableElement';
 
 const STARTER_ELEMENTS_IDS = ['anime', 'shonen', 'shojo', 'isekai'];
 
-const dropAnimation: DropAnimation = {
+// FIX: Перейменовано, щоб не конфліктувати зі станом
+const defaultDropAnimation: DropAnimation = {
   sideEffects: defaultDropAnimationSideEffects({
     styles: {
       active: {
@@ -41,6 +42,9 @@ function AlchemyPage() {
   const [activeElement, setActiveElement] = useState<GameElement | null>(null);
   const [combinationTarget, setCombinationTarget] = useState<CombinationTarget | null>(null);
 
+  // FIX: Стан для динамічного керування анімацією
+  const [dropAnimation, setDropAnimation] = useState<DropAnimation | null>(defaultDropAnimation);
+
   const workspaceRef = useRef<HTMLDivElement | null>(null);
 
   const showNotification = (message: string) => {
@@ -49,13 +53,14 @@ function AlchemyPage() {
   };
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
+    // FIX: Завжди встановлюємо анімацію за замовчуванням на початку
+    setDropAnimation(defaultDropAnimation);
     setActiveElement(event.active.data.current?.element as GameElement);
   }, []);
 
   const handleDragOver = useCallback((event: DragOverEvent) => {
     const { active, over } = event;
 
-    // Якщо немає цілі або тягнемо над собою, скидаємо стан
     if (!over || active.id === over.id) {
       setCombinationTarget(null);
       return;
@@ -65,7 +70,6 @@ function AlchemyPage() {
     const overEl = over.data.current?.element as GameElement;
     const isTargetOnWorkspace = workspaceElements.some(el => el.instanceId === over.id);
 
-    // Перевіряємо рецепт, тільки якщо обидва елементи існують і ціль - на воркспейсі
     if (activeEl && overEl && isTargetOnWorkspace) {
       const recipeKey = [activeEl.id, overEl.id].sort().join('+');
       const resultId = RECIPES[recipeKey];
@@ -76,6 +80,7 @@ function AlchemyPage() {
   }, [workspaceElements]);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
+    setCombinationTarget(null);
     setActiveElement(null);
     const { active, over, delta } = event;
     const activeElData = active.data.current?.element as GameElement;
@@ -85,43 +90,34 @@ function AlchemyPage() {
     }
 
     const isFromWorkspace = workspaceElements.some(el => el.instanceId === active.id);
-
-    // Case 1: Combination attempt (dropping on another element)
-    // FIX: Додано перевірку, що ціль (over) знаходиться на робочому полі
     const isTargetOnWorkspace = over ? workspaceElements.some(el => el.instanceId === over.id) : false;
 
+    // Case 1: Combination attempt
     if (over && over.data.current?.element && active.id !== over.id && isTargetOnWorkspace) {
       const targetElData = over.data.current.element as GameElement;
       const recipeKey = [activeElData.id, targetElData.id].sort().join('+');
       const resultId = RECIPES[recipeKey];
       
       if (resultId && ELEMENTS[resultId]) {
+        // FIX: Успішна дія! Вимикаємо анімацію повернення.
+        setDropAnimation(null);
+        
         const resultElement = ELEMENTS[resultId];
         
-        // Remove both elements that were combined
         setWorkspaceElements(prev => prev.filter(el => 
           el.instanceId !== active.id && el.instanceId !== over.id
         ));
         
-        // Calculate position for new element
         const workspaceRect = workspaceRef.current?.getBoundingClientRect();
         const activeRect = event.active.rect.current.translated;
-        
         let newPosition = { x: 100, y: 100 };
-        
         if (workspaceRect && activeRect) {
           newPosition = {
             x: Math.max(0, activeRect.left - workspaceRect.left),
             y: Math.max(0, activeRect.top - workspaceRect.top)
           };
         }
-
-        const newWorkspaceElement: WorkspaceElement = {
-          ...resultElement,
-          instanceId: generateId(),
-          position: newPosition
-        };
-        
+        const newWorkspaceElement: WorkspaceElement = { ...resultElement, instanceId: generateId(), position: newPosition };
         setWorkspaceElements(prev => [...prev, newWorkspaceElement]);
 
         if (!discoveredElements.find(el => el.id === resultId)) {
@@ -132,8 +128,10 @@ function AlchemyPage() {
       }
     }
     
-    // Case 2: Moving an existing element on the workspace
+    // Case 2: Moving an existing element
     if (isFromWorkspace) {
+      // FIX: Успішна дія! Вимикаємо анімацію.
+      setDropAnimation(null);
       setWorkspaceElements(prev => prev.map(el =>
         el.instanceId === active.id 
           ? { ...el, position: { 
@@ -145,8 +143,10 @@ function AlchemyPage() {
       return;
     }
 
-    // Case 3: Adding new element from sidebar to workspace
-    if (over && (over.id === 'workspace' || workspaceElements.some(el => el.instanceId === over.id)) && workspaceRef.current) {
+    // Case 3: Adding new element
+    if (over && (over.id === 'workspace' || isTargetOnWorkspace) && workspaceRef.current) {
+      // FIX: Успішна дія! Вимикаємо анімацію.
+      setDropAnimation(null);
       const workspaceRect = workspaceRef.current.getBoundingClientRect();
       const activeRect = event.active.rect.current.translated;
       
@@ -169,9 +169,9 @@ function AlchemyPage() {
   return (
     <DndContext 
       onDragStart={handleDragStart} 
-      onDragOver={handleDragOver} // NEW: Додаємо обробник
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
-      onDragCancel={() => setCombinationTarget(null)} // NEW: На випадок скасування
+      onDragCancel={() => setCombinationTarget(null)}
     >
       <div className="flex h-screen bg-background text-foreground font-sans">
         <ElementSidebar discoveredElements={discoveredElements} />
@@ -192,6 +192,7 @@ function AlchemyPage() {
           <Workspace ref={workspaceRef} elements={workspaceElements} combinationTarget={combinationTarget}/>
         </main>
 
+        {/* FIX: Використовуємо стан для керування анімацією */}
         <DragOverlay dropAnimation={dropAnimation}>
           {activeElement ? <DraggableElement element={activeElement} isOverlay /> : null}
         </DragOverlay>

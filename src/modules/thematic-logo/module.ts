@@ -108,15 +108,13 @@ const ThematicLogoModule: ForgeModuleDef = {
 			const darkLogoUrl = chrome.runtime.getURL(foundEvent.darkLogoFull);
 
 			cssToInject = `
-                .logo {
-                    background-image: url("${lightLogoUrl}") !important;
-                }
-                .dark .logo {
-                    background-image: url("${darkLogoUrl}") !important;
-                }
-                @media screen(md) {
-                    .logo { background-image: url("${lightLogoUrl}") !important; }
-                    .dark .logo { background-image: url("${darkLogoUrl}") !important; }
+                @media (min-width: 768px) {
+                    .logo {
+                        background-image: url("${lightLogoUrl}") !important;
+                    }
+                    .dark .logo {
+                        background-image: url("${darkLogoUrl}") !important;
+                    }
                 }
             `;
 		} else {

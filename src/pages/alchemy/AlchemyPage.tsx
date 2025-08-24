@@ -10,6 +10,7 @@ import {
 } from '@dnd-kit/core';
 import { ElementSidebar } from './components/ElementSidebar';
 import { Workspace, WorkspaceElement } from './components/Workspace';
+import { SidebarToggle } from './components/SidebarToggle';
 import { GameElement, ELEMENTS } from './data/elements';
 import { RECIPES } from './data/recipes';
 import { generateId } from './utils';
@@ -17,7 +18,6 @@ import { DraggableElement } from './components/DraggableElement';
 
 const STARTER_ELEMENTS_IDS = ['anime', 'shonen', 'shojo', 'isekai'];
 
-// FIX: Перейменовано, щоб не конфліктувати зі станом
 const defaultDropAnimation: DropAnimation = {
   sideEffects: defaultDropAnimationSideEffects({
     styles: {
@@ -41,9 +41,10 @@ function AlchemyPage() {
   const [notification, setNotification] = useState<string | null>(null);
   const [activeElement, setActiveElement] = useState<GameElement | null>(null);
   const [combinationTarget, setCombinationTarget] = useState<CombinationTarget | null>(null);
-
-  // FIX: Стан для динамічного керування анімацією
   const [dropAnimation, setDropAnimation] = useState<DropAnimation | null>(defaultDropAnimation);
+  
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
 
   const workspaceRef = useRef<HTMLDivElement | null>(null);
 
@@ -53,23 +54,22 @@ function AlchemyPage() {
   };
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
-    // FIX: Завжди встановлюємо анімацію за замовчуванням на початку
     setDropAnimation(defaultDropAnimation);
     setActiveElement(event.active.data.current?.element as GameElement);
+    if (window.innerWidth < 768) {
+      setIsSidebarOpen(false);
+    }
   }, []);
 
   const handleDragOver = useCallback((event: DragOverEvent) => {
     const { active, over } = event;
-
     if (!over || active.id === over.id) {
       setCombinationTarget(null);
       return;
     }
-
     const activeEl = active.data.current?.element as GameElement;
     const overEl = over.data.current?.element as GameElement;
     const isTargetOnWorkspace = workspaceElements.some(el => el.instanceId === over.id);
-
     if (activeEl && overEl && isTargetOnWorkspace) {
       const recipeKey = [activeEl.id, overEl.id].sort().join('+');
       const resultId = RECIPES[recipeKey];
@@ -84,14 +84,23 @@ function AlchemyPage() {
     setActiveElement(null);
     const { active, over, delta } = event;
     const activeElData = active.data.current?.element as GameElement;
-
-    if (!activeElData) {
-      return;
-    }
+    if (!activeElData) return;
 
     const isFromWorkspace = workspaceElements.some(el => el.instanceId === active.id);
     const isTargetOnWorkspace = over ? workspaceElements.some(el => el.instanceId === over.id) : false;
 
+    const getCorrectedPosition = () => {
+      const workspaceRect = workspaceRef.current?.getBoundingClientRect();
+      const activeRect = event.active.rect.current.translated;
+      if (workspaceRect && activeRect) {
+        return {
+          x: activeRect.left - workspaceRect.left - panOffset.x,
+          y: activeRect.top - workspaceRect.top - panOffset.y,
+        };
+      }
+      return { x: 100, y: 100 };
+    };
+    
     // Case 1: Combination attempt
     if (over && over.data.current?.element && active.id !== over.id && isTargetOnWorkspace) {
       const targetElData = over.data.current.element as GameElement;
@@ -99,85 +108,63 @@ function AlchemyPage() {
       const resultId = RECIPES[recipeKey];
       
       if (resultId && ELEMENTS[resultId]) {
-        // FIX: Успішна дія! Вимикаємо анімацію повернення.
         setDropAnimation(null);
-        
         const resultElement = ELEMENTS[resultId];
-        
-        setWorkspaceElements(prev => prev.filter(el => 
-          el.instanceId !== active.id && el.instanceId !== over.id
-        ));
-        
-        const workspaceRect = workspaceRef.current?.getBoundingClientRect();
-        const activeRect = event.active.rect.current.translated;
-        let newPosition = { x: 100, y: 100 };
-        if (workspaceRect && activeRect) {
-          newPosition = {
-            x: Math.max(0, activeRect.left - workspaceRect.left),
-            y: Math.max(0, activeRect.top - workspaceRect.top)
-          };
-        }
-        const newWorkspaceElement: WorkspaceElement = { ...resultElement, instanceId: generateId(), position: newPosition };
+        setWorkspaceElements(prev => prev.filter(el => el.instanceId !== active.id && el.instanceId !== over.id));
+        const newWorkspaceElement: WorkspaceElement = { ...resultElement, instanceId: generateId(), position: getCorrectedPosition() };
         setWorkspaceElements(prev => [...prev, newWorkspaceElement]);
-
         if (!discoveredElements.find(el => el.id === resultId)) {
           setDiscoveredElements(prev => [...prev, resultElement]);
           showNotification(`Нове відкриття! Знайдено: ${resultElement.name}`);
         }
         return;
+      } else {
+        // FIX: Handle failed combination attempt
+        if (isFromWorkspace) {
+          setDropAnimation(null);
+        }
       }
     }
     
-    // Case 2: Moving an existing element
+    // Case 2: Moving an existing element on the workspace
     if (isFromWorkspace) {
-      // FIX: Успішна дія! Вимикаємо анімацію.
       setDropAnimation(null);
       setWorkspaceElements(prev => prev.map(el =>
         el.instanceId === active.id 
           ? { ...el, position: { 
-              x: Math.max(0, el.position.x + delta.x), 
-              y: Math.max(0, el.position.y + delta.y) 
-            } } 
+              x: el.position.x + delta.x, 
+              y: el.position.y + delta.y 
+            } }
           : el
       ));
       return;
     }
 
-    // Case 3: Adding new element
+    // Case 3: Adding new element from sidebar to workspace
     if (over && (over.id === 'workspace' || isTargetOnWorkspace) && workspaceRef.current) {
-      // FIX: Успішна дія! Вимикаємо анімацію.
       setDropAnimation(null);
-      const workspaceRect = workspaceRef.current.getBoundingClientRect();
-      const activeRect = event.active.rect.current.translated;
-      
-      if (activeRect) {
-        const newElement: WorkspaceElement = {
-          ...activeElData,
-          instanceId: generateId(),
-          position: { 
-            x: Math.max(0, activeRect.left - workspaceRect.left), 
-            y: Math.max(0, activeRect.top - workspaceRect.top) 
-          }
-        };
-        setWorkspaceElements(prev => [...prev, newElement]);
-      }
+      const newElement: WorkspaceElement = { ...activeElData, instanceId: generateId(), position: getCorrectedPosition() };
+      setWorkspaceElements(prev => [...prev, newElement]);
     }
-  }, [workspaceElements, discoveredElements]);
+  }, [workspaceElements, discoveredElements, panOffset]);
 
-  const clearWorkspace = () => setWorkspaceElements([]);
+  const clearWorkspace = () => {
+    setWorkspaceElements([]);
+    setPanOffset({ x: 0, y: 0 });
+  };
 
   return (
     <DndContext 
       onDragStart={handleDragStart} 
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
+      onDragOver={handleDragOver} 
+      onDragEnd={handleDragEnd} 
       onDragCancel={() => setCombinationTarget(null)}
     >
-      <div className="flex h-screen bg-background text-foreground font-sans">
-        <ElementSidebar discoveredElements={discoveredElements} />
+      <div className="flex flex-col md:flex-row h-screen bg-background text-foreground font-sans overflow-hidden">
+        <ElementSidebar discoveredElements={discoveredElements} isOpen={isSidebarOpen} />
         
-        <main className="flex flex-col flex-1 p-4">
-          <header className="flex justify-between items-center mb-4">
+        <main className="flex flex-col flex-1 p-2 md:p-4 h-full">
+          <header className="hidden md:flex justify-between items-center mb-4">
             <div>
               <h1 className="text-2xl font-bold">Hikka Alchemy</h1>
               <p className="text-muted-foreground">Поєднуйте елементи, щоб відкривати нові!</p>
@@ -189,16 +176,23 @@ function AlchemyPage() {
               Очистити поле
             </button>
           </header>
-          <Workspace ref={workspaceRef} elements={workspaceElements} combinationTarget={combinationTarget}/>
+          <Workspace 
+            ref={workspaceRef} 
+            elements={workspaceElements} 
+            combinationTarget={combinationTarget}
+            panOffset={panOffset}
+            setPanOffset={setPanOffset}
+          />
         </main>
 
-        {/* FIX: Використовуємо стан для керування анімацією */}
         <DragOverlay dropAnimation={dropAnimation}>
           {activeElement ? <DraggableElement element={activeElement} isOverlay /> : null}
         </DragOverlay>
 
+        <SidebarToggle isOpen={isSidebarOpen} onClick={() => setIsSidebarOpen(prev => !prev)} />
+        
         {notification && (
-          <div className="fixed bottom-5 right-5 p-4 bg-primary text-primary-foreground rounded-lg shadow-lg animate-pulse">
+          <div className="fixed bottom-24 right-5 md:bottom-5 p-4 bg-primary text-primary-foreground rounded-lg shadow-lg animate-pulse z-50">
             {notification}
           </div>
         )}

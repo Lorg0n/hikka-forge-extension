@@ -1,117 +1,117 @@
-name: Build and Publish Extension
+# name: Build and Publish Extension
 
-on:
-  push:
-    tags:
-      - 'v*'
+# on:
+#   push:
+#     tags:
+#       - 'v*'
 
-jobs:
-  build:
-    name: Build and Package Extension
-    runs-on: ubuntu-latest
+# jobs:
+#   build:
+#     name: Build and Package Extension
+#     runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v4
+#         with:
+#           fetch-depth: 0
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+#       - name: Set up pnpm
+#         uses: pnpm/action-setup@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'pnpm' # Cache dependencies for pnpm
+#       - name: Set up Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: 20
+#           cache: 'pnpm' # Cache dependencies for pnpm
 
-      - name: Install dependencies
-        run: pnpm install
+#       - name: Install dependencies
+#         run: pnpm install
 
-      # Build for Chrome and Firefox
-      - name: Build for Chrome
-        run: pnpm run build:chrome
-      - name: Build for Firefox
-        run: pnpm run build:firefox
+#       # Build for Chrome and Firefox
+#       - name: Build for Chrome
+#         run: pnpm run build:chrome
+#       - name: Build for Firefox
+#         run: pnpm run build:firefox
 
-      - name: Package Chrome Extension
-        run: |
-          cd dist/chrome
-          zip -r ../hikka-forge-chrome-${{ github.ref_name }}.zip .
+#       - name: Package Chrome Extension
+#         run: |
+#           cd dist/chrome
+#           zip -r ../hikka-forge-chrome-${{ github.ref_name }}.zip .
 
-      - name: Package Firefox Extension
-        run: |
-          cd dist/firefox
-          zip -r ../hikka-forge-firefox-${{ github.ref_name }}.zip .
+#       - name: Package Firefox Extension
+#         run: |
+#           cd dist/firefox
+#           zip -r ../hikka-forge-firefox-${{ github.ref_name }}.zip .
 
-      - name: Package Source Code
-        run: git archive -o dist/source-code-${{ github.ref_name }}.zip HEAD
+#       - name: Package Source Code
+#         run: git archive -o dist/source-code-${{ github.ref_name }}.zip HEAD
 
-      - name: Upload Chrome Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: chrome-extension
-          path: dist/hikka-forge-chrome-${{ github.ref_name }}.zip
+#       - name: Upload Chrome Artifact
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: chrome-extension
+#           path: dist/hikka-forge-chrome-${{ github.ref_name }}.zip
 
-      - name: Upload Firefox Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: firefox-extension
-          path: dist/hikka-forge-firefox-${{ github.ref_name }}.zip
+#       - name: Upload Firefox Artifact
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: firefox-extension
+#           path: dist/hikka-forge-firefox-${{ github.ref_name }}.zip
       
-      - name: Upload Source Code Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: source-code
-          path: dist/source-code-${{ github.ref_name }}.zip
+#       - name: Upload Source Code Artifact
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: source-code
+#           path: dist/source-code-${{ github.ref_name }}.zip
 
-  publish-chrome:
-    name: Publish to Chrome Web Store
-    needs: build
-    runs-on: ubuntu-latest
+#   publish-chrome:
+#     name: Publish to Chrome Web Store
+#     needs: build
+#     runs-on: ubuntu-latest
 
-    steps:
-      - name: Download Chrome extension artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: chrome-extension
-          path: .
+#     steps:
+#       - name: Download Chrome extension artifact
+#         uses: actions/download-artifact@v4
+#         with:
+#           name: chrome-extension
+#           path: .
 
-      - name: Publish to Chrome Web Store
-        uses: mnao305/chrome-extension-upload@v5.0.0
-        with:
-          file-path: hikka-forge-chrome-${{ github.ref_name }}.zip
-          extension-id: ${{ secrets.CWS_EXTENSION_ID }}
-          client-id: ${{ secrets.CWS_CLIENT_ID }}
-          client-secret: ${{ secrets.CWS_CLIENT_SECRET }}
-          refresh-token: ${{ secrets.CWS_REFRESH_TOKEN }}
-          publish: true
+#       - name: Publish to Chrome Web Store
+#         uses: mnao305/chrome-extension-upload@v5.0.0
+#         with:
+#           file-path: hikka-forge-chrome-${{ github.ref_name }}.zip
+#           extension-id: ${{ secrets.CWS_EXTENSION_ID }}
+#           client-id: ${{ secrets.CWS_CLIENT_ID }}
+#           client-secret: ${{ secrets.CWS_CLIENT_SECRET }}
+#           refresh-token: ${{ secrets.CWS_REFRESH_TOKEN }}
+#           publish: true
 
-  publish-firefox:
-    name: Publish to Firefox Add-on Store
-    needs: build
-    runs-on: ubuntu-latest
+#   publish-firefox:
+#     name: Publish to Firefox Add-on Store
+#     needs: build
+#     runs-on: ubuntu-latest
 
-    steps:
-      - name: Download Firefox extension artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: firefox-extension
-          path: .
+#     steps:
+#       - name: Download Firefox extension artifact
+#         uses: actions/download-artifact@v4
+#         with:
+#           name: firefox-extension
+#           path: .
 
-      - name: Download source code artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: source-code
-          path: .
+#       - name: Download source code artifact
+#         uses: actions/download-artifact@v4
+#         with:
+#           name: source-code
+#           path: .
       
-      - name: Publish to Firefox Add-on Store
-        uses: browser-actions/release-firefox-addon@latest
-        with:
-          addon-id: ${{ secrets.AMO_EXTENSION_ID }}
-          addon-path: hikka-forge-firefox-${{ github.ref_name }}.zip
-          source-path: source-code-${{ github.ref_name }}.zip
-          auth-api-issuer: ${{ secrets.AMO_JWT_ISSUER }}
-          auth-api-secret: ${{ secrets.AMO_JWT_SECRET }}
-          license: 'MIT'
-          release-note: "Release ${{ github.ref_name }}"
+#       - name: Publish to Firefox Add-on Store
+#         uses: browser-actions/release-firefox-addon@latest
+#         with:
+#           addon-id: ${{ secrets.AMO_EXTENSION_ID }}
+#           addon-path: hikka-forge-firefox-${{ github.ref_name }}.zip
+#           source-path: source-code-${{ github.ref_name }}.zip
+#           auth-api-issuer: ${{ secrets.AMO_JWT_ISSUER }}
+#           auth-api-secret: ${{ secrets.AMO_JWT_SECRET }}
+#           license: 'MIT'
+#           release-note: "Release ${{ github.ref_name }}"

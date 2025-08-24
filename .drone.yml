@@ -1,0 +1,63 @@
+kind: pipeline
+type: docker
+name: build-and-publish
+
+trigger:
+  event:
+    - tag
+  ref:
+    - refs/tags/v*
+
+steps:
+  - name: build-and-package
+    image: node:20-slim
+    commands:
+      - apt-get update && apt-get install -y zip
+      - npm install -g pnpm
+      - pnpm install
+      - pnpm run build:chrome
+      - pnpm run build:firefox
+      - |
+        cd dist/chrome
+        zip -r ../hikka-forge-chrome-${DRONE_TAG}.zip .
+        cd ../..
+      - |
+        cd dist/firefox
+        zip -r ../hikka-forge-firefox-${DRONE_TAG}.zip .
+        cd ../..
+      - |
+        git archive -o dist/source-code-${DRONE_TAG}.zip HEAD
+
+  - name: publish-to-chrome-store
+    image: node:20-slim
+    environment:
+      CWS_EXTENSION_ID:
+        from_secret: CWS_EXTENSION_ID
+      CWS_CLIENT_ID:
+        from_secret: CWS_CLIENT_ID
+      CWS_CLIENT_SECRET:
+        from_secret: CWS_CLIENT_SECRET
+      CWS_REFRESH_TOKEN:
+        from_secret: CWS_REFRESH_TOKEN
+    commands:
+      - npm install -g chrome-webstore-upload-cli
+      - chrome-webstore-upload upload --source dist/hikka-forge-chrome-${DRONE_TAG}.zip --auto-publish
+
+  - name: publish-to-firefox-store
+    image: node:20-slim
+    environment:
+      AMO_EXTENSION_ID:
+        from_secret: AMO_EXTENSION_ID
+      AMO_JWT_ISSUER:
+        from_secret: AMO_JWT_ISSUER
+      AMO_JWT_SECRET:
+        from_secret: AMO_JWT_SECRET
+    commands:
+      - npm install -g web-ext
+      - >
+        web-ext submit
+        --source-file dist/hikka-forge-firefox-${DRONE_TAG}.zip
+        --channel listed
+        --api-key=$AMO_JWT_ISSUER
+        --api-secret=$AMO_JWT_SECRET
+        --id=$AMO_EXTENSION_ID

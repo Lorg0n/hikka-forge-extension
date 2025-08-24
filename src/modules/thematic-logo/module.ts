@@ -1,4 +1,5 @@
 import type { ForgeModuleDef } from "@/types/module";
+import { getAssetUrl } from "@/utils/asset-utils";
 
 import newYearLightFull from "@/assets/thematic-logos/new-year/logo.svg";
 import newYearDarkFull from "@/assets/thematic-logos/new-year/logo-dark.svg";
@@ -62,7 +63,7 @@ const ThematicLogoModule: ForgeModuleDef = {
 	name: "Тематичні логотипи",
 	enabledByDefault: true,
 	description:
-		"Змінює основний логотип відповідно до поточного свята або пам’ятної події.",
+		"Змінює основний логотип відповідно до поточного свята або пам'ятної події.",
 	urlPatterns: ["https://hikka.io/*"],
 	persistentStyles: true,
 
@@ -105,8 +106,8 @@ const ThematicLogoModule: ForgeModuleDef = {
 				`[Hikka Forge] Activating thematic full logo for: ${foundEvent.name} (ID: ${foundEvent.id})`
 			);
 
-			const lightLogoUrl = chrome.runtime.getURL(foundEvent.lightLogoFull);
-			const darkLogoUrl = chrome.runtime.getURL(foundEvent.darkLogoFull);
+			const lightLogoUrl = getAssetUrl(foundEvent.lightLogoFull);
+			const darkLogoUrl = getAssetUrl(foundEvent.darkLogoFull);
 
 			cssToInject = `
                 @media (min-width: 768px) {

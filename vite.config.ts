@@ -8,6 +8,7 @@ const browser = (process.env.BROWSER || "chrome") as 'chrome' | 'firefox';
 const outDir = path.resolve(__dirname, `dist/${browser}`)
 
 export default defineConfig({
+  base: './',
   plugins: [react(), tailwindcss(), manifestAndAssetPlugin({ browser })],
   resolve: {
     alias: {

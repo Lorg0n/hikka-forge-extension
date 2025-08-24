@@ -54,10 +54,11 @@ steps:
         from_secret: AMO_JWT_SECRET
     commands:
       - npm install -g web-ext
-      - >
-        web-ext submit
-        --source-file dist/hikka-forge-firefox-${DRONE_TAG}.zip
-        --channel listed
+      - > # For updates, 'web-ext sign' handles building, signing, and submitting.
+        # The --id flag tells AMO which existing add-on to update.
+        web-ext sign
+        --source-dir=dist/firefox
+        --channel=listed
         --api-key=$AMO_JWT_ISSUER
         --api-secret=$AMO_JWT_SECRET
         --id=$AMO_EXTENSION_ID

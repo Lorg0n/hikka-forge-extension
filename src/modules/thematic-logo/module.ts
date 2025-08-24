@@ -60,6 +60,7 @@ const thematicEvents: ThematicEvent[] = [
 const ThematicLogoModule: ForgeModuleDef = {
 	id: "thematic-logo",
 	name: "Тематичні логотипи",
+	enabledByDefault: true,
 	description:
 		"Змінює основний логотип відповідно до поточного свята або пам’ятної події.",
 	urlPatterns: ["https://hikka.io/*"],

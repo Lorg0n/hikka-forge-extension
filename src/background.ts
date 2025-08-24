@@ -70,21 +70,7 @@ class BackgroundManager {
 	private initInstallAndUpdateListeners(): void {
 		chrome.runtime.onInstalled.addListener((details) => {
 			if (details.reason === "install") {
-				console.log("[Hikka Forge] Extension installed");
-				chrome.storage.sync
-					.set({
-						"module_enabled_example-button": true,
-						"module_enabled_font-override": false,
-					})
-					.then(() => {
-						console.log("[Hikka Forge] Default module states set.");
-					})
-					.catch((error) => {
-						console.error(
-							"[Hikka Forge] Error setting default module states:",
-							error
-						);
-					});
+				console.log("[Hikka Forge] Extension installed. Default states will be applied on first use.");
 			} else if (details.reason === "update") {
 			}
 			moduleDefinitionsCache = null;
@@ -277,7 +263,7 @@ class BackgroundManager {
 
 			const updatedModules = definitions.map((def) => {
 				const enabledKey = `module_enabled_${def.id}`;
-				const enabled = allStoredData[enabledKey] ?? false;
+				const enabled = allStoredData[enabledKey] ?? def.enabledByDefault ?? false;
 
 				const settings: Record<string, any> = {};
 				if (def.settings) {
@@ -338,6 +324,7 @@ class BackgroundManager {
 							enabled: false,
 							urlPatterns: m.urlPatterns,
 							settings: m.settings || [],
+							enabledByDefault: m.enabledByDefault, 
 						}));
 					} else {
 						console.warn(

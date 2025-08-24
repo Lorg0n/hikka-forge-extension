@@ -70,6 +70,7 @@ export interface ForgeModuleDef {
 	description: string;
 	urlPatterns: string[];
 	elementSelector?: ModuleSelector;
+	enabledByDefault?: boolean;
 	component?: React.FC<any>;
 	styles?: string | ((settings: Record<string, any>) => string);
 	persistentStyles?: boolean;
@@ -80,6 +81,7 @@ export interface ModuleInfo {
 	id: string;
 	name: string;
 	description: string;
+	enabledByDefault?: boolean;
 	enabled: boolean;
 	urlPatterns: string[];
 	settings?: ModuleSetting[];

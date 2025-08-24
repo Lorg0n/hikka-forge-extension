@@ -743,6 +743,7 @@ class ModuleManager {
 			description: moduleDef.description,
 			enabled: this.moduleEnabledStates.get(moduleDef.id) ?? false,
 			urlPatterns: moduleDef.urlPatterns,
+			enabledByDefault: moduleDef.enabledByDefault,
 			settings: moduleDef.settings,
 		}));
 	}

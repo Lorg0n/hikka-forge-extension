@@ -6,6 +6,7 @@ const userCommentModule: ForgeModuleDef = {
   name: 'Схожі аніме',
   description: 'Додає модуль схожих аніме, які визначаються за допомогою спеціальної моделі.',
   urlPatterns: ['https://hikka.io/anime/*'],
+  enabledByDefault: true,
   elementSelector: {
     selector: 'div.order-2.flex.flex-col.gap-12',
     position: 'append',

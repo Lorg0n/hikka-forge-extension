@@ -23,6 +23,12 @@ function App() {
 		new Set()
 	);
 
+	const handleOpenAlchemyPage = () => {
+        browser.tabs.create({
+            url: browser.runtime.getURL('src/pages/alchemy/alchemy.html')
+        });
+    };
+
 	const settingUpdateTimers = useRef<Record<string, NodeJS.Timeout>>({});
 
 	const loadModules = useCallback(async () => {
@@ -296,6 +302,16 @@ function App() {
 					handleResetSettings={handleResetSettings}
 					toggleModuleExpansion={toggleModuleExpansion}
 				/>
+			</div>
+
+			<div className="border-t border-border pt-4 mt-2">
+				<Button
+					variant="outline"
+					className="w-full"
+					onClick={handleOpenAlchemyPage}
+				>
+					Відкрити Hikka Alchemy
+				</Button>
 			</div>
 		</div>
 	);

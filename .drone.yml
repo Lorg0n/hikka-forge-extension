@@ -54,8 +54,7 @@ steps:
         from_secret: AMO_JWT_SECRET
     commands:
       - npm install -g web-ext
-      - > # For updates, 'web-ext sign' handles building, signing, and submitting.
-        # The --id flag tells AMO which existing add-on to update.
+      - >
         web-ext sign
         --source-dir=dist/firefox
         --channel=listed

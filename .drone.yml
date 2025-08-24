@@ -12,7 +12,7 @@ steps:
   - name: build-and-package
     image: node:20-slim
     commands:
-      - apt-get update && apt-get install -y zip
+      - apt-get update && apt-get install -y zip git
       - npm install -g pnpm
       - pnpm install
       - pnpm run build:chrome

@@ -1,15 +1,24 @@
 import React from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { GameElement } from '../data/elements';
-// Для зручного об'єднання класів можна використати утиліту, але тут вистачить і простого рядка
-// import clsx from 'clsx'; 
+
+// NEW: Тип для пропса
+interface CombinationTarget {
+  id: string;
+  isValid: boolean;
+}
 
 interface DraggableElementProps {
   element: GameElement & { instanceId?: string };
   isOverlay?: boolean;
+  combinationTarget?: CombinationTarget | null; // NEW: Додаємо опціональний пропс
 }
 
-export function DraggableElement({ element, isOverlay = false }: DraggableElementProps) {
+export function DraggableElement({ 
+  element, 
+  isOverlay = false, 
+  combinationTarget 
+}: DraggableElementProps) {
   const idToUse = element.instanceId || element.id;
 
   const { attributes, listeners, setNodeRef: setDraggableNodeRef, isDragging } = useDraggable({
@@ -33,6 +42,18 @@ export function DraggableElement({ element, isOverlay = false }: DraggableElemen
     pointerEvents: isOverlay ? 'none' : 'auto',
   };
 
+  const isTarget = combinationTarget?.id === idToUse;
+  let highlightClass = '';
+
+  if (isTarget) {
+    // Використовуємо семантичні кольори, як ви просили
+    // `ring-primary` для успіху (зазвичай зелений/синій)
+    // `ring-destructive` для невдачі (зазвичай червоний)
+    highlightClass = combinationTarget.isValid
+      ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
+      : 'ring-2 ring-destructive ring-offset-2 ring-offset-background';
+  }
+
   // Базові класи для елемента
   const baseClasses = "flex flex-col items-center justify-center p-2 text-center bg-card border border-border rounded-lg shadow-sm cursor-grab active:cursor-grabbing touch-none select-none w-16 h-16 transition-opacity";
 
@@ -45,7 +66,7 @@ export function DraggableElement({ element, isOverlay = false }: DraggableElemen
       style={style}
       {...listeners}
       {...attributes}
-      className={`${baseClasses} ${dynamicClasses}`}
+      className={`${baseClasses} ${dynamicClasses} ${highlightClass}`}
     >
       <span className="text-lg pointer-events-none">{element.emoji}</span>
       <span className="text-xs text-muted-foreground pointer-events-none truncate w-full">{element.name}</span>

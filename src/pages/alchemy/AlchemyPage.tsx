@@ -2,6 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import {
   DndContext,
   DragEndEvent,
+  DragOverEvent, // NEW: Імпортуємо DragOverEvent
   DragStartEvent,
   DragOverlay,
   DropAnimation,
@@ -26,6 +27,11 @@ const dropAnimation: DropAnimation = {
   }),
 };
 
+interface CombinationTarget {
+  id: string;
+  isValid: boolean;
+}
+
 function AlchemyPage() {
   const [discoveredElements, setDiscoveredElements] = useState<GameElement[]>(() =>
     STARTER_ELEMENTS_IDS.map(id => ELEMENTS[id])
@@ -33,6 +39,7 @@ function AlchemyPage() {
   const [workspaceElements, setWorkspaceElements] = useState<WorkspaceElement[]>([]);
   const [notification, setNotification] = useState<string | null>(null);
   const [activeElement, setActiveElement] = useState<GameElement | null>(null);
+  const [combinationTarget, setCombinationTarget] = useState<CombinationTarget | null>(null);
 
   const workspaceRef = useRef<HTMLDivElement | null>(null);
 
@@ -44,6 +51,29 @@ function AlchemyPage() {
   const handleDragStart = useCallback((event: DragStartEvent) => {
     setActiveElement(event.active.data.current?.element as GameElement);
   }, []);
+
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    const { active, over } = event;
+
+    // Якщо немає цілі або тягнемо над собою, скидаємо стан
+    if (!over || active.id === over.id) {
+      setCombinationTarget(null);
+      return;
+    }
+
+    const activeEl = active.data.current?.element as GameElement;
+    const overEl = over.data.current?.element as GameElement;
+    const isTargetOnWorkspace = workspaceElements.some(el => el.instanceId === over.id);
+
+    // Перевіряємо рецепт, тільки якщо обидва елементи існують і ціль - на воркспейсі
+    if (activeEl && overEl && isTargetOnWorkspace) {
+      const recipeKey = [activeEl.id, overEl.id].sort().join('+');
+      const resultId = RECIPES[recipeKey];
+      setCombinationTarget({ id: over.id as string, isValid: !!resultId });
+    } else {
+      setCombinationTarget(null);
+    }
+  }, [workspaceElements]);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     setActiveElement(null);
@@ -137,7 +167,12 @@ function AlchemyPage() {
   const clearWorkspace = () => setWorkspaceElements([]);
 
   return (
-    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext 
+      onDragStart={handleDragStart} 
+      onDragOver={handleDragOver} // NEW: Додаємо обробник
+      onDragEnd={handleDragEnd}
+      onDragCancel={() => setCombinationTarget(null)} // NEW: На випадок скасування
+    >
       <div className="flex h-screen bg-background text-foreground font-sans">
         <ElementSidebar discoveredElements={discoveredElements} />
         
@@ -154,7 +189,7 @@ function AlchemyPage() {
               Очистити поле
             </button>
           </header>
-          <Workspace ref={workspaceRef} elements={workspaceElements} />
+          <Workspace ref={workspaceRef} elements={workspaceElements} combinationTarget={combinationTarget}/>
         </main>
 
         <DragOverlay dropAnimation={dropAnimation}>

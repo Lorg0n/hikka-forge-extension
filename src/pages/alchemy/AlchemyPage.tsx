@@ -57,7 +57,10 @@ function AlchemyPage() {
     const isFromWorkspace = workspaceElements.some(el => el.instanceId === active.id);
 
     // Case 1: Combination attempt (dropping on another element)
-    if (over && over.data.current?.element && active.id !== over.id) {
+    // FIX: Додано перевірку, що ціль (over) знаходиться на робочому полі
+    const isTargetOnWorkspace = over ? workspaceElements.some(el => el.instanceId === over.id) : false;
+
+    if (over && over.data.current?.element && active.id !== over.id && isTargetOnWorkspace) {
       const targetElData = over.data.current.element as GameElement;
       const recipeKey = [activeElData.id, targetElData.id].sort().join('+');
       const resultId = RECIPES[recipeKey];
@@ -70,7 +73,7 @@ function AlchemyPage() {
           el.instanceId !== active.id && el.instanceId !== over.id
         ));
         
-        // Calculate position for new element based on where the drag ended
+        // Calculate position for new element
         const workspaceRect = workspaceRef.current?.getBoundingClientRect();
         const activeRect = event.active.rect.current.translated;
         

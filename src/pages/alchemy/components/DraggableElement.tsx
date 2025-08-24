@@ -1,7 +1,8 @@
 import React from 'react';
-// Додано useDroppable
-import { useDraggable, useDroppable } from '@dnd-kit/core'; 
+import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { GameElement } from '../data/elements';
+// Для зручного об'єднання класів можна використати утиліту, але тут вистачить і простого рядка
+// import clsx from 'clsx'; 
 
 interface DraggableElementProps {
   element: GameElement & { instanceId?: string };
@@ -16,30 +17,35 @@ export function DraggableElement({ element, isOverlay = false }: DraggableElemen
     data: { element },
   });
 
-  // FIX: Ось головне виправлення. Робимо елемент ціллю для скидання.
   const { setNodeRef: setDroppableNodeRef } = useDroppable({
     id: idToUse,
-    data: { element }, // Передаємо дані, щоб знати, НА ЩО ми кинули
+    data: { element },
   });
 
-  // Об'єднуємо ref від обох хуків
   const setNodeRef = (node: HTMLDivElement | null) => {
     setDraggableNodeRef(node);
     setDroppableNodeRef(node);
   };
 
+  // FIX: Ми більше не використовуємо opacity в інлайн-стилях для цього.
+  // Залишаємо лише pointerEvents для DragOverlay.
   const style: React.CSSProperties = {
-    opacity: isDragging && !isOverlay ? 0.5 : 1,
     pointerEvents: isOverlay ? 'none' : 'auto',
   };
 
+  // Базові класи для елемента
+  const baseClasses = "flex flex-col items-center justify-center p-2 text-center bg-card border border-border rounded-lg shadow-sm cursor-grab active:cursor-grabbing touch-none select-none w-16 h-16 transition-opacity";
+
+  // Динамічно додаємо клас 'invisible' якщо елемент перетягується (і це не оверлей)
+  const dynamicClasses = isDragging && !isOverlay ? 'invisible' : 'visible';
+
   return (
     <div
-      ref={setNodeRef} // Використовуємо об'єднаний ref
+      ref={setNodeRef}
       style={style}
       {...listeners}
       {...attributes}
-      className="flex flex-col items-center justify-center p-2 text-center bg-card border border-border rounded-lg shadow-sm cursor-grab active:cursor-grabbing touch-none select-none w-16 h-16"
+      className={`${baseClasses} ${dynamicClasses}`}
     >
       <span className="text-lg pointer-events-none">{element.emoji}</span>
       <span className="text-xs text-muted-foreground pointer-events-none truncate w-full">{element.name}</span>

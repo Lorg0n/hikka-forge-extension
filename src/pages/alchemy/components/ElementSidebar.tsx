@@ -1,9 +1,10 @@
 // File: /home/lorgon/hikka-forge-extension/src/pages/alchemy/components/ElementSidebar.tsx
-import React, { useState } from 'react';
-import { Sparkles, Search, X, Loader2 } from 'lucide-react'; // Додано Loader2
+import React, { useState, useRef, useMemo } from 'react';
+import { Sparkles, Search, X, Loader2 } from 'lucide-react';
 import { DraggableItem } from '@/types';
-import { DraggableElement } from './DraggableElement';
-import { useAnimeSearch } from '@/hooks/useAnimeSearch'; // Імпорт вашого хука
+import { useAnimeSearch } from '@/hooks/useAnimeSearch';
+import { SidebarDraggableItem } from './SidebarDraggableItem';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 interface ElementSidebarProps {
   discoveredItems: DraggableItem[];
@@ -11,17 +12,14 @@ interface ElementSidebarProps {
 }
 
 export function ElementSidebar({ discoveredItems, isOpen }: ElementSidebarProps) {
-  // Використовуємо ваш хук для пошуку аніме
   const { searchTerm, setSearchTerm, results: searchAnimeResults, isSearching } = useAnimeSearch();
-  const [activeTab, setActiveTab] = useState<'base' | 'anime'>('base'); // Додано стан activeTab
+  const [activeTab, setActiveTab] = useState<'base' | 'anime'>('base');
 
-  // Базові елементи (завжди з discoveredItems)
-  const baseElements = discoveredItems.filter(el => el.type === 'alchemy_element');
+  const parentRef = useRef<HTMLDivElement>(null);
 
-  // Вже відкриті аніме (відображаються, коли пошуковий запит порожній)
-  const discoveredAnimeElements = discoveredItems.filter(el => el.type === 'anime')
-    .sort((a, b) => a.name.localeCompare(b.name));
-
+  const baseElements = useMemo(() => discoveredItems.filter(el => el.type === 'alchemy_element'), [discoveredItems]);
+  const discoveredAnimeElements = useMemo(() => discoveredItems.filter(el => el.type === 'anime').sort((a, b) => a.name.localeCompare(b.name)), [discoveredItems]);
+  
   const sidebarClasses = `
     bg-card/95 backdrop-blur-md border-border transition-all duration-500 ease-out z-40 flex flex-col
     fixed bottom-0 left-0 right-0 h-2/5 rounded-t-3xl border-t shadow-2xl
@@ -29,12 +27,40 @@ export function ElementSidebar({ discoveredItems, isOpen }: ElementSidebarProps)
     ${isOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-0'}
   `;
 
-  // Визначаємо, який список аніме відображати: результати пошуку або вже відкриті
   const currentAnimeDisplayList = searchTerm.trim() !== '' ? searchAnimeResults : discoveredAnimeElements;
+  const itemsToDisplay = activeTab === 'base' ? baseElements : currentAnimeDisplayList;
+
+  // --- FIX 1: DYNAMIC & MORE ACCURATE ESTIMATES ---
+  // We determine column count and row height estimate based on the active tab.
+  // These values are based on the w-80 sidebar width.
+  const { columnCount, rowEstimate, gridClasses } = useMemo(() => {
+    if (activeTab === 'base') {
+      return {
+        columnCount: 3, // 3 columns on desktop
+        rowEstimate: 95,  // approx height for a 3-col square item + gap
+        gridClasses: 'grid-cols-4 md:grid-cols-3' // 4 on mobile, 3 on desktop
+      };
+    }
+    // 'anime' tab
+    return {
+      columnCount: 2, // 2 columns on desktop
+      rowEstimate: 140, // approx height for a 2-col square item + gap
+      gridClasses: 'grid-cols-3 md:grid-cols-2' // 3 on mobile, 2 on desktop
+    };
+  }, [activeTab]);
+
+  const rowCount = Math.ceil(itemsToDisplay.length / columnCount);
+
+  const rowVirtualizer = useVirtualizer({
+    count: rowCount,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => rowEstimate, // Use the dynamic estimate
+    overscan: 5,
+  });
 
   return (
     <aside className={sidebarClasses}>
-      {/* Enhanced header */}
+      {/* Header Area (No changes) */}
       <div className="flex-shrink-0 p-4 border-b border-border/50">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -45,7 +71,7 @@ export function ElementSidebar({ discoveredItems, isOpen }: ElementSidebarProps)
           </div>
           <div className="flex gap-1 bg-muted rounded-lg p-1">
             <button
-              onClick={() => { setActiveTab('base'); setSearchTerm(''); }} // Очищаємо пошук при зміні вкладки
+              onClick={() => { setActiveTab('base'); setSearchTerm(''); }}
               className={`px-3 py-1 text-xs font-medium rounded transition-all duration-200 ${
                 activeTab === 'base'
                   ? 'bg-background text-foreground shadow-sm'
@@ -55,19 +81,17 @@ export function ElementSidebar({ discoveredItems, isOpen }: ElementSidebarProps)
               Базові ({baseElements.length})
             </button>
             <button
-              onClick={() => { setActiveTab('anime'); setSearchTerm(''); }} // Очищаємо пошук при зміні вкладки
+              onClick={() => { setActiveTab('anime'); setSearchTerm(''); }}
               className={`px-3 py-1 text-xs font-medium rounded transition-all duration-200 ${
                 activeTab === 'anime'
                   ? 'bg-background text-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              Аніме ({discoveredAnimeElements.length}) {/* Все ще показуємо кількість відкритих аніме */}
+              Аніме ({discoveredAnimeElements.length})
             </button>
           </div>
         </div>
-
-        {/* Enhanced search for anime tab */}
         {activeTab === 'anime' && (
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -78,10 +102,10 @@ export function ElementSidebar({ discoveredItems, isOpen }: ElementSidebarProps)
               onChange={e => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-10 py-2 border border-border rounded-lg bg-background/50 text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
             />
-            {isSearching && searchTerm.trim() !== '' && ( // Показуємо спіннер завантаження, якщо йде пошук і є запит
+            {isSearching && searchTerm.trim() !== '' && (
                 <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-primary animate-spin" />
             )}
-            {!isSearching && searchTerm.trim() !== '' && ( // Показуємо кнопку очищення, якщо не шукаємо і є запит
+            {!isSearching && searchTerm.trim() !== '' && (
               <button
                 onClick={() => setSearchTerm('')}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors duration-200"
@@ -93,43 +117,53 @@ export function ElementSidebar({ discoveredItems, isOpen }: ElementSidebarProps)
         )}
       </div>
 
-      {/* Enhanced content area */}
-      <div className="flex-grow overflow-hidden">
-        {activeTab === 'base' ? (
-          <div className="p-4 h-full overflow-y-auto">
-            {baseElements.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
-                <Sparkles className="w-8 h-8 mb-2 opacity-50" />
-                <p className="text-sm text-center">Базові елементи з'являться тут</p>
+      {/* Virtualized Content Area */}
+      <div ref={parentRef} className="flex-grow overflow-y-auto px-4">
+        <div
+          className="w-full relative" // Added relative here
+          style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
+        >
+          {rowVirtualizer.getVirtualItems().map(virtualRow => {
+            const itemsInRow = itemsToDisplay.slice(
+              virtualRow.index * columnCount,
+              (virtualRow.index * columnCount) + columnCount
+            );
+            return (
+              <div
+                key={virtualRow.key}
+                className={`grid gap-3 absolute top-0 left-0 w-full ${gridClasses}`}
+                style={{
+                  // --- FIX 2: REMOVED fixed height. Row will now size itself. ---
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
+              >
+                {itemsInRow.map(element => (
+                  <SidebarDraggableItem key={element.uniqueId} element={element} />
+                ))}
               </div>
+            );
+          })}
+        </div>
+        
+        {/* Empty/Loading State Logic (No changes, just moved outside the virtual container) */}
+        {itemsToDisplay.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center -mt-4">
+            {isSearching && searchTerm.trim() !== '' ? (
+              <>
+                <Loader2 className="w-8 h-8 mb-2 animate-spin text-primary" />
+                <p className="text-sm">Пошук аніме...</p>
+              </>
             ) : (
-              <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-3 gap-3">
-                {baseElements.map(element => (
-                  <DraggableElement key={element.uniqueId} element={element} />
-                ))}
-              </div>
-            )}
-          </div>
-        ) : ( /* Вміст вкладки "Аніме" */
-          <div className="p-4 h-full overflow-y-auto">
-            {isSearching && searchTerm.trim() !== '' ? ( // Індикатор пошуку
-                <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
-                    <Loader2 className="w-8 h-8 mb-2 animate-spin text-primary" />
-                    <p className="text-sm text-center">Пошук аніме...</p>
-                </div>
-            ) : currentAnimeDisplayList.length === 0 ? ( // Немає результатів або немає відкритих аніме
-              <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
+              <>
                 <Search className="w-8 h-8 mb-2 opacity-50" />
-                <p className="text-sm text-center">
-                  {searchTerm.trim() ? "Нічого не знайдено за вашим запитом" : "Відкрийте аніме, поєднуючи елементи або шукайте нові!"}
+                <p className="text-sm max-w-xs">
+                  {searchTerm.trim()
+                    ? "Нічого не знайдено за вашим запитом"
+                    : activeTab === 'base'
+                      ? "Базові елементи з'являться тут"
+                      : "Відкрийте аніме, поєднуючи елементи, або шукайте нові!"}
                 </p>
-              </div>
-            ) : ( // Відображення аніме елементів
-              <div className="grid grid-cols-3 md:grid-cols-2 gap-3">
-                {currentAnimeDisplayList.map(element => (
-                  <DraggableElement key={element.uniqueId} element={element} />
-                ))}
-              </div>
+              </>
             )}
           </div>
         )}

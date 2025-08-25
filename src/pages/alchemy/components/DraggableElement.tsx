@@ -1,5 +1,5 @@
 // File: /home/lorgon/hikka-forge-extension/src/pages/alchemy/components/DraggableElement.tsx
-import React, { memo } from 'react'; // <--- Додано 'memo'
+import React, { memo } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { Sparkles } from 'lucide-react';
 import { DraggableItem, CombinationTarget } from '@/types';
@@ -10,7 +10,6 @@ interface DraggableElementProps {
   combinationTarget?: CombinationTarget | null;
 }
 
-// <--- Компонент обгорнуто в React.memo
 export const DraggableElement = memo(function DraggableElement({
   element, 
   isOverlay = false, 
@@ -37,17 +36,20 @@ export const DraggableElement = memo(function DraggableElement({
   const isTargeted = combinationTarget?.id === idToUse;
   const isValidTarget = combinationTarget?.isValid;
 
-  // Enhanced animations and effects
+  // --- ОСЬ ЦЕ ВИПРАВЛЕННЯ ---
+  // Логіка для приховування ОРИГІНАЛЬНОГО елемента під час перетягування.
+  // Вона не повинна застосовуватися до копії, що летить за мишкою (isOverlay).
   const containerClasses = `
     bg-card border border-border rounded-xl shadow-lg cursor-grab active:cursor-grabbing 
     touch-none select-none transition-all duration-300 ease-out transform
     hover:shadow-xl hover:scale-105 hover:-translate-y-1
-    ${isDragging && !isOverlay ? 'invisible scale-95' : 'visible'}
+    ${isDragging && !isOverlay ? 'opacity-0 scale-95' : ''} 
     ${isOverlay ? 'rotate-3 scale-110 shadow-2xl' : ''}
     ${isTargeted && isValidTarget ? 'ring-4 ring-primary ring-opacity-50 scale-110 shadow-primary/25 shadow-xl' : ''}
     ${isTargeted && !isValidTarget ? 'ring-4 ring-destructive ring-opacity-50 scale-95 shadow-destructive/25' : ''}
     ${isAnime ? 'group overflow-hidden backdrop-blur-sm' : ''}
   `;
+  // Я змінив 'invisible' на 'opacity-0', що дає такий самий ефект, але може краще працювати з анімаціями.
 
   if (isAnime) {
     return (
@@ -60,7 +62,6 @@ export const DraggableElement = memo(function DraggableElement({
         title={element.name}
       >
         <div className="relative w-24 h-32 text-white overflow-hidden">
-          {/* Background with parallax effect */}
           <div className="absolute inset-0 transform group-hover:scale-110 transition-transform duration-500">
             <img
               src={element.imageUrl || ''}
@@ -69,17 +70,11 @@ export const DraggableElement = memo(function DraggableElement({
               draggable="false"
             />
           </div>
-          
-          {/* Enhanced gradient with shimmer effect */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
           <div className="absolute inset-0 opacity-0 group-hover:opacity-30 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-all duration-700" />
-          
-          {/* Floating particles effect */}
           <div className="absolute top-2 right-2 opacity-70">
             <Sparkles className="w-3 h-3 animate-pulse" />
           </div>
-          
-          {/* Text with enhanced styling */}
           <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
             <span className="text-xs font-bold leading-tight line-clamp-2 drop-shadow-lg">
               {element.name}
@@ -121,4 +116,4 @@ export const DraggableElement = memo(function DraggableElement({
       </div>
     </div>
   );
-}); // <--- Закриття memo
+});

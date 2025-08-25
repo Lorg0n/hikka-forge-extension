@@ -1,21 +1,11 @@
 import React, { useState, useRef, MouseEvent, TouchEvent } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { DraggableElement } from './DraggableElement';
-import { GameElement } from '../data/elements';
+import { WorkspaceItem, CombinationTarget } from '@/types'; // <-- UPDATED IMPORT
 import clsx from 'clsx';
 
-interface CombinationTarget {
-  id: string;
-  isValid: boolean;
-}
-
-export interface WorkspaceElement extends GameElement {
-  instanceId: string;
-  position: { x: number; y: number };
-}
-
 interface WorkspaceProps {
-  elements: WorkspaceElement[];
+  elements: WorkspaceItem[]; // <-- FIX: Use the correct WorkspaceItem type
   combinationTarget: CombinationTarget | null;
   panOffset: { x: number; y: number };
   setPanOffset: React.Dispatch<React.SetStateAction<{ x: number; y: number }>>;
@@ -63,24 +53,19 @@ export const Workspace = React.forwardRef<HTMLDivElement, WorkspaceProps>(
     };
     const onTouchMove = (e: TouchEvent<HTMLDivElement>) => handlePanMove(e.touches[0].clientX, e.touches[0].clientY);
 
-    // FIX: Покращений фон "Карта Світу" з кількома шарами
     const gridStyle: React.CSSProperties = {
-      // Кілька фонових зображень накладаються одне на одне
       backgroundImage: `
         linear-gradient(to right, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
         linear-gradient(to bottom, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
         linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
         linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px)
         `,
-      // Розміри для кожної сітки, що відповідають порядку в backgroundImage
       backgroundSize: `
         100px 100px,
         100px 100px,
         25px 25px,
-        25px 25px,
-        100% 100%
+        25px 25px
       `,
-      // Динамічна позиція, що створює ефект руху
       backgroundPosition: `${panOffset.x}px ${panOffset.y}px`,
     };
 
@@ -91,7 +76,7 @@ export const Workspace = React.forwardRef<HTMLDivElement, WorkspaceProps>(
             "relative flex-1 h-full bg-background rounded-lg overflow-hidden",
             isGrabbing ? "cursor-grabbing" : "cursor-grab"
         )}
-        style={gridStyle} // <-- Застосовуємо наші нові стилі
+        style={gridStyle}
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={handlePanEnd}

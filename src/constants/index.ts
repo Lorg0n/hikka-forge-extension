@@ -22,3 +22,13 @@ export const CONTENT_TYPE = {
 
 export const HIKKA_BASE = "https://hikka.io" as const;
 export const API_BACKEND_BASE = "https://hikka-forge.lorgon.org" as const;
+export const HIKKA_API_BASE = 'https://api.hikka.io';
+
+export interface ApiErrorResponse {
+    timestamp?: string;
+    status?: number;
+    error: string;
+    message?: string;
+    path?: string;
+    details?: any; 
+}

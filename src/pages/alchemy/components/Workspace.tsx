@@ -45,19 +45,13 @@ export const Workspace = React.forwardRef<HTMLDivElement, WorkspaceProps>(
       setIsGrabbing(false);
     };
 
-    // --- НОВИЙ ПІДХІД ДО СТИЛІВ ---
-    // Тепер всі стилі, що рухаються, знаходяться в одному об'єкті
     const panContainerStyle: React.CSSProperties = {
-      // Розміри контейнера робимо значно більшими за екран, щоб фон не закінчувався
       width: '400vw',
       height: '400vh',
-      // Позиціонуємо його так, щоб початковий вигляд був у центрі
       top: '-150vh',
       left: '-150vw',
-      // Властивість transform рухає і контейнер, і його фон одночасно
       transform: `translate(${panOffset.x}px, ${panOffset.y}px)`,
       willChange: 'transform',
-      // Стилі для сітки тепер застосовуються безпосередньо до контейнера, що рухається
       backgroundImage: `
         radial-gradient(circle at 25px 25px, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
         linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
@@ -67,7 +61,6 @@ export const Workspace = React.forwardRef<HTMLDivElement, WorkspaceProps>(
     };
 
     return (
-      // Батьківський контейнер тепер є просто "рамкою" з overflow: hidden
       <div
         ref={setRefs}
         className={`
@@ -76,10 +69,8 @@ export const Workspace = React.forwardRef<HTMLDivElement, WorkspaceProps>(
           ${isGrabbing ? 'cursor-grabbing' : 'cursor-grab'}
         `}
       >
-        {/* Підказка, коли поле порожнє */}
         {elements.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            {/* ... (код підказки залишається без змін) ... */}
             <div className="text-center max-w-md mx-auto p-8">
               <div className="relative">
                 <Sparkles className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30 animate-pulse" />
@@ -95,7 +86,6 @@ export const Workspace = React.forwardRef<HTMLDivElement, WorkspaceProps>(
           </div>
         )}
 
-        {/* Внутрішній контейнер, який рухається. На ньому і фон, і елементи */}
         <div
           className="absolute"
           style={panContainerStyle}
@@ -116,9 +106,10 @@ export const Workspace = React.forwardRef<HTMLDivElement, WorkspaceProps>(
           {elements.map((element, index) => (
             <div
               key={element.instanceId}
-              className="absolute transition-all duration-200 ease-out"
+              // --- ОСЬ ЦЕ ВИПРАВЛЕННЯ ---
+              // Я прибрав 'transition-all duration-200 ease-out' звідси
+              className="absolute"
               style={{
-                // Позиція елемента тепер відносна до ВЕЛИКОГО контейнера
                 left: `calc(150vw + ${element.position.x}px)`,
                 top: `calc(150vh + ${element.position.y}px)`,
                 animationDelay: `${index * 50}ms`,

@@ -106,14 +106,12 @@ function AlchemyPage() {
 
     if (!over || !activeElData) return;
 
-    // --- MODIFIED FUNCTION ---
+    // This function is now ONLY for adding new items or moving existing ones.
     const getCorrectedPosition = () => {
       const workspaceNode = workspaceRef.current;
-      if (!workspaceNode) return { x: 100, y: 100 }; // Fallback
+      if (!workspaceNode) return { x: 100, y: 100 };
 
       const workspaceRect = workspaceNode.getBoundingClientRect();
-
-      // The DragOverlay's rect gives the most accurate final position
       const overlayRect = active.rect.current.translated;
 
       if (overlayRect) {
@@ -123,7 +121,6 @@ function AlchemyPage() {
         };
       }
 
-      // Fallback for moving existing items (delta is reliable here)
       const existingItem = workspaceElements.find(el => el.instanceId === active.id);
       if (existingItem) {
         return {
@@ -137,7 +134,7 @@ function AlchemyPage() {
 
     const overInstance = workspaceElements.find(el => el.instanceId === over.id);
 
-    // Combination logic
+    // --- MODIFIED COMBINATION LOGIC ---
     if (overInstance && active.id !== over.id) {
       const isValidCombination =
         (activeElData.type === 'anime' && overInstance.type === 'anime') ||
@@ -154,8 +151,13 @@ function AlchemyPage() {
 
         setWorkspaceElements(prev => prev.filter(el => el.instanceId !== active.id && el.instanceId !== over.id));
 
-        // This now uses the corrected calculation
-        const newWorkspaceElement: WorkspaceItem = { ...newElement, instanceId: generateId(), position: getCorrectedPosition() };
+        // FIX: The new element's position should be the position of the TARGET element.
+        const newWorkspaceElement: WorkspaceItem = {
+          ...newElement,
+          instanceId: generateId(),
+          position: overInstance.position // <-- THIS IS THE KEY CHANGE
+        };
+
         setWorkspaceElements(prev => [...prev, newWorkspaceElement]);
 
         if (!discoveredItems.find(el => el.uniqueId === newElement.uniqueId)) {
@@ -171,19 +173,20 @@ function AlchemyPage() {
 
     const isFromWorkspace = workspaceElements.some(el => el.instanceId === active.id);
 
-    // Moving existing item logic
+    // Moving existing item logic (uses getCorrectedPosition)
     if (isFromWorkspace) {
       setDropAnimation(null);
       setWorkspaceElements(prev => prev.map(el =>
         el.instanceId === active.id
-          ? { ...el, position: getCorrectedPosition() } // Use the new function here as well for consistency
+          ? { ...el, position: getCorrectedPosition() }
           : el
       ));
       return;
     }
 
+    // Adding from sidebar logic (uses getCorrectedPosition)
     if (over.id === 'workspace' || overInstance) {
-      setDropAnimation(null); // <-- FIX: Disable animation when adding from sidebar
+      setDropAnimation(null);
       const newElement: WorkspaceItem = { ...activeElData, instanceId: generateId(), position: getCorrectedPosition() };
       setWorkspaceElements(prev => [...prev, newElement]);
     }

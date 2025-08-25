@@ -78,7 +78,10 @@ function AlchemyPage() {
     const isTargetOnWorkspace = workspaceElements.some(el => el.instanceId === over.id);
 
     if (activeEl && overEl && isTargetOnWorkspace) {
-      const isValid = (activeEl.type === 'anime' && overEl.type === 'anime') || (activeEl.type !== overEl.type);
+      const isAllowedTypeCombination = (activeEl.type === 'anime' && overEl.type === 'anime') || (activeEl.type !== overEl.type);
+      const isDifferentItems = activeEl.uniqueId !== overEl.uniqueId;
+      const isValid = isAllowedTypeCombination && isDifferentItems;
+      
       setCombinationTarget({ id: over.id as string, isValid });
     } else {
       setCombinationTarget(null);
@@ -114,12 +117,12 @@ function AlchemyPage() {
     const overInstance = workspaceElements.find(el => el.instanceId === over.id);
 
     if (overInstance && active.id !== over.id) {
-      const isValidCombination =
-        (activeElData.type === 'anime' && overInstance.type === 'anime') ||
-        (activeElData.type !== overInstance.type);
+      const isAllowedTypeCombination = (activeElData.type === 'anime' && overInstance.type === 'anime') || (activeElData.type !== overInstance.type);
+      const isDifferentItems = activeElData.uniqueId !== overInstance.uniqueId;
+      const isValidCombination = isAllowedTypeCombination && isDifferentItems;
 
       if (!isValidCombination) {
-        return;
+        return; 
       }
 
       try {

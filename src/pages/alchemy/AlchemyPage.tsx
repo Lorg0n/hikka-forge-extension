@@ -2,12 +2,12 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   DndContext, DragEndEvent, DragOverEvent, DragStartEvent, DragOverlay,
-  DropAnimation, defaultDropAnimationSideEffects,
 } from '@dnd-kit/core';
 import { ElementSidebar } from './components/ElementSidebar';
 import { Workspace } from './components/Workspace';
 import { SidebarToggle } from './components/SidebarToggle';
 import { DraggableElement } from './components/DraggableElement';
+import { SidebarDraggableItem } from './components/SidebarDraggableItem';
 import { Notification } from './components/Notification';
 import { DraggableItem, WorkspaceItem, CombinationTarget, AlchemyItem, AnimeItem, AnimeCombinationResultItem, AlchemyElementItem } from '@/types';
 import { fetchAlchemyElements, combineItems } from '@/services/alchemyService';
@@ -36,6 +36,7 @@ function AlchemyPage() {
   const [notification, setNotification] = useState<string | null>(null);
   const [notificationType, setNotificationType] = useState<'success' | 'error'>('success');
   const [activeElement, setActiveElement] = useState<DraggableItem | null>(null);
+  const [dragSource, setDragSource] = useState<'sidebar' | 'workspace' | null>(null);
   const [combinationTarget, setCombinationTarget] = useState<CombinationTarget | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
@@ -54,18 +55,6 @@ function AlchemyPage() {
     loadInitialData();
   }, []);
 
-  const defaultDropAnimation: DropAnimation = {
-    sideEffects: defaultDropAnimationSideEffects({
-      styles: {
-        active: {
-          opacity: '0.5',
-        },
-      },
-    }),
-  };
-
-  const [dropAnimation, setDropAnimation] = useState<DropAnimation | null>(defaultDropAnimation);
-
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
     setNotification(message);
     setNotificationType(type);
@@ -73,8 +62,8 @@ function AlchemyPage() {
   };
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
-    setDropAnimation(defaultDropAnimation);
     setActiveElement(event.active.data.current?.element as DraggableItem);
+    setDragSource(event.active.data.current?.source);
     if (window.innerWidth < 768) setIsSidebarOpen(false);
   }, []);
 
@@ -99,28 +88,23 @@ function AlchemyPage() {
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     setCombinationTarget(null);
     setActiveElement(null);
+    setDragSource(null);
     const { active, over } = event;
     const activeElData = active.data.current?.element as DraggableItem;
 
     if (!over || !activeElData) return;
 
-    // --- ВИПРАВЛЕНА ЛОГІКА РОЗРАХУНКУ ПОЗИЦІЇ ---
-    // Ця функція тепер працює коректно як для нових, так і для існуючих елементів,
-    // навіть з трансформованим батьківським контейнером.
     const getCorrectedPosition = () => {
       const workspaceNode = workspaceRef.current;
       const overlayRect = active.rect.current.translated;
 
       if (!workspaceNode || !overlayRect) {
-        // Запасний варіант, якщо щось піде не так
         const existingItem = workspaceElements.find(el => el.instanceId === active.id);
         return existingItem ? existingItem.position : { x: 100, y: 100 };
       }
 
       const workspaceRect = workspaceNode.getBoundingClientRect();
-
-      // Розраховуємо локальну позицію, віднімаючи позицію робочої області та зсув панорамування
-      // від абсолютної позиції перетягуваного елемента.
+      
       return {
         x: overlayRect.left - workspaceRect.left - panOffset.x,
         y: overlayRect.top - workspaceRect.top - panOffset.y,
@@ -129,7 +113,6 @@ function AlchemyPage() {
 
     const overInstance = workspaceElements.find(el => el.instanceId === over.id);
 
-    // --- Логіка комбінації ---
     if (overInstance && active.id !== over.id) {
       const isValidCombination =
         (activeElData.type === 'anime' && overInstance.type === 'anime') ||
@@ -140,7 +123,6 @@ function AlchemyPage() {
       }
 
       try {
-        setDropAnimation(null);
         const resultAnime = await combineItems(activeElData, overInstance);
         const newElement = mapApiAnimeToAnimeItem(resultAnime);
 
@@ -160,21 +142,17 @@ function AlchemyPage() {
         } else {
           showNotification(`Створено: ${newElement.name}`, "success");
         }
-        return; // Завершуємо виконання після комбінації
+        return;
       } catch (error) {
         console.error(error);
         showNotification("Поєднання не вдалося.", "error");
-        // Не повертаємо елемент на місце, щоб уникнути багів, просто нічого не робимо
         return;
       }
     }
 
     const isFromWorkspace = workspaceElements.some(el => el.instanceId === active.id);
 
-    // --- Логіка переміщення або додавання елемента ---
     if (isFromWorkspace) {
-      // Переміщення існуючого елемента
-      setDropAnimation(null);
       setWorkspaceElements(prev => prev.map(el =>
         el.instanceId === active.id
           ? { ...el, position: getCorrectedPosition() }
@@ -184,8 +162,6 @@ function AlchemyPage() {
     }
 
     if (over.id === 'workspace' || overInstance) {
-      // Додавання нового елемента з бічної панелі
-      setDropAnimation(null);
       const newWorkspaceElement: WorkspaceItem = { ...activeElData, instanceId: generateId(), position: getCorrectedPosition() };
       setWorkspaceElements(prev => [...prev, newWorkspaceElement]);
 
@@ -197,13 +173,19 @@ function AlchemyPage() {
 
   }, [workspaceElements, discoveredItems, panOffset]);
 
+  const onDragCancel = () => {
+    setCombinationTarget(null);
+    setActiveElement(null);
+    setDragSource(null);
+  };
+
   const clearWorkspace = () => {
     setWorkspaceElements([]);
     setPanOffset({ x: 0, y: 0 });
   };
 
   return (
-    <DndContext onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={() => setCombinationTarget(null)}>
+    <DndContext onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={onDragCancel}>
       <div className="flex flex-col md:flex-row h-screen bg-background text-foreground font-sans overflow-hidden">
         <ElementSidebar discoveredItems={discoveredItems} isOpen={isSidebarOpen} />
         <main className="flex flex-col flex-1 p-2 md:p-4 h-full">
@@ -218,9 +200,18 @@ function AlchemyPage() {
           </header>
           <Workspace ref={workspaceRef} elements={workspaceElements} combinationTarget={combinationTarget} panOffset={panOffset} setPanOffset={setPanOffset} />
         </main>
-        <DragOverlay dropAnimation={dropAnimation}>
-          {activeElement ? <DraggableElement element={activeElement} isOverlay combinationTarget={combinationTarget} /> : null}
+        
+        {/* --- ЗМІНА: Умовний рендеринг в DragOverlay --- */}
+        <DragOverlay dropAnimation={null}>
+          {activeElement ? (
+            dragSource === 'sidebar' ? (
+              <SidebarDraggableItem element={activeElement} isOverlay />
+            ) : (
+              <DraggableElement element={activeElement} isOverlay combinationTarget={combinationTarget} />
+            )
+          ) : null}
         </DragOverlay>
+
         <SidebarToggle isOpen={isSidebarOpen} onClick={() => setIsSidebarOpen(prev => !prev)} />
         {notification && (
           <Notification

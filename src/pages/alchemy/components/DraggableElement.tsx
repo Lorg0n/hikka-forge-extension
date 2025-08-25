@@ -19,7 +19,8 @@ export const DraggableElement = memo(function DraggableElement({
   
   const { attributes, listeners, setNodeRef: setDraggableNodeRef, isDragging } = useDraggable({
     id: idToUse,
-    data: { element },
+    // --- ЗМІНА: Додаємо джерело перетягування ---
+    data: { element, source: 'workspace' },
   });
 
   const { setNodeRef: setDroppableNodeRef } = useDroppable({
@@ -36,20 +37,16 @@ export const DraggableElement = memo(function DraggableElement({
   const isTargeted = combinationTarget?.id === idToUse;
   const isValidTarget = combinationTarget?.isValid;
 
-  // --- ОСЬ ЦЕ ВИПРАВЛЕННЯ ---
-  // Логіка для приховування ОРИГІНАЛЬНОГО елемента під час перетягування.
-  // Вона не повинна застосовуватися до копії, що летить за мишкою (isOverlay).
   const containerClasses = `
     bg-card border border-border rounded-xl shadow-lg cursor-grab active:cursor-grabbing 
     touch-none select-none transition-all duration-300 ease-out transform
     hover:shadow-xl hover:scale-105 hover:-translate-y-1
     ${isDragging && !isOverlay ? 'opacity-0 scale-95' : ''} 
-    ${isOverlay ? 'rotate-3 scale-110 shadow-2xl' : ''}
+    ${isOverlay ? 'scale-110 shadow-2xl' : ''}
     ${isTargeted && isValidTarget ? 'ring-4 ring-primary ring-opacity-50 scale-110 shadow-primary/25 shadow-xl' : ''}
     ${isTargeted && !isValidTarget ? 'ring-4 ring-destructive ring-opacity-50 scale-95 shadow-destructive/25' : ''}
     ${isAnime ? 'group overflow-hidden backdrop-blur-sm' : ''}
   `;
-  // Я змінив 'invisible' на 'opacity-0', що дає такий самий ефект, але може краще працювати з анімаціями.
 
   if (isAnime) {
     return (

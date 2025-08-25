@@ -5,24 +5,26 @@ import { DraggableItem } from '@/types';
 
 interface SidebarDraggableItemProps {
   element: DraggableItem;
+  isOverlay?: boolean; // Додано для стилізації в DragOverlay
 }
 
-export const SidebarDraggableItem = memo(function SidebarDraggableItem({ element }: SidebarDraggableItemProps) {
+export const SidebarDraggableItem = memo(function SidebarDraggableItem({ element, isOverlay = false }: SidebarDraggableItemProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: element.uniqueId,
-    data: { element },
+    // --- ЗМІНА: Додаємо джерело перетягування ---
+    data: { element, source: 'sidebar' },
   });
 
   const isAnime = element.type === 'anime';
 
-  // --- FIX: Added 'touch-action-pan-y' for mobile scroll and changed dragging style to 'invisible' ---
+  // --- ЗМІНА: Додано стилі для стану isOverlay ---
   const style = `
     relative flex flex-col items-center justify-center p-1 bg-card border border-border 
     rounded-lg shadow-sm aspect-square cursor-grab active:cursor-grabbing 
     select-none overflow-hidden touch-action-pan-y
     transition-all duration-200 ease-out transform
-    hover:bg-muted hover:shadow-md hover:scale-105
-    ${isDragging ? 'invisible' : ''} 
+    ${isOverlay ? 'scale-125 shadow-xl' : 'hover:bg-muted hover:shadow-md hover:scale-105'}
+    ${isDragging && !isOverlay ? 'invisible' : ''} 
   `;
 
   return (

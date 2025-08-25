@@ -1,3 +1,4 @@
+// File: /home/lorgon/hikka-forge-extension/src/pages/alchemy/AlchemyPage.tsx
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   DndContext, DragEndEvent, DragOverEvent, DragStartEvent, DragOverlay,
@@ -7,6 +8,7 @@ import { ElementSidebar } from './components/ElementSidebar';
 import { Workspace } from './components/Workspace';
 import { SidebarToggle } from './components/SidebarToggle';
 import { DraggableElement } from './components/DraggableElement';
+import { Notification } from './components/Notification'; // Import the new Notification component
 import { DraggableItem, WorkspaceItem, CombinationTarget, AlchemyItem, AnimeItem, AnimeCombinationResultItem, AlchemyElementItem } from '@/types';
 import { fetchAlchemyElements, combineItems } from '@/services/alchemyService';
 import { generateId } from './utils'; // Assuming you have this util
@@ -28,14 +30,11 @@ const mapApiAnimeToAnimeItem = (apiAnime: AnimeCombinationResultItem): AnimeItem
   imageUrl: apiAnime.imageUrl,
 });
 
-const defaultDropAnimation: DropAnimation = {
-  sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.5' } } }),
-};
-
 function AlchemyPage() {
   const [discoveredItems, setDiscoveredItems] = useState<DraggableItem[]>([]);
   const [workspaceElements, setWorkspaceElements] = useState<WorkspaceItem[]>([]);
   const [notification, setNotification] = useState<string | null>(null);
+  const [notificationType, setNotificationType] = useState<'success' | 'error'>('success'); // ADDED: State for notification type
   const [activeElement, setActiveElement] = useState<DraggableItem | null>(null);
   const [combinationTarget, setCombinationTarget] = useState<CombinationTarget | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -49,7 +48,7 @@ function AlchemyPage() {
         setDiscoveredItems(content.map(mapApiElementToAlchemyItem));
       } catch (error) {
         console.error(error);
-        showNotification("Не вдалося завантажити елементи.");
+        showNotification("Не вдалося завантажити елементи.", "error"); // MODIFIED: Pass type
       }
     }
     loadInitialData();
@@ -68,13 +67,15 @@ function AlchemyPage() {
 
   const [dropAnimation, setDropAnimation] = useState<DropAnimation | null>(defaultDropAnimation);
 
-  const showNotification = (message: string) => {
+  // MODIFIED: showNotification to accept a type
+  const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
     setNotification(message);
+    setNotificationType(type); // Set the notification type
     setTimeout(() => setNotification(null), 3000);
   };
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
-    setDropAnimation(defaultDropAnimation); // <-- ADD THIS LINE
+    setDropAnimation(defaultDropAnimation);
     setActiveElement(event.active.data.current?.element as DraggableItem);
     if (window.innerWidth < 768) setIsSidebarOpen(false);
   }, []);
@@ -162,12 +163,14 @@ function AlchemyPage() {
 
         if (!discoveredItems.find(el => el.uniqueId === newElement.uniqueId)) {
           setDiscoveredItems(prev => [...prev, newElement].sort((a, b) => a.name.localeCompare(b.name)));
-          showNotification(`Нове відкриття! Знайдено: ${newElement.name}`);
+          showNotification(`🎉 Нове відкриття! Знайдено: ${newElement.name}`, "success"); // MODIFIED: Pass type
+        } else {
+          showNotification(`Створено: ${newElement.name}`, "success"); // Also show success for existing combinations
         }
         return;
       } catch (error) {
         console.error(error);
-        showNotification("Поєднання не вдалося.");
+        showNotification("Поєднання не вдалося.", "error"); // MODIFIED: Pass type
       }
     }
 
@@ -184,11 +187,20 @@ function AlchemyPage() {
       return;
     }
 
-    // Adding from sidebar logic (uses getCorrectedPosition)
+    // --- MODIFIED: Adding from sidebar logic (uses getCorrectedPosition) ---
+    // This now handles both initial elements and searched anime elements
     if (over.id === 'workspace' || overInstance) {
       setDropAnimation(null);
-      const newElement: WorkspaceItem = { ...activeElData, instanceId: generateId(), position: getCorrectedPosition() };
-      setWorkspaceElements(prev => [...prev, newElement]);
+      // Create a new instance for the workspace
+      const newWorkspaceElement: WorkspaceItem = { ...activeElData, instanceId: generateId(), position: getCorrectedPosition() };
+      setWorkspaceElements(prev => [...prev, newWorkspaceElement]);
+
+      // Check if this element is a new discovery to add to the sidebar's discoveredItems
+      // This applies to both initial base elements and newly searched anime.
+      if (!discoveredItems.some(el => el.uniqueId === activeElData.uniqueId)) {
+        setDiscoveredItems(prev => [...prev, activeElData].sort((a, b) => a.name.localeCompare(b.name)));
+        showNotification(`Новий елемент: ${activeElData.name} додано до ваших відкриттів!`, "success");
+      }
     }
 
   }, [workspaceElements, discoveredItems, panOffset]);
@@ -215,13 +227,16 @@ function AlchemyPage() {
           <Workspace ref={workspaceRef} elements={workspaceElements} combinationTarget={combinationTarget} panOffset={panOffset} setPanOffset={setPanOffset} />
         </main>
         <DragOverlay dropAnimation={dropAnimation}>
-          {activeElement ? <DraggableElement element={activeElement} isOverlay /> : null}
+          {activeElement ? <DraggableElement element={activeElement} isOverlay combinationTarget={combinationTarget} /> : null}
         </DragOverlay>
         <SidebarToggle isOpen={isSidebarOpen} onClick={() => setIsSidebarOpen(prev => !prev)} />
         {notification && (
-          <div className="fixed bottom-24 right-5 md:bottom-5 p-4 bg-primary text-primary-foreground rounded-lg shadow-lg animate-pulse z-50">
-            {notification}
-          </div>
+          // REPLACED: With the new Notification component
+          <Notification
+            message={notification}
+            type={notificationType}
+            onClose={() => setNotification(null)}
+          />
         )}
       </div>
     </DndContext>

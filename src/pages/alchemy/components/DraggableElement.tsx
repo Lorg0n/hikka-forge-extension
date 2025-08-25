@@ -1,6 +1,7 @@
 import React from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { DraggableItem, CombinationTarget } from '@/types'; // <-- UPDATED IMPORT
+import { Sparkles } from 'lucide-react';
+import { DraggableItem, CombinationTarget } from '@/types';
 
 interface DraggableElementProps {
   element: DraggableItem & { instanceId?: string };
@@ -8,14 +9,13 @@ interface DraggableElementProps {
   combinationTarget?: CombinationTarget | null;
 }
 
-// ... rest of the component code is identical to my previous answer
 export function DraggableElement({ 
   element, 
   isOverlay = false, 
   combinationTarget 
 }: DraggableElementProps) {
   const idToUse = element.instanceId || element.uniqueId;
-
+  
   const { attributes, listeners, setNodeRef: setDraggableNodeRef, isDragging } = useDraggable({
     id: idToUse,
     data: { element },
@@ -31,45 +31,92 @@ export function DraggableElement({
     setDroppableNodeRef(node);
   };
 
-  const style: React.CSSProperties = {
-    pointerEvents: isOverlay ? 'none' : 'auto',
-  };
+  const isAnime = element.type === 'anime';
+  const isTargeted = combinationTarget?.id === idToUse;
+  const isValidTarget = combinationTarget?.isValid;
 
-  const isTarget = combinationTarget?.id === idToUse;
-  let highlightClass = '';
-  if (isTarget) {
-    highlightClass = combinationTarget.isValid
-      ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
-      : 'ring-2 ring-destructive ring-offset-2 ring-offset-background';
-  }
+  // Enhanced animations and effects
+  const containerClasses = `
+    bg-card border border-border rounded-xl shadow-lg cursor-grab active:cursor-grabbing 
+    touch-none select-none transition-all duration-300 ease-out transform
+    hover:shadow-xl hover:scale-105 hover:-translate-y-1
+    ${isDragging && !isOverlay ? 'invisible scale-95' : 'visible'}
+    ${isOverlay ? 'rotate-3 scale-110 shadow-2xl' : ''}
+    ${isTargeted && isValidTarget ? 'ring-4 ring-primary ring-opacity-50 scale-110 shadow-primary/25 shadow-xl' : ''}
+    ${isTargeted && !isValidTarget ? 'ring-4 ring-destructive ring-opacity-50 scale-95 shadow-destructive/25' : ''}
+    ${isAnime ? 'group overflow-hidden backdrop-blur-sm' : ''}
+  `;
 
-  const baseClasses = "flex flex-col items-center justify-center p-1 text-center bg-card border border-border rounded-lg shadow-sm cursor-grab active:cursor-grabbing touch-none select-none w-16 h-16 transition-all duration-150";
-  const dynamicClasses = isDragging && !isOverlay ? 'invisible' : 'visible';
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...listeners}
-      {...attributes}
-      className={`${baseClasses} ${dynamicClasses} ${highlightClass}`}
-      title={element.name}
-    >
-      <div className="w-10 h-10 flex items-center justify-center pointer-events-none">
-          {element.imageUrl ? (
-            <img 
-              src={element.imageUrl} 
-              alt={element.name} 
-              className="max-w-full max-h-full object-contain rounded-sm"
+  if (isAnime) {
+    return (
+      <div 
+        ref={setNodeRef}
+        {...listeners}
+        {...attributes}
+        className={containerClasses}
+        style={{ pointerEvents: isOverlay ? 'none' : 'auto' }}
+        title={element.name}
+      >
+        <div className="relative w-24 h-32 text-white overflow-hidden">
+          {/* Background with parallax effect */}
+          <div className="absolute inset-0 transform group-hover:scale-110 transition-transform duration-500">
+            <img
+              src={element.imageUrl || ''}
+              alt={element.name}
+              className="w-full h-full object-cover"
               draggable="false"
             />
-          ) : (
-            <span className="text-2xl">?</span>
-          )}
+          </div>
+          
+          {/* Enhanced gradient with shimmer effect */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-30 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-all duration-700" />
+          
+          {/* Floating particles effect */}
+          <div className="absolute top-2 right-2 opacity-70">
+            <Sparkles className="w-3 h-3 animate-pulse" />
+          </div>
+          
+          {/* Text with enhanced styling */}
+          <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
+            <span className="text-xs font-bold leading-tight line-clamp-2 drop-shadow-lg">
+              {element.name}
+            </span>
+          </div>
+        </div>
       </div>
-      <span className="text-xs text-muted-foreground pointer-events-none truncate w-full mt-1">
-        {element.name}
-      </span>
+    );
+  }
+
+  return (
+    <div 
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={containerClasses}
+      style={{ pointerEvents: isOverlay ? 'none' : 'auto' }}
+      title={element.name}
+    >
+      <div className="flex flex-col items-center justify-center w-20 h-20 p-2 group">
+        <div className="w-12 h-12 flex items-center justify-center mb-1 relative">
+          {element.imageUrl ? (
+            <>
+              <img
+                src={element.imageUrl}
+                alt={element.name}
+                className="max-w-full max-h-full object-contain filter group-hover:brightness-110 transition-all duration-200"
+                draggable="false"
+              />
+              <div className="absolute inset-0 rounded-full bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+            </>
+          ) : (
+            <span className="text-2xl group-hover:scale-110 transition-transform duration-200">❓</span>
+          )}
+        </div>
+        <span className="text-xs text-muted-foreground font-medium truncate w-full text-center group-hover:text-foreground transition-colors duration-200">
+          {element.name}
+        </span>
+      </div>
     </div>
   );
 }

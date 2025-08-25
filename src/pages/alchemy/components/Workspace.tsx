@@ -1,3 +1,4 @@
+// File: /home/lorgon/hikka-forge-extension/src/pages/alchemy/components/Workspace.tsx
 import React, { useState, useRef } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { Sparkles } from 'lucide-react';
@@ -44,44 +45,41 @@ export const Workspace = React.forwardRef<HTMLDivElement, WorkspaceProps>(
       setIsGrabbing(false);
     };
 
-    // Enhanced grid with animated pattern
-    const gridStyle: React.CSSProperties = {
+    // --- НОВИЙ ПІДХІД ДО СТИЛІВ ---
+    // Тепер всі стилі, що рухаються, знаходяться в одному об'єкті
+    const panContainerStyle: React.CSSProperties = {
+      // Розміри контейнера робимо значно більшими за екран, щоб фон не закінчувався
+      width: '400vw',
+      height: '400vh',
+      // Позиціонуємо його так, щоб початковий вигляд був у центрі
+      top: '-150vh',
+      left: '-150vw',
+      // Властивість transform рухає і контейнер, і його фон одночасно
+      transform: `translate(${panOffset.x}px, ${panOffset.y}px)`,
+      willChange: 'transform',
+      // Стилі для сітки тепер застосовуються безпосередньо до контейнера, що рухається
       backgroundImage: `
         radial-gradient(circle at 25px 25px, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
         linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
         linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px)
       `,
       backgroundSize: '50px 50px, 50px 50px, 50px 50px',
-      backgroundPosition: `${panOffset.x}px ${panOffset.y}px`,
     };
 
     return (
+      // Батьківський контейнер тепер є просто "рамкою" з overflow: hidden
       <div
         ref={setRefs}
         className={`
           relative flex-1 h-full bg-gradient-to-br from-background via-background to-muted/20 
           rounded-2xl overflow-hidden border border-border/50 shadow-inner
           ${isGrabbing ? 'cursor-grabbing' : 'cursor-grab'}
-          transition-all duration-200
         `}
-        style={gridStyle}
-        onMouseDown={(e) => {
-          if (e.target === e.currentTarget) handlePanStart(e.clientX, e.clientY);
-        }}
-        onMouseMove={(e) => handlePanMove(e.clientX, e.clientY)}
-        onMouseUp={handlePanEnd}
-        onMouseLeave={handlePanEnd}
-        onTouchStart={(e) => {
-          if (e.target === e.currentTarget) {
-            handlePanStart(e.touches[0].clientX, e.touches[0].clientY);
-          }
-        }}
-        onTouchMove={(e) => handlePanMove(e.touches[0].clientX, e.touches[0].clientY)}
-        onTouchEnd={handlePanEnd}
       >
-        {/* Workspace hint overlay when empty */}
+        {/* Підказка, коли поле порожнє */}
         {elements.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            {/* ... (код підказки залишається без змін) ... */}
             <div className="text-center max-w-md mx-auto p-8">
               <div className="relative">
                 <Sparkles className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30 animate-pulse" />
@@ -97,20 +95,39 @@ export const Workspace = React.forwardRef<HTMLDivElement, WorkspaceProps>(
           </div>
         )}
 
-        {/* Enhanced elements with stagger animation */}
-        {elements.map((element, index) => (
-          <div
-            key={element.instanceId}
-            className="absolute transition-all duration-200 ease-out"
-            style={{
-              left: `${element.position.x + panOffset.x}px`,
-              top: `${element.position.y + panOffset.y}px`,
-              animationDelay: `${index * 50}ms`,
-            }}
-          >
-            <DraggableElement element={element} combinationTarget={combinationTarget} />
-          </div>
-        ))}
+        {/* Внутрішній контейнер, який рухається. На ньому і фон, і елементи */}
+        <div
+          className="absolute"
+          style={panContainerStyle}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) handlePanStart(e.clientX, e.clientY);
+          }}
+          onMouseMove={(e) => handlePanMove(e.clientX, e.clientY)}
+          onMouseUp={handlePanEnd}
+          onMouseLeave={handlePanEnd}
+          onTouchStart={(e) => {
+            if (e.target === e.currentTarget) {
+              handlePanStart(e.touches[0].clientX, e.touches[0].clientY);
+            }
+          }}
+          onTouchMove={(e) => handlePanMove(e.touches[0].clientX, e.touches[0].clientY)}
+          onTouchEnd={handlePanEnd}
+        >
+          {elements.map((element, index) => (
+            <div
+              key={element.instanceId}
+              className="absolute transition-all duration-200 ease-out"
+              style={{
+                // Позиція елемента тепер відносна до ВЕЛИКОГО контейнера
+                left: `calc(150vw + ${element.position.x}px)`,
+                top: `calc(150vh + ${element.position.y}px)`,
+                animationDelay: `${index * 50}ms`,
+              }}
+            >
+              <DraggableElement element={element} combinationTarget={combinationTarget} />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

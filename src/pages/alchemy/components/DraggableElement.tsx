@@ -1,4 +1,5 @@
-import React from 'react';
+// File: /home/lorgon/hikka-forge-extension/src/pages/alchemy/components/DraggableElement.tsx
+import React, { memo } from 'react'; // <--- Додано 'memo'
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { Sparkles } from 'lucide-react';
 import { DraggableItem, CombinationTarget } from '@/types';
@@ -9,7 +10,8 @@ interface DraggableElementProps {
   combinationTarget?: CombinationTarget | null;
 }
 
-export function DraggableElement({ 
+// <--- Компонент обгорнуто в React.memo
+export const DraggableElement = memo(function DraggableElement({
   element, 
   isOverlay = false, 
   combinationTarget 
@@ -119,4 +121,4 @@ export function DraggableElement({
       </div>
     </div>
   );
-}
+}); // <--- Закриття memo

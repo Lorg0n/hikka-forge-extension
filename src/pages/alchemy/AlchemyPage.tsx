@@ -8,10 +8,10 @@ import { ElementSidebar } from './components/ElementSidebar';
 import { Workspace } from './components/Workspace';
 import { SidebarToggle } from './components/SidebarToggle';
 import { DraggableElement } from './components/DraggableElement';
-import { Notification } from './components/Notification'; // Import the new Notification component
+import { Notification } from './components/Notification';
 import { DraggableItem, WorkspaceItem, CombinationTarget, AlchemyItem, AnimeItem, AnimeCombinationResultItem, AlchemyElementItem } from '@/types';
 import { fetchAlchemyElements, combineItems } from '@/services/alchemyService';
-import { generateId } from './utils'; // Assuming you have this util
+import { generateId } from './utils';
 
 // --- Mapper Functions ---
 const mapApiElementToAlchemyItem = (apiElement: AlchemyElementItem): AlchemyItem => ({
@@ -34,7 +34,7 @@ function AlchemyPage() {
   const [discoveredItems, setDiscoveredItems] = useState<DraggableItem[]>([]);
   const [workspaceElements, setWorkspaceElements] = useState<WorkspaceItem[]>([]);
   const [notification, setNotification] = useState<string | null>(null);
-  const [notificationType, setNotificationType] = useState<'success' | 'error'>('success'); // ADDED: State for notification type
+  const [notificationType, setNotificationType] = useState<'success' | 'error'>('success');
   const [activeElement, setActiveElement] = useState<DraggableItem | null>(null);
   const [combinationTarget, setCombinationTarget] = useState<CombinationTarget | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -48,12 +48,11 @@ function AlchemyPage() {
         setDiscoveredItems(content.map(mapApiElementToAlchemyItem));
       } catch (error) {
         console.error(error);
-        showNotification("Не вдалося завантажити елементи.", "error"); // MODIFIED: Pass type
+        showNotification("Не вдалося завантажити елементи.", "error");
       }
     }
     loadInitialData();
   }, []);
-
 
   const defaultDropAnimation: DropAnimation = {
     sideEffects: defaultDropAnimationSideEffects({
@@ -67,10 +66,9 @@ function AlchemyPage() {
 
   const [dropAnimation, setDropAnimation] = useState<DropAnimation | null>(defaultDropAnimation);
 
-  // MODIFIED: showNotification to accept a type
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
     setNotification(message);
-    setNotificationType(type); // Set the notification type
+    setNotificationType(type);
     setTimeout(() => setNotification(null), 3000);
   };
 
@@ -82,7 +80,6 @@ function AlchemyPage() {
 
   const handleDragOver = useCallback((event: DragOverEvent) => {
     const { active, over } = event;
-    // FIX: Add null check for 'over'
     if (!over || active.id === over.id) {
       setCombinationTarget(null);
       return;
@@ -102,40 +99,37 @@ function AlchemyPage() {
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     setCombinationTarget(null);
     setActiveElement(null);
-    const { active, over, delta } = event;
+    const { active, over } = event;
     const activeElData = active.data.current?.element as DraggableItem;
 
     if (!over || !activeElData) return;
 
-    // This function is now ONLY for adding new items or moving existing ones.
+    // --- ВИПРАВЛЕНА ЛОГІКА РОЗРАХУНКУ ПОЗИЦІЇ ---
+    // Ця функція тепер працює коректно як для нових, так і для існуючих елементів,
+    // навіть з трансформованим батьківським контейнером.
     const getCorrectedPosition = () => {
       const workspaceNode = workspaceRef.current;
-      if (!workspaceNode) return { x: 100, y: 100 };
-
-      const workspaceRect = workspaceNode.getBoundingClientRect();
       const overlayRect = active.rect.current.translated;
 
-      if (overlayRect) {
-        return {
-          x: overlayRect.left - workspaceRect.left - panOffset.x,
-          y: overlayRect.top - workspaceRect.top - panOffset.y,
-        };
+      if (!workspaceNode || !overlayRect) {
+        // Запасний варіант, якщо щось піде не так
+        const existingItem = workspaceElements.find(el => el.instanceId === active.id);
+        return existingItem ? existingItem.position : { x: 100, y: 100 };
       }
 
-      const existingItem = workspaceElements.find(el => el.instanceId === active.id);
-      if (existingItem) {
-        return {
-          x: existingItem.position.x + delta.x,
-          y: existingItem.position.y + delta.y,
-        }
-      }
+      const workspaceRect = workspaceNode.getBoundingClientRect();
 
-      return { x: 100, y: 100 };
+      // Розраховуємо локальну позицію, віднімаючи позицію робочої області та зсув панорамування
+      // від абсолютної позиції перетягуваного елемента.
+      return {
+        x: overlayRect.left - workspaceRect.left - panOffset.x,
+        y: overlayRect.top - workspaceRect.top - panOffset.y,
+      };
     };
 
     const overInstance = workspaceElements.find(el => el.instanceId === over.id);
 
-    // --- MODIFIED COMBINATION LOGIC ---
+    // --- Логіка комбінації ---
     if (overInstance && active.id !== over.id) {
       const isValidCombination =
         (activeElData.type === 'anime' && overInstance.type === 'anime') ||
@@ -152,32 +146,34 @@ function AlchemyPage() {
 
         setWorkspaceElements(prev => prev.filter(el => el.instanceId !== active.id && el.instanceId !== over.id));
 
-        // FIX: The new element's position should be the position of the TARGET element.
         const newWorkspaceElement: WorkspaceItem = {
           ...newElement,
           instanceId: generateId(),
-          position: overInstance.position // <-- THIS IS THE KEY CHANGE
+          position: overInstance.position
         };
 
         setWorkspaceElements(prev => [...prev, newWorkspaceElement]);
 
         if (!discoveredItems.find(el => el.uniqueId === newElement.uniqueId)) {
           setDiscoveredItems(prev => [...prev, newElement].sort((a, b) => a.name.localeCompare(b.name)));
-          showNotification(`🎉 Нове відкриття! Знайдено: ${newElement.name}`, "success"); // MODIFIED: Pass type
+          showNotification(`🎉 Нове відкриття! Знайдено: ${newElement.name}`, "success");
         } else {
-          showNotification(`Створено: ${newElement.name}`, "success"); // Also show success for existing combinations
+          showNotification(`Створено: ${newElement.name}`, "success");
         }
-        return;
+        return; // Завершуємо виконання після комбінації
       } catch (error) {
         console.error(error);
-        showNotification("Поєднання не вдалося.", "error"); // MODIFIED: Pass type
+        showNotification("Поєднання не вдалося.", "error");
+        // Не повертаємо елемент на місце, щоб уникнути багів, просто нічого не робимо
+        return;
       }
     }
 
     const isFromWorkspace = workspaceElements.some(el => el.instanceId === active.id);
 
-    // Moving existing item logic (uses getCorrectedPosition)
+    // --- Логіка переміщення або додавання елемента ---
     if (isFromWorkspace) {
+      // Переміщення існуючого елемента
       setDropAnimation(null);
       setWorkspaceElements(prev => prev.map(el =>
         el.instanceId === active.id
@@ -187,16 +183,12 @@ function AlchemyPage() {
       return;
     }
 
-    // --- MODIFIED: Adding from sidebar logic (uses getCorrectedPosition) ---
-    // This now handles both initial elements and searched anime elements
     if (over.id === 'workspace' || overInstance) {
+      // Додавання нового елемента з бічної панелі
       setDropAnimation(null);
-      // Create a new instance for the workspace
       const newWorkspaceElement: WorkspaceItem = { ...activeElData, instanceId: generateId(), position: getCorrectedPosition() };
       setWorkspaceElements(prev => [...prev, newWorkspaceElement]);
 
-      // Check if this element is a new discovery to add to the sidebar's discoveredItems
-      // This applies to both initial base elements and newly searched anime.
       if (!discoveredItems.some(el => el.uniqueId === activeElData.uniqueId)) {
         setDiscoveredItems(prev => [...prev, activeElData].sort((a, b) => a.name.localeCompare(b.name)));
         showNotification(`Новий елемент: ${activeElData.name} додано до ваших відкриттів!`, "success");
@@ -231,7 +223,6 @@ function AlchemyPage() {
         </DragOverlay>
         <SidebarToggle isOpen={isSidebarOpen} onClick={() => setIsSidebarOpen(prev => !prev)} />
         {notification && (
-          // REPLACED: With the new Notification component
           <Notification
             message={notification}
             type={notificationType}

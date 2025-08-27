@@ -255,7 +255,7 @@ const customColorsModule: ForgeModuleDef = {
 			label: "Основний колір тексту",
 			description: "Колір тексту на основних елементах.",
 			type: "colorPicker",
-			defaultValue: "#EC70BB",
+			defaultValue: "#7098ec",
 		},
 		{
 			id: "primaryBorderColor",

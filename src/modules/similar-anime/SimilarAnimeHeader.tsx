@@ -25,7 +25,7 @@ export const SimilarAnimeHeader = () => (
                     <p className="mt-2 text-sm">
                         <Link
                             href="https://hikka.io/articles?page=1&tags=embedding&tags=forge"
-                            className="text-primary underline hover:text-primary/80"
+                            className="text-muted-foreground underline hover:muted-foreground/80"
                         >
                             Більш детально механізм розписаний в серії статей
                         </Link>

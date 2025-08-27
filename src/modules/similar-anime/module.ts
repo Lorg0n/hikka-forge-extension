@@ -8,7 +8,7 @@ const userCommentModule: ForgeModuleDef = {
   urlPatterns: ['https://hikka.io/anime/*'],
   enabledByDefault: true,
   elementSelector: {
-    selector: 'div.order-2.flex.flex-col.gap-12',
+    selector: 'div[class="flex flex-col gap-12 lg:col-span-2"]',
     position: 'append',
   },
   component: SimilarAnimeComponent,

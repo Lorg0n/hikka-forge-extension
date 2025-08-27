@@ -30,7 +30,7 @@ class ModuleManager {
 		this.startUrlPolling();
 		this.initMessageListener();
 		console.log("[Hikka Forge] Module Manager initialized");
-		setTimeout(() => this.requestInitialStates(), 500);
+		this.registerWithBackground();
 	}
 	private loadModuleDefinitions(): void {
 		console.log("[Hikka Forge] Loading module definitions...");
@@ -56,35 +56,15 @@ class ModuleManager {
 			}
 		}
 	}
-	private requestInitialStates(): void {
-		console.log(
-			"[Hikka Forge] Requesting initial module states from background..."
-		);
-		chrome.runtime
-			.sendMessage({ type: "GET_MODULE_DEFINITIONS" })
-			.then((response) => {
-				if (response?.success && response.modules) {
-					console.log(
-						"[Hikka Forge] Received initial states:",
-						response.modules
-					);
-					const states: Record<string, boolean> = {};
-					response.modules.forEach((modInfo: ModuleInfo) => {
-						states[modInfo.id] = modInfo.enabled;
-					});
-					this.syncModuleStates(states, (response as any).moduleSettings || {});
-				} else {
-					console.warn(
-						"[Hikka Forge] Failed to get initial module states from background.",
-						response?.error
-					);
-					this.evaluateModulesForCurrentUrl();
-				}
-			})
-			.catch((error) => {
-				console.error("[Hikka Forge] Error requesting initial states:", error);
-				this.evaluateModulesForCurrentUrl();
-			});
+	private registerWithBackground(): void {
+		console.log("[Hikka Forge] Registering with background script...");
+		const modulesInfo = this.getModulesInfo();
+		chrome.runtime.sendMessage({
+			type: "REGISTER_CONTENT_SCRIPT",
+			modules: modulesInfo
+		}).catch(error => {
+			console.error("[Hikka Forge] Failed to register with background script:", error);
+		});
 	}
 	private syncModuleStates(
 		enabledStates: Record<string, boolean>,

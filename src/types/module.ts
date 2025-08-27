@@ -126,12 +126,18 @@ interface SyncModulesMessage {
 	moduleSettings: Record<string, Record<string, any>>;
 }
 
+interface RegisterContentScriptMessage {
+    type: "REGISTER_CONTENT_SCRIPT";
+    modules: ModuleInfo[];
+}
+
 export type BackgroundMessage =
 	| ModuleToggleAction
 	| ModuleUpdateSettingAction
 	| ModuleRefreshAction
 	| GetModuleDefinitions
-	| GetContentModulesInfo;
+	| GetContentModulesInfo
+    | RegisterContentScriptMessage;
 
 export type ContentMessage =
 	| ModuleRefreshAction

@@ -82,7 +82,16 @@ class BackgroundManager {
 			(message: BackgroundMessage | any, sender, sendResponse) => {
 				let isAsync = false;
 
-				if (message.type === "GET_MODULE_DEFINITIONS") {
+				if (message.type === "REGISTER_CONTENT_SCRIPT") {
+					console.log(`[Hikka Forge] Content script from tab ${sender.tab?.id} registered with ${message.modules.length} modules.`);
+					isAsync = true;
+					this.handleContentScriptRegistration(message.modules, sender.tab?.id)
+						.then(() => sendResponse({ success: true }))
+						.catch(error => {
+							console.error("[Hikka Forge] Error handling content script registration:", error);
+							sendResponse({ success: false, error: String(error) });
+						});
+				} else if (message.type === "GET_MODULE_DEFINITIONS") {
 					isAsync = true;
 					this.getModuleDefinitionsWithState()
 						.then((result) =>
@@ -187,6 +196,19 @@ class BackgroundManager {
 		}
 	}
 
+	private async handleContentScriptRegistration(modules: ModuleInfo[], tabId?: number): Promise<void> {
+		if (!moduleDefinitionsCache || moduleDefinitionsCache.length === 0) {
+			console.log("[Hikka Forge] Populating module definition cache from registration.");
+			moduleDefinitionsCache = modules.map(m => ({ ...m, enabled: false })); 
+			cacheTimestamp = Date.now();
+		}
+
+		if (tabId) {
+			console.log(`[Hikka Forge] Immediately syncing tab ${tabId} after registration.`);
+			await this.sendSyncMessageToTab(tabId);
+		}
+	}
+
 	private async updateModuleSetting(
 		moduleId: string,
 		settingId: string,
@@ -288,18 +310,17 @@ class BackgroundManager {
 		}
 	}
 
-	private async fetchModuleDefinitionsFromContentScript(): Promise<
-		ModuleInfo[]
-	> {
+	private async fetchModuleDefinitionsFromContentScript(): Promise<ModuleInfo[]> {
 		const tabs = await chrome.tabs.query({
 			url: "https://hikka.io/*",
 			status: "complete",
 		});
 
 		if (tabs.length === 0) {
-			throw new Error(
-				"Failed to fetch module definitions. No active Hikka tabs found or loaded."
+			console.warn(
+				"[Hikka Forge] Could not find active Hikka tabs to request module definitions. Waiting for a tab to register itself."
 			);
+			return [];
 		}
 
 		for (const tab of tabs) {
@@ -311,6 +332,7 @@ class BackgroundManager {
 					const response = await chrome.tabs.sendMessage(tab.id, {
 						type: "GET_CONTENT_MODULES_INFO",
 					} as ContentMessage);
+					
 					if (response?.success && Array.isArray(response.modules)) {
 						console.log(
 							`[Hikka Forge] Received module info from tab ${tab.id}:`,
@@ -321,7 +343,7 @@ class BackgroundManager {
 							id: m.id,
 							name: m.name,
 							description: m.description,
-							enabled: false,
+							enabled: false, 
 							urlPatterns: m.urlPatterns,
 							settings: m.settings || [],
 							enabledByDefault: m.enabledByDefault, 
@@ -345,9 +367,11 @@ class BackgroundManager {
 				}
 			}
 		}
-		throw new Error(
-			"Failed to fetch module definitions from any active Hikka tab."
+
+		console.error(
+			"[Hikka Forge] Failed to get module definitions from any active tab. They may still be loading. Waiting for registration."
 		);
+		return [];
 	}
 
 	private async syncTabIfNeeded(tabId: number): Promise<void> {

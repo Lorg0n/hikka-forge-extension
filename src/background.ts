@@ -13,7 +13,7 @@ class BackgroundManager {
 		new Map();
 
 	constructor() {
-		this.initWebNavigationListeners();
+		// this.initWebNavigationListeners();
 		this.initTabsListeners();
 		this.initMessageListener();
 		this.initInstallAndUpdateListeners();
@@ -22,49 +22,46 @@ class BackgroundManager {
 		this.primeModuleDefinitionsCache();
 	}
 
-	private initWebNavigationListeners(): void {
-		chrome.webNavigation.onHistoryStateUpdated.addListener(
-			(details) => {
-				if (
-					details.frameId === 0 &&
-					details.url.startsWith("https://hikka.io/")
-				) {
-					this.handleUrlChange(details.tabId, details.url);
-				}
-			},
-			{ url: [{ hostEquals: "hikka.io" }] }
-		);
+	// private initWebNavigationListeners(): void {
+	// 	chrome.webNavigation.onHistoryStateUpdated.addListener(
+	// 		(details) => {
+	// 			if (
+	// 				details.frameId === 0 &&
+	// 				details.url.startsWith("https://hikka.io/")
+	// 			) {
+	// 				this.handleUrlChange(details.tabId, details.url);
+	// 			}
+	// 		},
+	// 		{ url: [{ hostEquals: "hikka.io" }] }
+	// 	);
 
-		chrome.webNavigation.onCompleted.addListener(
-			(details) => {
-				if (
-					details.frameId === 0 &&
-					details.url.startsWith("https://hikka.io/")
-				) {
-					this.handleUrlChange(details.tabId, details.url);
-				}
-			},
-			{ url: [{ hostEquals: "hikka.io" }] }
-		);
-	}
+	// 	chrome.webNavigation.onCompleted.addListener(
+	// 		(details) => {
+	// 			if (
+	// 				details.frameId === 0 &&
+	// 				details.url.startsWith("https://hikka.io/")
+	// 			) {
+	// 				this.handleUrlChange(details.tabId, details.url);
+	// 			}
+	// 		},
+	// 		{ url: [{ hostEquals: "hikka.io" }] }
+	// 	);
+	// }
 
 	private initTabsListeners(): void {
 		chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-			if (changeInfo.url && tab.url?.startsWith("https://hikka.io/")) {
-				this.handleUrlChange(tabId, tab.url);
-			}
-
 			if (
 				changeInfo.status === "complete" &&
 				tab.url?.startsWith("https://hikka.io/")
 			) {
-				this.syncTabIfNeeded(tabId);
+				this.syncTabIfNeeded(tabId); 
 			}
-		});
+		}
+	);
 
-		chrome.tabs.onRemoved.addListener((tabId) => {
-			this.tabStates.delete(tabId);
-		});
+    chrome.tabs.onRemoved.addListener((tabId) => {
+        this.tabStates.delete(tabId);
+    });
 	}
 
 	private initInstallAndUpdateListeners(): void {
@@ -161,19 +158,19 @@ class BackgroundManager {
 		);
 	}
 
-	private handleUrlChange(tabId: number, url: string): void {
-		const now = Date.now();
-		const tabState = this.tabStates.get(tabId);
+	// private handleUrlChange(tabId: number, url: string): void {
+	// 	const now = Date.now();
+	// 	const tabState = this.tabStates.get(tabId);
 
-		if (tabState && tabState.url === url && now - tabState.lastChecked < 500) {
-			return;
-		}
+	// 	if (tabState && tabState.url === url && now - tabState.lastChecked < 500) {
+	// 		return;
+	// 	}
 
-		console.log(`[Hikka Forge] URL change detected for tab ${tabId}: ${url}`);
-		this.tabStates.set(tabId, { url, lastChecked: now });
+	// 	console.log(`[Hikka Forge] URL change detected for tab ${tabId}: ${url}`);
+	// 	this.tabStates.set(tabId, { url, lastChecked: now });
 
-		this.syncTabIfNeeded(tabId);
-	}
+	// 	this.syncTabIfNeeded(tabId);
+	// }
 
 	private async toggleModuleState(
 		moduleId: string,

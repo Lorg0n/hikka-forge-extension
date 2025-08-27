@@ -14,8 +14,7 @@ function hexToHsl(hex: string): string {
 		g = parseInt(hex.substring(3, 5), 16);
 		b = parseInt(hex.substring(5, 7), 16);
 	} else {
-		console.warn(`[Hikka Forge] Invalid HEX color format: ${hex}`);
-		return "0, 0%, 0%"; 
+		return "0, 0%, 0%";
 	}
 
 	r /= 255;
@@ -73,74 +72,112 @@ const customColorsModule: ForgeModuleDef = {
 			return hexToHsl(hexColor).replace(/,/g, " ");
 		};
 
-		const primaryHsl = getHslCssValue("primaryColor", "#3B88C4");
-		const backgroundHsl = getHslCssValue("backgroundColor", "#000000");
-		
-		const gradientStartHsl = getHslCssValue("gradientStartColor", "#0f1629");
+		const darkGradientStartHex = "#160820";
+		const darkBackgroundHex = "#000000";
 
+		const gradientStartHsl = getHslCssValue("darkGradientStartColor", darkGradientStartHex);
+		const backgroundHsl = getHslCssValue("backgroundColor", darkBackgroundHex);
+		
 		const gradientStart = "0%";
 		const gradientEnd = "60%";
 
 		return `
       :root {
-        --background: ${getHslCssValue("backgroundColor", "#000000")};
+        --background: ${backgroundHsl};
         --foreground: ${getHslCssValue("foregroundColor", "#FAFAFA")};
 
-        --card: ${getHslCssValue("cardColor", "#0A0A0B")};
-        --card-foreground: var(--foreground);
+        --card: ${getHslCssValue("cardBackgroundColor", "#09090B")};
+        --card-foreground: ${getHslCssValue("cardForegroundColor", "#FAFAFA")};
 
-        --popover: var(--card);
-        --popover-foreground: var(--foreground);
+        --popover: ${getHslCssValue("popoverBackgroundColor", "#09090B")};
+        --popover-foreground: ${getHslCssValue("popoverForegroundColor", "#FAFAFA")};
 
-        --primary: ${primaryHsl};
-        --primary-foreground: ${getHslCssValue(
-					"primaryForegroundColor",
-					"#050004"
-				)};
+        --primary: ${getHslCssValue("primaryBackgroundColor", "#0D0B0D")};
+        --primary-foreground: ${getHslCssValue("primaryForegroundColor", "#EC70BB")};
+        --primary-border: ${getHslCssValue("primaryBorderColor", "#3A192D")};
 
-        --secondary: ${getHslCssValue("secondaryColor", "#28282B")};
-        --secondary-foreground: var(--foreground);
+        --secondary: ${getHslCssValue("secondaryBackgroundColor", "#272729")};
+        --secondary-foreground: ${getHslCssValue("secondaryForegroundColor", "#FAFAFA")};
 
-        --muted: var(--secondary);
-        --muted-foreground: ${getHslCssValue(
-					"mutedForegroundColor",
-					"#A0A0A9"
-				)};
+        --muted: ${getHslCssValue("mutedBackgroundColor", "#272729")};
+        --muted-foreground: ${getHslCssValue("mutedForegroundColor", "#A0A0A5")};
 
-        --accent: var(--secondary);
-        --accent-foreground: var(--foreground); 
-
-        --destructive: ${getHslCssValue("destructiveColor", "#CA3137")};
-        --destructive-foreground: ${getHslCssValue(
-					"destructiveForegroundColor",
-					"#FFFFFF"
-				)};
-
-        --warning: ${getHslCssValue("warningColor", "#FAAD14")};
-        --warning-foreground: var(--background);
-
-        --success: ${getHslCssValue("successColor", "#4FD18C")};
-        --success-foreground: var(--background);
-
-        --info: ${getHslCssValue("infoColor", "#3399FF")};
-        --info-foreground: var(--background);
+        --accent: ${getHslCssValue("accentBackgroundColor", "#272729")};
+        --accent-foreground: ${getHslCssValue("accentForegroundColor", "#FAFAFA")};
 
         --border: ${getHslCssValue("borderColor", "#19191A")};
-        --input: var(--border); 
-        --ring: ${getHslCssValue("ringColor", "#D5D7DA")};
-        --radius: ${settings.borderRadius || "0.625rem"}; 
+        --input: ${getHslCssValue("inputColor", "#19191A")};
+        --ring: ${getHslCssValue("ringColor", "#D6D6D9")};
+        --radius: ${settings.borderRadius || "0.625rem"};
 
-        --sidebar-background: var(--background); 
-        --sidebar-foreground: ${getHslCssValue(
-					"sidebarForegroundColor",
-					"#F0F2F5"
-				)};
-        --sidebar-primary: ${getHslCssValue("sidebarPrimaryColor", "#1B44C1")};
-        --sidebar-primary-foreground: var(--destructive-foreground); 
-        --sidebar-accent: var(--secondary); 
-        --sidebar-accent-foreground: var(--sidebar-foreground); 
-        --sidebar-border: var(--secondary);
-        --sidebar-ring: ${getHslCssValue("sidebarRingColor", "#2C85FF")};
+        --sidebar-background: ${getHslCssValue("sidebarBackgroundColor", "#000000")};
+        --sidebar-foreground: ${getHslCssValue("sidebarForegroundColor", "#F4F4F6")};
+        --sidebar-primary: ${getHslCssValue("sidebarPrimaryColor", "#1B55CC")};
+        --sidebar-primary-foreground: ${getHslCssValue("sidebarPrimaryForegroundColor", "#FFFFFF")};
+        --sidebar-accent: ${getHslCssValue("sidebarAccentColor", "#272729")};
+        --sidebar-accent-foreground: ${getHslCssValue("sidebarAccentForegroundColor", "#F4F4F6")};
+        --sidebar-border: ${getHslCssValue("sidebarBorderColor", "#272729")};
+        --sidebar-ring: ${getHslCssValue("sidebarRingColor", "#2E96FF")};
+
+        --success: ${getHslCssValue("successBackgroundColor", "#001F0F")};
+        --success-foreground: ${getHslCssValue("successForegroundColor", "#74EDAC")};
+        --success-border: ${getHslCssValue("successBorderColor", "#002B18")};
+
+        --info: ${getHslCssValue("infoBackgroundColor", "#001A1F")};
+        --info-foreground: ${getHslCssValue("infoForegroundColor", "#69C0ED")};
+        --info-border: ${getHslCssValue("infoBorderColor", "#002830")};
+
+        --warning: ${getHslCssValue("warningBackgroundColor", "#1F1F00")};
+        --warning-foreground: ${getHslCssValue("warningForegroundColor", "#EDC669")};
+        --warning-border: ${getHslCssValue("warningBorderColor", "#2A2A00")};
+
+        --destructive: ${getHslCssValue("destructiveBackgroundColor", "#2D0608")};
+        --destructive-foreground: ${getHslCssValue("destructiveForegroundColor", "#FFADB3")};
+        --destructive-border: ${getHslCssValue("destructiveBorderColor", "#3E080A")};
+
+        --finished-background: var(--success);
+        --finished-border: var(--success-border);
+        --finished-foreground: var(--success-foreground);
+
+        --ongoing-background: var(--info);
+        --ongoing-border: var(--info-border);
+        --ongoing-foreground: var(--info-foreground);
+
+        --announced-background: var(--warning);
+        --announced-border: var(--warning-border);
+        --announced-foreground: var(--warning-foreground);
+
+        --discontinued-background: var(--destructive);
+        --discontinued-border: var(--destructive-border);
+        --discontinued-foreground: var(--destructive-foreground);
+
+        --paused-background: ${getHslCssValue("pausedBackgroundColor", "#262626")};
+        --paused-border: ${getHslCssValue("pausedBorderColor", "#333333")};
+        --paused-foreground: ${getHslCssValue("pausedForegroundColor", "#A6A6A6")};
+        
+        --planned-background: var(--announced-background);
+        --planned-border: var(--announced-border);
+        --planned-foreground: var(--announced-foreground);
+
+        --completed-background: var(--finished-background);
+        --completed-border: var(--finished-border);
+        --completed-foreground: var(--finished-foreground);
+
+        --on-hold-background: var(--paused-background);
+        --on-hold-border: var(--paused-border);
+        --on-hold-foreground: var(--paused-foreground);
+
+        --dropped-background: var(--discontinued-background);
+        --dropped-border: var(--discontinued-border);
+        --dropped-foreground: var(--discontinued-foreground);
+
+        --reading-background: var(--ongoing-background);
+        --reading-border: var(--ongoing-border);
+        --reading-foreground: var(--ongoing-foreground);
+
+        --watching-background: var(--ongoing-background);
+        --watching-border: var(--ongoing-border);
+        --watching-foreground: var(--ongoing-foreground);
       }
       body {
         background-image: linear-gradient(
@@ -158,139 +195,306 @@ const customColorsModule: ForgeModuleDef = {
 	persistentStyles: true,
 	settings: [
 		{
-			id: "primaryColor",
-			label: "Основний колір",
-			description: "Виберіть основний акцентний колір для інтерфейсу.",
-			type: "colorPicker",
-			defaultValue: "#3B88C4",
-		},
-		{
 			id: "backgroundColor",
 			label: "Колір фону",
-			description: "Основний колір фону.",
+			description: "Основний колір фону сторінки.",
 			type: "colorPicker",
 			defaultValue: "#000000",
 		},
 		{
-			id: "gradientStartColor",
-			label: "Початковий колір градієнта фону",
-			description: "Виберіть колір, з якого починається градієнт фону.",
+			id: "darkGradientStartColor",
+			label: "Колір початку градієнта фону",
+			description: "Колір, з якого починається градієнт фону в темній темі.",
 			type: "colorPicker",
-			defaultValue: "#050e2a",
+			defaultValue: "#0d1234",
 		},
 		{
 			id: "foregroundColor",
-			label: "Колір тексту",
-			description: "Основний колір тексту інтерфейсу.",
+			label: "Основний колір тексту",
+			description: "Основний колір тексту та іконок.",
 			type: "colorPicker",
 			defaultValue: "#FAFAFA",
 		},
 		{
-			id: "cardColor",
-			label: "Колір карток",
-			description: "Колір фону елементів карток та спливаючих вікон.",
+			id: "cardBackgroundColor",
+			label: "Колір фону карток",
+			description: "Колір фону для карток та контейнерів.",
 			type: "colorPicker",
-			defaultValue: "#0A0A0B",
+			defaultValue: "#09090B",
+		},
+		{
+			id: "cardForegroundColor",
+			label: "Колір тексту карток",
+			description: "Колір тексту на картках.",
+			type: "colorPicker",
+			defaultValue: "#FAFAFA",
+		},
+		{
+			id: "popoverBackgroundColor",
+			label: "Колір фону спливаючих вікон",
+			description: "Колір фону для спливаючих елементів.",
+			type: "colorPicker",
+			defaultValue: "#09090B",
+		},
+		{
+			id: "popoverForegroundColor",
+			label: "Колір тексту спливаючих вікон",
+			description: "Колір тексту у спливаючих елементах.",
+			type: "colorPicker",
+			defaultValue: "#FAFAFA",
+		},
+		{
+			id: "primaryBackgroundColor",
+			label: "Основний фон",
+			description: "Колір фону для основних елементів.",
+			type: "colorPicker",
+			defaultValue: "#0D0B0D",
 		},
 		{
 			id: "primaryForegroundColor",
-			label: "Колір тексту акцентного елементу",
-			description: "Колір тексту, що розміщений на акцентному кольорі.",
+			label: "Основний колір тексту",
+			description: "Колір тексту на основних елементах.",
 			type: "colorPicker",
-			defaultValue: "#050004",
+			defaultValue: "#EC70BB",
 		},
 		{
-			id: "secondaryColor",
-			label: "Другорядний колір",
-			description: "Другорядний колір інтерфейсу.",
+			id: "primaryBorderColor",
+			label: "Колір рамки основних елементів",
+			description: "Колір рамки для основних елементів.",
 			type: "colorPicker",
-			defaultValue: "#28282B",
+			defaultValue: "#3A192D",
+		},
+		{
+			id: "secondaryBackgroundColor",
+			label: "Другорядний фон",
+			description: "Колір фону для другорядних елементів.",
+			type: "colorPicker",
+			defaultValue: "#272729",
+		},
+		{
+			id: "secondaryForegroundColor",
+			label: "Другорядний колір тексту",
+			description: "Колір тексту на другорядних елементах.",
+			type: "colorPicker",
+			defaultValue: "#FAFAFA",
+		},
+		{
+			id: "mutedBackgroundColor",
+			label: "Приглушений фон",
+			description: "Колір фону для приглушених елементів.",
+			type: "colorPicker",
+			defaultValue: "#272729",
 		},
 		{
 			id: "mutedForegroundColor",
 			label: "Приглушений колір тексту",
-			description: "Колір приглушеного тексту або іконок.",
+			description: "Колір тексту для приглушених елементів.",
 			type: "colorPicker",
-			defaultValue: "#A0A0A9",
+			defaultValue: "#A0A0A5",
 		},
 		{
-			id: "destructiveColor",
-			label: "Колір руйнівних дій",
-			description: "Колір для попереджень або небезпечних дій.",
+			id: "accentBackgroundColor",
+			label: "Акцентний фон",
+			description: "Колір фону для акцентних елементів.",
 			type: "colorPicker",
-			defaultValue: "#CA3137",
+			defaultValue: "#272729",
+		},
+		{
+			id: "accentForegroundColor",
+			label: "Акцентний колір тексту",
+			description: "Колір тексту на акцентних елементах.",
+			type: "colorPicker",
+			defaultValue: "#FAFAFA",
+		},
+		{
+			id: "destructiveBackgroundColor",
+			label: "Фон для руйнівних дій",
+			description: "Колір фону для дій, що потребують уваги (напр. видалення).",
+			type: "colorPicker",
+			defaultValue: "#2D0608",
 		},
 		{
 			id: "destructiveForegroundColor",
-			label: "Колір тексту руйнівних дій",
-			description: "Колір тексту, що розміщений на руйнівному кольорі.",
+			label: "Колір тексту для руйнівних дій",
+			description: "Колір тексту на елементах руйнівних дій.",
 			type: "colorPicker",
-			defaultValue: "#FFFFFF",
+			defaultValue: "#FFADB3",
 		},
 		{
-			id: "warningColor",
-			label: "Колір попереджень",
-			description: "Колір для попереджувальних повідомлень.",
+			id: "destructiveBorderColor",
+			label: "Колір рамки для руйнівних дій",
+			description: "Колір рамки для елементів руйнівних дій.",
 			type: "colorPicker",
-			defaultValue: "#FAAD14",
+			defaultValue: "#3E080A",
 		},
 		{
-			id: "successColor",
-			label: "Колір успіху",
-			description: "Колір для повідомлень про успіх.",
+			id: "warningBackgroundColor",
+			label: "Фон для попереджень",
+			description: "Колір фону для попереджувальних повідомлень.",
 			type: "colorPicker",
-			defaultValue: "#4FD18C",
+			defaultValue: "#1F1F00",
 		},
 		{
-			id: "infoColor",
-			label: "Колір інформації",
-			description: "Колір для інформаційних повідомлень.",
+			id: "warningForegroundColor",
+			label: "Колір тексту для попереджень",
+			description: "Колір тексту на елементах попереджень.",
 			type: "colorPicker",
-			defaultValue: "#3399FF",
+			defaultValue: "#EDC669",
+		},
+		{
+			id: "warningBorderColor",
+			label: "Колір рамки для попереджень",
+			description: "Колір рамки для елементів попереджень.",
+			type: "colorPicker",
+			defaultValue: "#2A2A00",
+		},
+		{
+			id: "successBackgroundColor",
+			label: "Фон для успішних дій",
+			description: "Колір фону для повідомлень про успіх.",
+			type: "colorPicker",
+			defaultValue: "#001F0F",
+		},
+		{
+			id: "successForegroundColor",
+			label: "Колір тексту для успішних дій",
+			description: "Колір тексту на елементах успішних дій.",
+			type: "colorPicker",
+			defaultValue: "#74EDAC",
+		},
+		{
+			id: "successBorderColor",
+			label: "Колір рамки для успішних дій",
+			description: "Колір рамки для елементів успішних дій.",
+			type: "colorPicker",
+			defaultValue: "#002B18",
+		},
+		{
+			id: "infoBackgroundColor",
+			label: "Фон для інформаційних повідомлень",
+			description: "Колір фону для інформаційних повідомлень.",
+			type: "colorPicker",
+			defaultValue: "#001A1F",
+		},
+		{
+			id: "infoForegroundColor",
+			label: "Колір тексту для інформаційних повідомлень",
+			description: "Колір тексту на інформаційних повідомленнях.",
+			type: "colorPicker",
+			defaultValue: "#69C0ED",
+		},
+		{
+			id: "infoBorderColor",
+			label: "Колір рамки для інформаційних повідомлень",
+			description: "Колір рамки для інформаційних повідомлень.",
+			type: "colorPicker",
+			defaultValue: "#002830",
+		},
+		{
+			id: "pausedBackgroundColor",
+			label: "Фон для призупинених елементів",
+			description: "Колір фону для елементів зі статусом 'Призупинено'.",
+			type: "colorPicker",
+			defaultValue: "#262626",
+		},
+		{
+			id: "pausedBorderColor",
+			label: "Колір рамки для призупинених елементів",
+			description: "Колір рамки для елементів зі статусом 'Призупинено'.",
+			type: "colorPicker",
+			defaultValue: "#333333",
+		},
+		{
+			id: "pausedForegroundColor",
+			label: "Колір тексту для призупинених елементів",
+			description: "Колір тексту для елементів зі статусом 'Призупинено'.",
+			type: "colorPicker",
+			defaultValue: "#A6A6A6",
 		},
 		{
 			id: "borderColor",
 			label: "Колір рамок",
-			description: "Колір рамок та ліній розділу.",
+			description: "Основний колір для рамок та розділювачів.",
+			type: "colorPicker",
+			defaultValue: "#19191A",
+		},
+		{
+			id: "inputColor",
+			label: "Колір полів вводу",
+			description: "Колір фону для полів вводу.",
 			type: "colorPicker",
 			defaultValue: "#19191A",
 		},
 		{
 			id: "ringColor",
-			label: "Колір обідка (ring)",
-			description: "Колір обідка для фокусу або валідації.",
+			label: "Колір кільця фокусу",
+			description: "Колір обводки для елементів у фокусі.",
 			type: "colorPicker",
-			defaultValue: "#D5D7DA",
+			defaultValue: "#D6D6D9",
 		},
 		{
 			id: "borderRadius",
 			label: "Радіус заокруглення",
-			description:
-				"Глобальний радіус заокруглення елементів (наприклад, '0.625rem').",
+			description: "Глобальний радіус заокруглення для елементів (напр. '0.625rem').",
 			type: "text",
 			defaultValue: "0.625rem",
-			placeholder: "наприклад, 0.625rem або 10px",
+			placeholder: "напр. 0.625rem або 10px",
+		},
+		{
+			id: "sidebarBackgroundColor",
+			label: "Фон бічної панелі",
+			description: "Колір фону бічної панелі.",
+			type: "colorPicker",
+			defaultValue: "#000000",
 		},
 		{
 			id: "sidebarForegroundColor",
 			label: "Колір тексту бічної панелі",
 			description: "Колір тексту та іконок у бічній панелі.",
 			type: "colorPicker",
-			defaultValue: "#F0F2F5",
+			defaultValue: "#F4F4F6",
 		},
 		{
 			id: "sidebarPrimaryColor",
 			label: "Основний колір бічної панелі",
-			description: "Акцентний колір для елементів у бічній панелі.",
+			description: "Акцентний колір для активних елементів бічної панелі.",
 			type: "colorPicker",
-			defaultValue: "#1B44C1",
+			defaultValue: "#1B55CC",
+		},
+		{
+			id: "sidebarPrimaryForegroundColor",
+			label: "Колір тексту на основному кольорі бічної панелі",
+			description: "Колір тексту на активних елементах бічної панелі.",
+			type: "colorPicker",
+			defaultValue: "#FFFFFF",
+		},
+		{
+			id: "sidebarAccentColor",
+			label: "Акцентний колір бічної панелі",
+			description: "Колір для акцентних елементів у бічній панелі.",
+			type: "colorPicker",
+			defaultValue: "#272729",
+		},
+		{
+			id: "sidebarAccentForegroundColor",
+			label: "Колір тексту на акцентному кольорі бічної панелі",
+			description: "Колір тексту на акцентних елементах бічної панелі.",
+			type: "colorPicker",
+			defaultValue: "#F4F4F6",
+		},
+		{
+			id: "sidebarBorderColor",
+			label: "Колір рамки бічної панелі",
+			description: "Колір рамки та розділювачів у бічній панелі.",
+			type: "colorPicker",
+			defaultValue: "#272729",
 		},
 		{
 			id: "sidebarRingColor",
-			label: "Колір обідка бічної панелі",
-			description: "Колір обідка для елементів бічної панелі.",
+			label: "Колір кільця фокусу бічної панелі",
+			description: "Колір обводки для елементів у фокусі в бічній панелі.",
 			type: "colorPicker",
-			defaultValue: "#2C85FF",
+			defaultValue: "#2E96FF",
 		},
 	],
 };

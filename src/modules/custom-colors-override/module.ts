@@ -262,7 +262,7 @@ const customColorsModule: ForgeModuleDef = {
 			label: "Колір рамки основних елементів",
 			description: "Колір рамки для основних елементів.",
 			type: "colorPicker",
-			defaultValue: "#3A192D",
+			defaultValue: "#191b3a",
 		},
 		{
 			id: "secondaryBackgroundColor",

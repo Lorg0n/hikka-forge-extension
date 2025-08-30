@@ -181,7 +181,7 @@ class BackgroundManager {
 		try {
 			await chrome.storage.sync.set({ [storageKey]: enabled });
 
-			moduleDefinitionsCache = null;
+			// moduleDefinitionsCache = null;
 
 			await this.syncAllTabs();
 		} catch (error) {

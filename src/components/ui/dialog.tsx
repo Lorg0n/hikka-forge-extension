@@ -55,22 +55,40 @@ function DialogContent({
   return (
     <ChromeExtensionPortal>
       <DialogOverlay />
-      <DialogPrimitive.Content
-        data-slot="dialog-content"
-        className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg",
-          className
-        )}
-        {...props}
-      >
-        {children}
-        <DialogPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
-          <XIcon />
-          <span className="sr-only">Close</span>
-        </DialogPrimitive.Close>
-      </DialogPrimitive.Content>
+      {/* 
+        This flexbox wrapper remains unchanged. 
+        It correctly centers on desktop and aligns to the bottom on mobile.
+      */}
+      <div className="fixed inset-0 z-50 flex justify-center items-center max-sm:items-end pointer-events-none">
+        <DialogPrimitive.Content
+          data-slot="dialog-content"
+          className={cn(
+            // --- DESKTOP & BASE STYLES ---
+            // `w-auto` makes the dialog fit its content's width.
+            // `max-w-lg` provides a sensible maximum width on larger screens.
+            "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 relative z-50 grid w-auto max-w-lg gap-4 rounded-lg border p-6 shadow-lg pointer-events-auto",
+            
+            // --- MOBILE-ONLY STYLES (KEY CHANGES) ---
+            // These classes override the base styles ONLY on small screens.
+            // `w-full` makes it fill the horizontal space.
+            // `m-0` removes any margin.
+            // `rounded-b-none` creates the "bottom sheet" effect.
+            // `border-x-0` and `border-b-0` remove borders that look odd on a full-width element.
+            "max-sm:w-full max-sm:m-0 max-sm:rounded-b-none max-sm:border-x-0 max-sm:border-b-0",
+            
+            className
+          )}
+          {...props}
+        >
+          {children}
+          <DialogPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
+            <XIcon />
+            <span className="sr-only">Close</span>
+          </DialogPrimitive.Close>
+        </DialogPrimitive.Content>
+      </div>
     </ChromeExtensionPortal>
-  )
+  );
 }
 
 function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {

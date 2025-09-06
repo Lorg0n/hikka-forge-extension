@@ -55,27 +55,12 @@ function DialogContent({
   return (
     <ChromeExtensionPortal>
       <DialogOverlay />
-      {/* 
-        This flexbox wrapper remains unchanged. 
-        It correctly centers on desktop and aligns to the bottom on mobile.
-      */}
       <div className="fixed inset-0 z-50 flex justify-center items-center max-sm:items-end pointer-events-none">
         <DialogPrimitive.Content
           data-slot="dialog-content"
           className={cn(
-            // --- DESKTOP & BASE STYLES ---
-            // `w-auto` makes the dialog fit its content's width.
-            // `max-w-lg` provides a sensible maximum width on larger screens.
             "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 relative z-50 grid w-auto max-w-lg gap-4 rounded-lg border p-6 shadow-lg pointer-events-auto",
-            
-            // --- MOBILE-ONLY STYLES (KEY CHANGES) ---
-            // These classes override the base styles ONLY on small screens.
-            // `w-full` makes it fill the horizontal space.
-            // `m-0` removes any margin.
-            // `rounded-b-none` creates the "bottom sheet" effect.
-            // `border-x-0` and `border-b-0` remove borders that look odd on a full-width element.
             "max-sm:w-full max-sm:m-0 max-sm:rounded-b-none max-sm:border-x-0 max-sm:border-b-0",
-            
             className
           )}
           {...props}

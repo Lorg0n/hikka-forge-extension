@@ -12,8 +12,10 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, BrainCircuit } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Progress } from '@/components/ui/progress';
 import { useModuleSettings } from '@/hooks/useModuleSettings';
-import { useTextEmbedding } from '@/hooks/useTextEmbedding'; // <-- Import the new hook
+import { useTextEmbedding } from '@/hooks/useTextEmbedding';
 
 interface TextEmbeddingsTestComponentProps {
   moduleId: string;
@@ -23,7 +25,7 @@ const TextEmbeddingsTestComponent: React.FC<TextEmbeddingsTestComponentProps> = 
   const [inputText, setInputText] = useState('');
   
   // Consume the custom hook to manage state and logic
-  const { embedding, isLoading, error, generateEmbedding, clearEmbedding } = useTextEmbedding();
+  const { embedding, isLoading, error, progress, generateEmbedding, clearEmbedding } = useTextEmbedding();
   
   const { settings } = useModuleSettings(moduleId);
   
@@ -78,14 +80,32 @@ const TextEmbeddingsTestComponent: React.FC<TextEmbeddingsTestComponentProps> = 
             </div>
           </div>
 
-          {error && (
+          {isLoading && (
+            <div className="space-y-3">
+              <Progress value={progress} className="h-2" />
+              <div className="border rounded-lg p-4 bg-muted/50 animate-pulse">
+                <h4 className="font-medium text-sm mb-2">Generating Embedding...</h4>
+                <div className="space-y-3">
+                  <Skeleton className="h-4 w-1/4" />
+                  <Skeleton className="h-4 w-1/3" />
+                  {showRawVectors && (
+                    <>
+                      <Skeleton className="h-4 w-1/5" />
+                      <Skeleton className="h-20 w-full" />
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!isLoading && error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
-          {embedding && (
-            // ... (The JSX for displaying results remains exactly the same) ...
+          {!isLoading && embedding && (
             <div className="space-y-3">
               <div className="border rounded-lg p-4 bg-muted/50">
                 <h4 className="font-medium text-sm mb-2">Embedding Results:</h4>

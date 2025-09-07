@@ -16,7 +16,7 @@ const getBaseManifest = () => ({
         "webNavigation",
         "tabs",
     ],
-    host_permissions: ["https://hikka.io/*", "https://hikka-forge.lorgon.org/*", "http://localhost:11434/*"],
+    host_permissions: ["https://hikka.io/*", "https://hikka-forge.lorgon.org/*"],
     content_scripts: [
         {
             matches: ["https://hikka.io/*"],
@@ -34,6 +34,9 @@ const getBaseManifest = () => ({
             matches: ["<all_urls>"],
         },
     ],
+    content_security_policy: {
+        extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+    },
     icons: {
         16: "assets/icon16.png",
         48: "assets/icon48.png",
@@ -70,6 +73,7 @@ export const generateManifest = (browser: string) => {
         ...base,
         background: {
             service_worker: "src/background.js",
+            "type": "module" 
         },
     };
 };

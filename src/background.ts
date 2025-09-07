@@ -3,6 +3,35 @@ import type {
 	ModuleInfo,
 	ContentMessage,
 } from "./types/module";
+import { env, pipeline, FeatureExtractionPipeline } from '@huggingface/transformers';
+
+env.backends.onnx.gpu = false;
+console.log('[Hikka Forge] GPU backend has been explicitly disabled:', env.backends.onnx.gpu);
+
+// Singleton to hold the pipeline instance
+class EmbeddingPipeline {
+    // By defining the task as a constant with a specific string literal type,
+    // TypeScript knows EXACTLY which function overload to use.
+    static task: 'feature-extraction' = 'feature-extraction'; // <-- The Fix
+    static model = 'Lorg0n/hikka-forge-paraphrase-multilingual-MiniLM-L12-v2';
+    static instance: FeatureExtractionPipeline | null = null;
+
+    static async getInstance() {
+        if (this.instance === null) {
+            console.log("Loading model in background service worker...");
+            // Now, TypeScript correctly infers the return type without creating a huge union.
+            this.instance = await pipeline(this.task, this.model, {
+				dtype: "fp32", // or "fp16"
+				device: "webgpu", // enable WebGPU acceleration
+			});
+            console.log("Model loaded successfully.");
+        }
+        return this.instance;
+    }
+}
+
+// Pre-load the model when the extension starts
+EmbeddingPipeline.getInstance();
 
 let moduleDefinitionsCache: ModuleInfo[] | null = null;
 let cacheTimestamp: number = 0;
@@ -154,31 +183,22 @@ class BackgroundManager {
 					}
 				} else if (message.type === "FETCH_EMBEDDING") {
                     isAsync = true; 
-                    const { apiEndpoint, model, prompt } = message.payload;
+                    const { prompt } = message.payload;
 
-                    fetch(`${apiEndpoint}/api/embeddings`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            model: model,
-                            prompt: prompt,
-                        }),
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
+                    // Run the async computation with Transformers.js
+                    (async () => {
+                        try {
+                            const extractor = await EmbeddingPipeline.getInstance();
+                            const embeddings = await extractor(prompt, { pooling: 'mean', normalize: true });
+                            
+                            // Respond with the flattened data array from the Tensor
+                            sendResponse({ success: true, embedding: Array.from(embeddings.data) });
+                        } catch (e: any) {
+                            console.error("[Hikka Forge] Transformers.js error in background script:", e);
+                            sendResponse({ success: false, error: e.message });
                         }
-                        return response.json();
-                    })
-                    .then(data => {
-                        sendResponse({ success: true, embedding: data.embedding });
-                    })
-                    .catch(error => {
-                        console.error("[Hikka Forge] Fetch error in background script:", error);
-                        sendResponse({ success: false, error: error.message });
-                    });
+                    })();
+                    return true; // Keep the message channel open for async response
 				}
 				return isAsync;
 			}

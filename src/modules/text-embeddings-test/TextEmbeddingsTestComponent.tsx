@@ -27,16 +27,14 @@ const TextEmbeddingsTestComponent: React.FC<TextEmbeddingsTestComponentProps> = 
   
   const { settings } = useModuleSettings(moduleId);
   
-  const embeddingModel = settings?.embeddingModel || 'yxchia/paraphrase-multilingual-minilm-l12-v2:Q4_K_M';
-  const apiEndpoint = settings?.apiEndpoint || 'http://localhost:11434';
+  const embeddingModel = settings?.embeddingModel || 'Lorg0n/hikka-forge-paraphrase-multilingual-MiniLM-L12-v2';
+  const apiEndpoint = settings?.apiEndpoint || '';
   const maxTextLength = settings?.maxTextLength || 512;
   const showRawVectors = settings?.showRawVectors || false;
 
   const handleGenerateClick = () => {
     generateEmbedding({
       prompt: inputText,
-      model: embeddingModel,
-      apiEndpoint: apiEndpoint
     });
   };
 

@@ -5,7 +5,7 @@ interface UseTextEmbeddingReturn {
     embedding: number[] | null;
     isLoading: boolean;
     error: string | null;
-    generateEmbedding: (params: { apiEndpoint: string; model: string; prompt: string }) => Promise<void>;
+    generateEmbedding: (params: { prompt: string }) => Promise<void>;
     clearEmbedding: () => void;
 }
 
@@ -14,7 +14,7 @@ export const useTextEmbedding = (): UseTextEmbeddingReturn => {
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
 
-    const generateEmbedding = useCallback(async (params: { apiEndpoint: string; model: string; prompt: string }) => {
+    const generateEmbedding = useCallback(async (params: { prompt: string }) => {
         if (!params.prompt || !params.prompt.trim()) {
             setError("Prompt is required to generate an embedding.");
             return;

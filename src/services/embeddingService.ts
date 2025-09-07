@@ -2,8 +2,6 @@
  * Interface for the parameters required to generate an embedding.
  */
 interface GenerateEmbeddingParams {
-    apiEndpoint: string;
-    model: string;
     prompt: string;
 }
 
@@ -16,16 +14,12 @@ interface GenerateEmbeddingParams {
  * @throws An error if the background script returns an error or fails.
  */
 export const generateEmbedding = async ({
-    apiEndpoint,
-    model,
     prompt,
 }: GenerateEmbeddingParams): Promise<number[]> => {
     // The response from the background script is awaited.
     const response = await chrome.runtime.sendMessage({
         type: "FETCH_EMBEDDING",
         payload: {
-            apiEndpoint,
-            model,
             prompt,
         }
     });

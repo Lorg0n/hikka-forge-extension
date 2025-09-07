@@ -8,7 +8,7 @@ const textEmbeddingsTestModule: ForgeModuleDef = {
   urlPatterns: ['https://hikka.io/*'],
   enabledByDefault: false,
   elementSelector: {
-    selector: 'nav[class="container relative mx-auto flex min-h-16 items-center gap-4 px-4 md:gap-8"] > div[class="flex gap-4"]',
+    selector: 'nav[class="container relative mx-auto flex min-h-16 items-center gap-4 px-4 md:gap-8"] > div[class="flex gap-4"] > div[class="flex items-center gap-4"]',
     position: 'prepend',
   },
   component: TextEmbeddingsTestComponent,

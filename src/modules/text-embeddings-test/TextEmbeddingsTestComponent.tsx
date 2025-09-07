@@ -11,11 +11,12 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, BrainCircuit } from 'lucide-react';
+import { BrainCircuit, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { useModuleSettings } from '@/hooks/useModuleSettings';
 import { useTextEmbedding } from '@/hooks/useTextEmbedding';
+import { Icon } from '@iconify/react/dist/iconify.js';
 
 interface TextEmbeddingsTestComponentProps {
   moduleId: string;
@@ -30,7 +31,6 @@ const TextEmbeddingsTestComponent: React.FC<TextEmbeddingsTestComponentProps> = 
   const { settings } = useModuleSettings(moduleId);
   
   const embeddingModel = settings?.embeddingModel || 'Lorg0n/hikka-forge-paraphrase-multilingual-MiniLM-L12-v2';
-  const apiEndpoint = settings?.apiEndpoint || '';
   const maxTextLength = settings?.maxTextLength || 512;
   const showRawVectors = settings?.showRawVectors || false;
 
@@ -48,9 +48,8 @@ const TextEmbeddingsTestComponent: React.FC<TextEmbeddingsTestComponentProps> = 
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <BrainCircuit className="h-4 w-4" />
-          Text Embeddings
+        <Button variant="outline" size="icon-md" className="relative">
+          <Icon icon="mingcute:list-search-line" className="size-full" />
         </Button>
       </DialogTrigger>
 

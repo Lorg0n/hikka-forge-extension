@@ -3,13 +3,19 @@ import react from "@vitejs/plugin-react"
 import tailwindcss from "@tailwindcss/vite"
 import { defineConfig } from "vite"
 import { manifestAndAssetPlugin } from './vite-plugin-manifest'
+import { onnxWasmPlugin } from './vite-plugin-onnx-wasm'
 
 const browser = (process.env.BROWSER || "chrome") as 'chrome' | 'firefox';
 const outDir = path.resolve(__dirname, `dist/${browser}`)
 
 export default defineConfig({
   base: './',
-  plugins: [react(), tailwindcss(), manifestAndAssetPlugin({ browser })],
+  plugins: [
+    react(), 
+    tailwindcss(), 
+    manifestAndAssetPlugin({ browser }),
+    onnxWasmPlugin()
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

@@ -14,7 +14,7 @@ export function manifestAndAssetPlugin(options: ManifestPluginOptions): Plugin {
   const { browser } = options;
 
   if (!browser || !['chrome', 'firefox'].includes(browser)) {
-      console.error(`❌ Invalid browser type specified for manifest plugin: ${browser}. Use 'chrome' or 'firefox'.`);
+      console.error(`❌ [manifest-plugin] Invalid browser type specified for manifest plugin: ${browser}. Use 'chrome' or 'firefox'.`);
       process.exit(1);
   }
 
@@ -30,7 +30,7 @@ export function manifestAndAssetPlugin(options: ManifestPluginOptions): Plugin {
       const rootDir = config.root;
 
       if (!finalOutDir) {
-          console.error("❌ Output directory (outDir) is not defined in Vite config.");
+          console.error("❌ [manifest-plugin] Output directory (outDir) is not defined in Vite config.");
           process.exit(1);
       }
 
@@ -41,9 +41,9 @@ export function manifestAndAssetPlugin(options: ManifestPluginOptions): Plugin {
       try {
         fs.mkdirSync(path.dirname(destManifest), { recursive: true });
         fs.writeFileSync(destManifest, manifestJson);
-        console.log(`✅ Generated manifest.json for ${browser} -> ${path.relative(rootDir, destManifest)}`);
+        console.log(`✅ [manifest-plugin] Generated manifest.json for ${browser} -> ${path.relative(rootDir, destManifest)}`);
       } catch (error) {
-        console.error(`❌ Error generating manifest.json for ${browser}:`, error);
+        console.error(`❌ [manifest-plugin] Error generating manifest.json for ${browser}:`, error);
         process.exit(1);
       }
 
@@ -54,12 +54,12 @@ export function manifestAndAssetPlugin(options: ManifestPluginOptions): Plugin {
         try {
           fs.mkdirSync(destAssets, { recursive: true });
           fs.cpSync(srcAssets, destAssets, { recursive: true });
-          console.log(`📦 Copied assets -> ${path.relative(rootDir, destAssets)}`);
+          console.log(`📦 [manifest-plugin] Copied assets -> ${path.relative(rootDir, destAssets)}`);
         } catch (error) {
-           console.error(`❌ Error copying assets from ${srcAssets} to ${destAssets}:`, error);
+           console.error(`❌ [manifest-plugin] Error copying assets from ${srcAssets} to ${destAssets}:`, error);
         }
       } else {
-        console.warn(`⚠️ Assets directory not found, skipping copy: ${srcAssets}`);
+        console.warn(`⚠️ [manifest-plugin] Assets directory not found, skipping copy: ${srcAssets}`);
       }
     },
   };

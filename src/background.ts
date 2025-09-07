@@ -3,31 +3,26 @@ import type {
 	ModuleInfo,
 	ContentMessage,
 } from "./types/module";
-import { env, pipeline, FeatureExtractionPipeline } from '@huggingface/transformers';
-
-env.backends.onnx.gpu = false;
-console.log('[Hikka Forge] GPU backend has been explicitly disabled:', env.backends.onnx.gpu);
+import { pipeline, FeatureExtractionPipeline } from '@huggingface/transformers';
 
 // Singleton to hold the pipeline instance
 class EmbeddingPipeline {
-    // By defining the task as a constant with a specific string literal type,
-    // TypeScript knows EXACTLY which function overload to use.
-    static task: 'feature-extraction' = 'feature-extraction'; // <-- The Fix
-    static model = 'Lorg0n/hikka-forge-paraphrase-multilingual-MiniLM-L12-v2';
-    static instance: FeatureExtractionPipeline | null = null;
+	static task = 'feature-extraction' as const; // Simpler type declaration
+	static model = 'Lorg0n/hikka-forge-paraphrase-multilingual-MiniLM-L12-v2';
+	static instance: any = null; // Use simpler type to avoid complex union issues
 
-    static async getInstance() {
-        if (this.instance === null) {
-            console.log("Loading model in background service worker...");
-            // Now, TypeScript correctly infers the return type without creating a huge union.
-            this.instance = await pipeline(this.task, this.model, {
+	static async getInstance() {
+		if (this.instance === null) {
+			console.log("Loading model in background service worker...");
+			// Now, TypeScript correctly infers the return type without creating a huge union.
+			this.instance = await pipeline(this.task, this.model, {
 				dtype: "fp32", // or "fp16"
 				device: "webgpu", // enable WebGPU acceleration
 			});
-            console.log("Model loaded successfully.");
-        }
-        return this.instance;
-    }
+			console.log("Model loaded successfully.");
+		}
+		return this.instance;
+	}
 }
 
 // Pre-load the model when the extension starts
@@ -83,14 +78,14 @@ class BackgroundManager {
 				changeInfo.status === "complete" &&
 				tab.url?.startsWith("https://hikka.io/")
 			) {
-				this.syncTabIfNeeded(tabId); 
+				this.syncTabIfNeeded(tabId);
 			}
 		}
-	);
+		);
 
-    chrome.tabs.onRemoved.addListener((tabId) => {
-        this.tabStates.delete(tabId);
-    });
+		chrome.tabs.onRemoved.addListener((tabId) => {
+			this.tabStates.delete(tabId);
+		});
 	}
 
 	private initInstallAndUpdateListeners(): void {
@@ -182,23 +177,43 @@ class BackgroundManager {
 						sendResponse({ success: false, error: "Invalid module action" });
 					}
 				} else if (message.type === "FETCH_EMBEDDING") {
-                    isAsync = true; 
-                    const { prompt } = message.payload;
+					isAsync = true;
+					const { prompt } = message.payload;
 
-                    // Run the async computation with Transformers.js
-                    (async () => {
-                        try {
-                            const extractor = await EmbeddingPipeline.getInstance();
-                            const embeddings = await extractor(prompt, { pooling: 'mean', normalize: true });
-                            
-                            // Respond with the flattened data array from the Tensor
-                            sendResponse({ success: true, embedding: Array.from(embeddings.data) });
-                        } catch (e: any) {
-                            console.error("[Hikka Forge] Transformers.js error in background script:", e);
-                            sendResponse({ success: false, error: e.message });
-                        }
-                    })();
-                    return true; // Keep the message channel open for async response
+					(async () => {
+						try {
+							console.log("[Hikka Forge][DEBUG] Starting embedding generation");
+							console.log(`[Hikka Forge][DEBUG] Prompt: "${prompt}" (length: ${prompt.length})`);
+
+							const extractor = await EmbeddingPipeline.getInstance();
+							console.log(`[Hikka Forge][DEBUG] Extractor type: ${typeof extractor}`);
+
+							// FIX: The pipeline expects an array of strings.
+							const modelInput = [prompt];
+							console.log("[Hikka Forge][DEBUG] Calling model with input:", modelInput);
+
+							// The extractor function handles tokenization internally
+							const embeddings = await extractor(modelInput, { pooling: 'mean', normalize: true });
+
+							console.log("[Hikka Forge][DEBUG] Model execution completed successfully");
+
+							// Convert tensor to JavaScript array and get the embedding for the first (and only) sentence
+							const embeddingVector = embeddings[0].tolist();
+
+							console.log(`[Hikka Forge][DEBUG] Generated embedding vector (length: ${embeddingVector.length})`);
+							sendResponse({ success: true, embedding: embeddingVector });
+						} catch (e: any) {
+							console.error("[Hikka Forge] Transformers.js error in background script:");
+							console.error("Error object:", e);
+							console.error("Error stack:", e.stack);
+							// Log the inner details if the error has them
+							if (e.message.includes('model execution')) {
+								console.error("This often happens due to incorrect input format or memory issues.");
+							}
+							sendResponse({ success: false, error: e.message });
+						}
+					})();
+					return true; // Keep the message channel open for async response
 				}
 				return isAsync;
 			}
@@ -243,7 +258,7 @@ class BackgroundManager {
 	private async handleContentScriptRegistration(modules: ModuleInfo[], tabId?: number): Promise<void> {
 		if (!moduleDefinitionsCache || moduleDefinitionsCache.length === 0) {
 			console.log("[Hikka Forge] Populating module definition cache from registration.");
-			moduleDefinitionsCache = modules.map(m => ({ ...m, enabled: false })); 
+			moduleDefinitionsCache = modules.map(m => ({ ...m, enabled: false }));
 			cacheTimestamp = Date.now();
 		}
 
@@ -376,7 +391,7 @@ class BackgroundManager {
 					const response = await chrome.tabs.sendMessage(tab.id, {
 						type: "GET_CONTENT_MODULES_INFO",
 					} as ContentMessage);
-					
+
 					if (response?.success && Array.isArray(response.modules)) {
 						console.log(
 							`[Hikka Forge] Received module info from tab ${tab.id}:`,
@@ -387,10 +402,10 @@ class BackgroundManager {
 							id: m.id,
 							name: m.name,
 							description: m.description,
-							enabled: false, 
+							enabled: false,
 							urlPatterns: m.urlPatterns,
 							settings: m.settings || [],
-							enabledByDefault: m.enabledByDefault, 
+							enabledByDefault: m.enabledByDefault,
 						}));
 					} else {
 						console.warn(
@@ -422,7 +437,7 @@ class BackgroundManager {
 		if (this.tabStates.has(tabId)) {
 			try {
 				await this.sendSyncMessageToTab(tabId);
-			} catch (error) {}
+			} catch (error) { }
 		}
 	}
 

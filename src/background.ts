@@ -152,6 +152,33 @@ class BackgroundManager {
 						);
 						sendResponse({ success: false, error: "Invalid module action" });
 					}
+				} else if (message.type === "FETCH_EMBEDDING") {
+                    isAsync = true; 
+                    const { apiEndpoint, model, prompt } = message.payload;
+
+                    fetch(`${apiEndpoint}/api/embeddings`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            model: model,
+                            prompt: prompt,
+                        }),
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        sendResponse({ success: true, embedding: data.embedding });
+                    })
+                    .catch(error => {
+                        console.error("[Hikka Forge] Fetch error in background script:", error);
+                        sendResponse({ success: false, error: error.message });
+                    });
 				}
 				return isAsync;
 			}

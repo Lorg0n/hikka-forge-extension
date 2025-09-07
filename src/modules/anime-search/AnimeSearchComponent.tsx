@@ -160,7 +160,7 @@ const AnimeSearchComponent: React.FC<{ moduleId: string }> = ({ moduleId }) => {
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder="Опис для пошуку..."
-                className="min-h-24 resize-none pr-16 border-2 focus:border-primary/50 rounded-lg"
+                className="min-h-24 resize-none pr-16 rounded-lg"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();

@@ -2,7 +2,7 @@ import { Form } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ModuleInfo } from "@/types/module";
 import { useForm } from "react-hook-form"; 
-import { ModuleCard } from "./module-card";
+import { ModuleCard } from "@/components/ui/module-card";
 
 interface ModuleListProps {
 	modules: ModuleInfo[];

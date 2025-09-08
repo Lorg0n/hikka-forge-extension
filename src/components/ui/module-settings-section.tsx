@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import type { ModuleSetting } from "@/types/module";
-import { SettingInput } from "./setting-input";
+import { SettingInput } from "@/components/ui/setting-input";
 
 interface ModuleSettingsSectionProps {
 	moduleId: string;

@@ -71,6 +71,7 @@ export interface ForgeModuleDef {
 	urlPatterns: string[];
 	elementSelector?: ModuleSelector;
 	enabledByDefault?: boolean;
+	isBeta?: boolean;
 	component?: React.FC<any>;
 	styles?: string | ((settings: Record<string, any>) => string);
 	persistentStyles?: boolean;
@@ -83,6 +84,7 @@ export interface ModuleInfo {
 	description: string;
 	enabledByDefault?: boolean;
 	enabled: boolean;
+	isBeta?: boolean;
 	urlPatterns: string[];
 	settings?: ModuleSetting[];
 }

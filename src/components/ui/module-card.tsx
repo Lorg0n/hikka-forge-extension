@@ -9,8 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
 import type { ModuleInfo } from "@/types/module";
-import { ModuleSettingsSection } from "./module-settings-section";
-import { Badge } from "@/components/ui/badge";
+import { ModuleSettingsSection } from "@/components/ui/module-settings-section";
+import { BetaBadge } from "@/components/ui/beta-badge";
 
 interface ModuleCardProps {
 	moduleInfo: ModuleInfo;
@@ -33,9 +33,9 @@ export function ModuleCard({
 }: ModuleCardProps) {
 	const hasSettings = moduleInfo.settings && moduleInfo.settings.length > 0;
 	
-	// Check if module name contains "(Beta)" to show badge
-	const isBetaModule = moduleInfo.name.includes('(Beta)');
-	const displayName = moduleInfo.name.replace(' (Beta)', '');
+	// Check if module has isBeta property
+	const isBetaModule = moduleInfo.isBeta || false;
+	const displayName = moduleInfo.name;
 
 	return (
 		<div>
@@ -48,14 +48,10 @@ export function ModuleCard({
 					}`}
 			>
 				<div className="space-y-0.5 mr-4 flex-1">
-					<div className="flex items-center gap-2">
-						<FormLabel className="text-base">{displayName}</FormLabel>
-						{isBetaModule && (
-							<Badge variant="secondary" className="text-xs">
-								Beta
-							</Badge>
-						)}
-					</div>
+						<div className="flex items-center gap-2">
+							<FormLabel className="text-base">{displayName}</FormLabel>
+							{isBetaModule && <BetaBadge />}
+						</div>
 					<FormDescription>{moduleInfo.description}</FormDescription>
 				</div>
 				<div className="flex items-center gap-2">

@@ -33,22 +33,27 @@ class EmbeddingPipeline {
 // Pre-load the model when the extension starts
 EmbeddingPipeline.getInstance();
 
-let moduleDefinitionsCache: ModuleInfo[] | null = null;
-let cacheTimestamp: number = 0;
-const CACHE_DURATION = 5 * 60 * 1000;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+interface ModuleCache {
+  definitions: ModuleInfo[];
+  timestamp: number;
+}
 
 class BackgroundManager {
-	private tabStates: Map<number, { url: string; lastChecked: number }> =
-		new Map();
+	private tabStates: Map<number, { url: string; lastChecked: number }> = new Map();
+	private moduleCache: ModuleCache | null = null;
 
 	constructor() {
-		// this.initWebNavigationListeners();
 		this.initTabsListeners();
 		this.initMessageListener();
 		this.initInstallAndUpdateListeners();
 		console.log("[Hikka Forge] Background script initialized");
 
-		this.primeModuleDefinitionsCache();
+		// Initialize cache asynchronously
+		this.primeModuleCache().catch(error => {
+			console.warn("[Hikka Forge] Failed to prime module cache on startup:", error);
+		});
 	}
 
 	// private initWebNavigationListeners(): void {
@@ -99,7 +104,7 @@ class BackgroundManager {
 				console.log("[Hikka Forge] Extension installed. Default states will be applied on first use.");
 			} else if (details.reason === "update") {
 			}
-			moduleDefinitionsCache = null;
+			this.moduleCache = null;
 		});
 	}
 
@@ -247,11 +252,9 @@ class BackgroundManager {
 		console.log(`[Hikka Forge] Setting ${storageKey} to ${enabled}`);
 		try {
 			await chrome.storage.sync.set({ [storageKey]: enabled });
-
-			// moduleDefinitionsCache = null;
-
+			this.invalidateModuleCache();
 			await this.syncAllTabs();
-		} catch (error) {
+		} catch (error: any) {
 			console.error(
 				`[Hikka Forge] Failed to save state for ${moduleId}:`,
 				error
@@ -261,16 +264,26 @@ class BackgroundManager {
 	}
 
 	private async handleContentScriptRegistration(modules: ModuleInfo[], tabId?: number): Promise<void> {
-		if (!moduleDefinitionsCache || moduleDefinitionsCache.length === 0) {
-			console.log("[Hikka Forge] Populating module definition cache from registration.");
-			moduleDefinitionsCache = modules.map(m => ({ ...m, enabled: false }));
-			cacheTimestamp = Date.now();
+		if (!this.moduleCache || this.moduleCache.definitions.length === 0) {
+			console.log("[Hikka Forge] Populating module cache from registration.");
+			this.moduleCache = {
+				definitions: modules.map(m => ({ ...m, enabled: false, isBeta: m.isBeta })),
+				timestamp: Date.now()
+			};
 		}
 
 		if (tabId) {
 			console.log(`[Hikka Forge] Immediately syncing tab ${tabId} after registration.`);
 			await this.sendSyncMessageToTab(tabId);
 		}
+	}
+
+	/**
+	 * Invalidates the module cache when needed (e.g., after module changes)
+	 */
+	private invalidateModuleCache(): void {
+		this.moduleCache = null;
+		console.log("[Hikka Forge] Module cache invalidated.");
 	}
 
 	private async updateModuleSetting(
@@ -282,8 +295,9 @@ class BackgroundManager {
 		console.log(`[Hikka Forge] Setting ${storageKey} to:`, value);
 		try {
 			await chrome.storage.sync.set({ [storageKey]: value });
+			this.invalidateModuleCache();
 			await this.syncAllTabs();
-		} catch (error) {
+		} catch (error: any) {
 			console.error(
 				`[Hikka Forge] Failed to save setting for ${moduleId}.${settingId}:`,
 				error
@@ -292,10 +306,14 @@ class BackgroundManager {
 		}
 	}
 
-	private async primeModuleDefinitionsCache(): Promise<void> {
-		console.log("[Hikka Forge] Priming module definitions cache...");
+	private async primeModuleCache(): Promise<void> {
+		console.log("[Hikka Forge] Priming module cache...");
 		try {
-			await this.fetchModuleDefinitionsFromContentScript();
+			const definitions = await this.fetchModuleDefinitionsFromContentScript();
+			this.moduleCache = {
+				definitions,
+				timestamp: Date.now()
+			};
 			console.log("[Hikka Forge] Cache primed successfully.");
 		} catch (error) {
 			console.warn(
@@ -310,9 +328,9 @@ class BackgroundManager {
 		moduleSettings: Record<string, Record<string, any>>;
 	}> {
 		const now = Date.now();
-		if (moduleDefinitionsCache && now - cacheTimestamp < CACHE_DURATION) {
+		if (this.moduleCache && now - this.moduleCache.timestamp < CACHE_DURATION) {
 			console.log("[Hikka Forge] Returning cached module definitions.");
-			return this.updateCachedStatesFromStorage(moduleDefinitionsCache);
+			return this.updateCachedStatesFromStorage(this.moduleCache.definitions);
 		}
 
 		console.log(
@@ -320,8 +338,10 @@ class BackgroundManager {
 		);
 		try {
 			const definitions = await this.fetchModuleDefinitionsFromContentScript();
-			moduleDefinitionsCache = definitions;
-			cacheTimestamp = now;
+			this.moduleCache = {
+				definitions,
+				timestamp: now
+			};
 
 			return this.updateCachedStatesFromStorage(definitions);
 		} catch (error) {
@@ -329,7 +349,7 @@ class BackgroundManager {
 				"[Hikka Forge] Failed to fetch fresh definitions, returning empty/stale cache:",
 				error
 			);
-			return this.updateCachedStatesFromStorage(moduleDefinitionsCache || []);
+			return this.updateCachedStatesFromStorage(this.moduleCache?.definitions || []);
 		}
 	}
 
@@ -364,6 +384,7 @@ class BackgroundManager {
 				return {
 					...def,
 					enabled,
+					isBeta: def.isBeta,
 				};
 			});
 
@@ -375,20 +396,22 @@ class BackgroundManager {
 	}
 
 	private async fetchModuleDefinitionsFromContentScript(): Promise<ModuleInfo[]> {
-		const tabs = await chrome.tabs.query({
-			url: "https://hikka.io/*",
-			status: "complete",
-		});
+		try {
+			const tabs = await chrome.tabs.query({
+				url: "https://hikka.io/*",
+				status: "complete",
+			});
 
-		if (tabs.length === 0) {
-			console.warn(
-				"[Hikka Forge] Could not find active Hikka tabs to request module definitions. Waiting for a tab to register itself."
-			);
-			return [];
-		}
+			if (tabs.length === 0) {
+				console.warn(
+					"[Hikka Forge] Could not find active Hikka tabs to request module definitions. Waiting for a tab to register itself."
+				);
+				return [];
+			}
 
-		for (const tab of tabs) {
-			if (tab.id) {
+			for (const tab of tabs) {
+				if (!tab.id) continue;
+
 				try {
 					console.log(
 						`[Hikka Forge] Requesting module info from tab ${tab.id}`
@@ -411,6 +434,7 @@ class BackgroundManager {
 							urlPatterns: m.urlPatterns,
 							settings: m.settings || [],
 							enabledByDefault: m.enabledByDefault,
+							isBeta: m.isBeta,
 						}));
 					} else {
 						console.warn(
@@ -418,31 +442,36 @@ class BackgroundManager {
 							response
 						);
 					}
-				} catch (error: any) {
+				} catch (tabError: any) {
 					if (
-						!error.message.includes("Could not establish connection") &&
-						!error.message.includes("Receiving end does not exist")
+						!tabError.message?.includes("Could not establish connection") &&
+						!tabError.message?.includes("Receiving end does not exist")
 					) {
 						console.warn(
 							`[Hikka Forge] Error fetching module info from tab ${tab.id}:`,
-							error
+							tabError
 						);
 					}
 				}
 			}
-		}
 
-		console.error(
-			"[Hikka Forge] Failed to get module definitions from any active tab. They may still be loading. Waiting for registration."
-		);
-		return [];
+			console.error(
+				"[Hikka Forge] Failed to get module definitions from any active tab. They may still be loading. Waiting for registration."
+			);
+			return [];
+		} catch (error: any) {
+			console.error("[Hikka Forge] Error querying tabs:", error);
+			return [];
+		}
 	}
 
 	private async syncTabIfNeeded(tabId: number): Promise<void> {
 		if (this.tabStates.has(tabId)) {
 			try {
 				await this.sendSyncMessageToTab(tabId);
-			} catch (error) { }
+			} catch (error: any) {
+				console.warn(`[Hikka Forge] Failed to sync tab ${tabId}:`, error);
+			}
 		}
 	}
 
@@ -451,20 +480,19 @@ class BackgroundManager {
 		try {
 			const tabs = await chrome.tabs.query({ url: "https://hikka.io/*" });
 			const syncPromises = tabs
-				.filter((tab) => tab.id !== undefined)
+				.filter((tab): tab is chrome.tabs.Tab => tab.id !== undefined)
 				.map((tab) => this.sendSyncMessageToTab(tab.id!));
 
 			await Promise.allSettled(syncPromises);
 			console.log("[Hikka Forge] Sync attempt completed for all tabs.");
-		} catch (error) {
+		} catch (error: any) {
 			console.error("[Hikka Forge] Error querying tabs for sync:", error);
 		}
 	}
 
 	private async sendSyncMessageToTab(tabId: number): Promise<void> {
 		try {
-			const { modules, moduleSettings } =
-				await this.getModuleDefinitionsWithState();
+			const { modules, moduleSettings } = await this.getModuleDefinitionsWithState();
 			const enabledStates: Record<string, boolean> = {};
 			const flatModuleSettings: Record<string, Record<string, any>> = {};
 
@@ -490,8 +518,8 @@ class BackgroundManager {
 			);
 		} catch (error: any) {
 			if (
-				!error.message.includes("Could not establish connection") &&
-				!error.message.includes("Receiving end does not exist")
+				!error.message?.includes("Could not establish connection") &&
+				!error.message?.includes("Receiving end does not exist")
 			) {
 				console.error(
 					`[Hikka Forge] Error sending SYNC_MODULES to tab ${tabId}:`,
@@ -506,14 +534,14 @@ class BackgroundManager {
 		try {
 			const tabs = await chrome.tabs.query({ url: "https://hikka.io/*" });
 			const refreshPromises = tabs
-				.filter((tab) => tab.id !== undefined)
+				.filter((tab): tab is chrome.tabs.Tab & { id: number } => tab.id !== undefined)
 				.map((tab) =>
 					chrome.tabs
-						.sendMessage(tab.id!, {
+						.sendMessage(tab.id, {
 							type: "MODULE_ACTION",
 							action: "REFRESH",
 						} as ContentMessage)
-						.catch((err) => {
+						.catch((err: any) => {
 							console.warn(
 								`[Hikka Forge] Error sending REFRESH to tab ${tab.id}:`,
 								err
@@ -522,7 +550,7 @@ class BackgroundManager {
 				);
 			await Promise.allSettled(refreshPromises);
 			console.log("[Hikka Forge] REFRESH action sent to all tabs.");
-		} catch (error) {
+		} catch (error: any) {
 			console.error("[Hikka Forge] Error sending REFRESH action:", error);
 			throw error;
 		}

@@ -3,7 +3,7 @@ import browser from "webextension-polyfill";
 import logo from "@/assets/logo.svg";
 
 import { Button } from "@/components/ui/button";
-import { ModuleList } from "@/components/ui/module-list"; 
+import { ModuleList } from "@/components/ui/module-list";
 
 import type {
 	ModuleInfo,

@@ -1,5 +1,5 @@
 import type { ForgeModuleDef } from '@/types/module';
-import AnimeSearchComponent from './AnimeSearchComponent';
+import { SearchTrigger } from './SearchTriggerComponent';
 
 const animeSearchModule: ForgeModuleDef = {
   id: 'anime-search',
@@ -11,7 +11,7 @@ const animeSearchModule: ForgeModuleDef = {
     selector: 'nav[class="container relative mx-auto flex min-h-16 items-center gap-4 px-4 md:gap-8"] > div[class="flex gap-4"] > div[class="flex items-center gap-4"]',
     position: 'prepend',
   },
-  component: AnimeSearchComponent,
+  component: SearchTrigger,
 };
 
 export default animeSearchModule;

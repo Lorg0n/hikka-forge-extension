@@ -4,6 +4,7 @@ import type {
 	ContentMessage,
 } from "./types/module";
 import { pipeline, FeatureExtractionPipeline } from '@huggingface/transformers';
+import { supportsWebAssembly, checkWebAssemblyAvailability } from './utils/webassembly-check';
 
 // Singleton to hold the pipeline instance
 class EmbeddingPipeline {

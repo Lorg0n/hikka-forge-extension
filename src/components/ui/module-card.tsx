@@ -10,6 +10,7 @@ import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
 import type { ModuleInfo } from "@/types/module";
 import { ModuleSettingsSection } from "./module-settings-section";
+import { Badge } from "@/components/ui/badge";
 
 interface ModuleCardProps {
 	moduleInfo: ModuleInfo;
@@ -31,6 +32,10 @@ export function ModuleCard({
 	onToggleExpansion,
 }: ModuleCardProps) {
 	const hasSettings = moduleInfo.settings && moduleInfo.settings.length > 0;
+	
+	// Check if module name contains "(Beta)" to show badge
+	const isBetaModule = moduleInfo.name.includes('(Beta)');
+	const displayName = moduleInfo.name.replace(' (Beta)', '');
 
 	return (
 		<div>
@@ -43,7 +48,14 @@ export function ModuleCard({
 					}`}
 			>
 				<div className="space-y-0.5 mr-4 flex-1">
-					<FormLabel className="text-base">{moduleInfo.name}</FormLabel>
+					<div className="flex items-center gap-2">
+						<FormLabel className="text-base">{displayName}</FormLabel>
+						{isBetaModule && (
+							<Badge variant="secondary" className="text-xs">
+								Beta
+							</Badge>
+						)}
+					</div>
 					<FormDescription>{moduleInfo.description}</FormDescription>
 				</div>
 				<div className="flex items-center gap-2">

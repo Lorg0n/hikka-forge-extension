@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
-import { generateEmbedding } from '@/services/embeddingService';
+import { generateEmbedding, isEmbeddingServiceAvailable } from '@/services/embeddingService';
 import { searchAnimeByVector } from '@/services/animeService';
 import { SimilarAnimeItem } from '@/types';
+import { supportsWebAssembly } from '@/utils/webassembly-check';
 
 interface UseAnimeSearchReturn {
   results: SimilarAnimeItem[] | null;
@@ -22,6 +23,13 @@ export const useAnimeSearch = (): UseAnimeSearchReturn => {
       return;
     }
 
+    // Check WebAssembly support before attempting search
+    if (!isEmbeddingServiceAvailable()) {
+      setError('Search feature requires WebAssembly support. Your browser does not support WebAssembly.');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setResults(null);
@@ -34,7 +42,16 @@ export const useAnimeSearch = (): UseAnimeSearchReturn => {
       const response = await searchAnimeByVector({ embedding });
       setResults(response.content);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+      
+      // Provide more user-friendly error messages
+      if (errorMessage.includes('WebAssembly') || errorMessage.includes('wasm')) {
+        setError('Search failed: Your browser does not support the required technology (WebAssembly). Please try a modern browser like Chrome, Firefox, or Edge.');
+      } else if (errorMessage.includes('network') || errorMessage.includes('connection')) {
+        setError('Search failed: Network connection issue. Please check your internet connection and try again.');
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }

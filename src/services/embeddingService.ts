@@ -16,6 +16,11 @@ interface GenerateEmbeddingParams {
 export const generateEmbedding = async ({
     prompt,
 }: GenerateEmbeddingParams): Promise<number[]> => {
+    // Check if WebAssembly is supported before attempting embedding
+    if (typeof WebAssembly === 'undefined') {
+        throw new Error('WebAssembly is not supported in this browser. The search feature requires WebAssembly support.');
+    }
+
     // The response from the background script is awaited.
     const response = await chrome.runtime.sendMessage({
         type: "FETCH_EMBEDDING",
@@ -27,9 +32,22 @@ export const generateEmbedding = async ({
     // Error handling, similar to checking `response.ok` in a fetch call.
     if (!response || !response.success) {
         const errorMessage = response?.error || 'An unknown error occurred in the background script.';
+        
+        // Provide more specific error messages for WebAssembly-related issues
+        if (errorMessage.includes('WebAssembly') || errorMessage.includes('wasm')) {
+            throw new Error(`Search failed: WebAssembly error - ${errorMessage}`);
+        }
+        
         throw new Error(errorMessage);
     }
 
     // On success, return the embedding data.
     return response.embedding;
+};
+
+/**
+ * Checks if the embedding service is available (WebAssembly support)
+ */
+export const isEmbeddingServiceAvailable = (): boolean => {
+    return typeof WebAssembly !== 'undefined';
 };

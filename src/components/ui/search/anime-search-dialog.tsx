@@ -5,7 +5,7 @@ import { useState, useEffect } from "react"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { SearchHeader } from "./search-header"
 import { SearchResults } from "./search-results"
-import { useAnimeSearch } from "@/hooks/useAnimeSearch" 
+import { useAnimeSearch } from "@/hooks/useAnimeSearch"
 import { useDebounce } from "@/hooks/useDebounce"
 
 interface AnimeSearchDialogProps {
@@ -72,18 +72,25 @@ export function AnimeSearchDialog({ open, onOpenChange }: AnimeSearchDialogProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl w-[90vw] p-0 gap-0 h-[80vh] max-h-[80vh] flex flex-col">
-        <SearchHeader
-          searchQuery={searchQuery}
-          onSearchQueryChange={setSearchQuery}
-        />
-        <SearchResults
-          selectedIndex={selectedIndex}
-          // Pass an empty array if results is null to satisfy the component's prop type
-          searchData={results || []}
-          isLoading={loading}
-          error={error}
-        />
+      <DialogContent 
+        className="max-w-xl w-[90vw] p-0 gap-0 flex flex-col"
+        style={{ maxHeight: '80vh', height: '80vh' }}
+      >
+        <div className="flex-shrink-0">
+          <SearchHeader
+            searchQuery={searchQuery}
+            onSearchQueryChange={setSearchQuery}
+          />
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <SearchResults
+            selectedIndex={selectedIndex}
+            // Pass an empty array if results is null to satisfy the component's prop type
+            searchData={results || []}
+            isLoading={loading}
+            error={error}
+          />
+        </div>
       </DialogContent>
     </Dialog>
   )

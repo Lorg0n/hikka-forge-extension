@@ -14,8 +14,11 @@ export default defineConfig({
     react(), 
     tailwindcss(), 
     manifestAndAssetPlugin({ browser }),
-    onnxWasmPlugin()
+    onnxWasmPlugin({ browser })
   ],
+  define: {
+    'import.meta.env.BROWSER': JSON.stringify(browser),
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

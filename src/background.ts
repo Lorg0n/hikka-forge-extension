@@ -3,8 +3,12 @@ import type {
 	ModuleInfo,
 	ContentMessage,
 } from "./types/module";
-import { pipeline, FeatureExtractionPipeline } from '@huggingface/transformers';
-import { supportsWebAssembly, checkWebAssemblyAvailability } from './utils/webassembly-check';
+import { pipeline, env } from '@huggingface/transformers';
+
+if (import.meta.env.BROWSER === "firefox" && env.backends.onnx.wasm) {
+  env.backends.onnx.wasm.wasmPaths = chrome.runtime.getURL("assets/");
+  console.log("Lol Kek")
+}
 
 // Singleton to hold the pipeline instance
 class EmbeddingPipeline {

@@ -1,4 +1,5 @@
-// components/anime-search/SearchResults.tsx
+"use client"
+
 import { AnimeResultItem } from "./anime-result-item"
 import { SimilarAnimeItem } from "@/types"
 
@@ -13,7 +14,7 @@ export function SearchResults({ selectedIndex, searchData, isLoading, error }: S
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="text-muted-foreground">Loading...</div>
+        <div className="text-muted-foreground">Завантаження...</div>
       </div>
     )
   }
@@ -21,7 +22,7 @@ export function SearchResults({ selectedIndex, searchData, isLoading, error }: S
   if (error) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="text-destructive">Error: {error}</div>
+        <div className="text-destructive">Помилка: {error}</div>
       </div>
     )
   }
@@ -29,7 +30,7 @@ export function SearchResults({ selectedIndex, searchData, isLoading, error }: S
   if (searchData.length === 0) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="text-muted-foreground">No results found</div>
+        <div className="text-muted-foreground">Результатів не знайдено</div>
       </div>
     )
   }

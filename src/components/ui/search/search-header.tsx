@@ -1,3 +1,5 @@
+"use client"
+
 import { Input } from "@/components/ui/input"
 import { Search, ArrowUp, ArrowDown } from "lucide-react"
 
@@ -12,24 +14,23 @@ export function SearchHeader({ searchQuery, onSearchQueryChange }: SearchHeaderP
       <div className="flex items-center">
         <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
         <Input
-          placeholder="Search for an anime..."
+          placeholder="Пошук аніме..."
           value={searchQuery}
           onChange={(e) => onSearchQueryChange(e.target.value)}
           className="border-0 focus-visible:ring-0 shadow-none text-base flex-1 min-w-0"
           autoFocus
         />
       </div>
-      {/* Optional: You can keep or remove the keyboard hints */}
       <div className="hidden sm:flex items-center justify-between text-sm text-muted-foreground pt-3">
         <div className="flex items-center gap-1">
-          <span>Navigate</span>
+          <span>Навігація</span>
           <div className="flex gap-1">
             <kbd className="px-1.5 py-0.5 text-xs bg-muted rounded"><ArrowUp className="w-3 h-3" /></kbd>
             <kbd className="px-1.5 py-0.5 text-xs bg-muted rounded"><ArrowDown className="w-3 h-3" /></kbd>
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <span>Close</span>
+          <span>Закрити</span>
           <kbd className="px-1.5 py-0.5 text-xs bg-muted rounded">esc</kbd>
         </div>
       </div>

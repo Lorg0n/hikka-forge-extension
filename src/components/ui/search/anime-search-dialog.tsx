@@ -1,4 +1,3 @@
-// components/anime-search/AnimeSearchDialog.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -17,28 +16,22 @@ export function AnimeSearchDialog({ open, onOpenChange }: AnimeSearchDialogProps
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedIndex, setSelectedIndex] = useState(0)
 
-  // 1. Get the functions and state from your search hook
   const { results, loading, error, search, clear } = useAnimeSearch()
 
-  // 2. Debounce the user's input to prevent excessive API calls
-  const debouncedSearchQuery = useDebounce(searchQuery, 500) // 500ms delay is good for API calls
+  const debouncedSearchQuery = useDebounce(searchQuery, 500)
 
-  // 3. This effect connects the debounced query to your hook's search function
   useEffect(() => {
     if (debouncedSearchQuery) {
       search(debouncedSearchQuery)
     } else {
-      clear() // Clear results if the search input is empty
+      clear()
     }
-    // The `search` and `clear` functions are stable due to `useCallback`
   }, [debouncedSearchQuery, search, clear])
 
-  // 4. Reset selection when search results change
   useEffect(() => {
     setSelectedIndex(0)
   }, [results])
 
-  // Reset local state when the dialog is closed
   useEffect(() => {
     if (!open) {
       setSearchQuery("")
@@ -46,7 +39,6 @@ export function AnimeSearchDialog({ open, onOpenChange }: AnimeSearchDialogProps
     }
   }, [open, clear])
 
-  // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!open) return
@@ -55,7 +47,6 @@ export function AnimeSearchDialog({ open, onOpenChange }: AnimeSearchDialogProps
         onOpenChange(false)
       } else if (e.key === "ArrowDown") {
         e.preventDefault()
-        // Use the length of the dynamic search results, handling the null case
         const maxIndex = (results?.length ?? 0) - 1
         if (maxIndex >= 0) {
           setSelectedIndex((prev) => Math.min(prev + 1, maxIndex))
@@ -68,9 +59,8 @@ export function AnimeSearchDialog({ open, onOpenChange }: AnimeSearchDialogProps
 
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [open, onOpenChange, results]) // Dependency on `results` is crucial
+  }, [open, onOpenChange, results])
 
-  // Calculate if we should show full height
   const hasContent = results && results.length > 0
   const shouldShowFullHeight = hasContent || loading
 
@@ -85,7 +75,7 @@ export function AnimeSearchDialog({ open, onOpenChange }: AnimeSearchDialogProps
           maxWidth: 'none'
         }}
       >
-        <DialogTitle className="sr-only">Search Anime</DialogTitle>
+        <DialogTitle className="sr-only">Пошук</DialogTitle>
         <div className="flex-shrink-0">
           <SearchHeader
             searchQuery={searchQuery}
@@ -104,7 +94,7 @@ export function AnimeSearchDialog({ open, onOpenChange }: AnimeSearchDialogProps
         )}
         {!shouldShowFullHeight && searchQuery && !loading && (
           <div className="p-4 text-center text-muted-foreground">
-            No results found
+            Результатів не знайдено
           </div>
         )}
       </DialogContent>

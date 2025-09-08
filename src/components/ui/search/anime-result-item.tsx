@@ -1,4 +1,5 @@
-// components/anime-search/AnimeResultItem.tsx
+"use client"
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -22,7 +23,7 @@ export function AnimeResultItem({ anime, isSelected }: AnimeResultItemProps) {
         <p className="text-sm text-muted-foreground">{anime.year}</p>
         <div className="mt-1">
           <Badge variant="outline">
-            Similarity: {(anime.similarityScore * 100).toFixed(0)}%
+            Схожість: {(anime.similarityScore * 100).toFixed(0)}%
           </Badge>
         </div>
       </div>

@@ -2,7 +2,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { SearchHeader } from "./search-header"
 import { SearchResults } from "./search-results"
 import { useAnimeSearch } from "@/hooks/useAnimeSearch"
@@ -85,6 +85,7 @@ export function AnimeSearchDialog({ open, onOpenChange }: AnimeSearchDialogProps
           maxWidth: 'none'
         }}
       >
+        <DialogTitle className="sr-only">Search Anime</DialogTitle>
         <div className="flex-shrink-0">
           <SearchHeader
             searchQuery={searchQuery}

@@ -8,9 +8,9 @@ interface SearchHeaderProps {
 
 export function SearchHeader({ searchQuery, onSearchQueryChange }: SearchHeaderProps) {
   return (
-    <div className="p-4 border-b flex-shrink-0">
-      <div className="flex items-center gap-3">
-        <Search className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+    <div className="p-4 border-b flex flex-col gap-2">
+      <div className="flex items-center">
+        <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
         <Input
           placeholder="Search for an anime..."
           value={searchQuery}

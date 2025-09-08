@@ -73,8 +73,13 @@ export function AnimeSearchDialog({ open, onOpenChange }: AnimeSearchDialogProps
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="max-w-xl w-[90vw] p-0 gap-0 flex flex-col"
-        style={{ maxHeight: '80vh', height: '80vh' }}
+        className="p-0 gap-0 flex flex-col"
+        style={{ 
+          maxHeight: '80vh', 
+          height: '80vh',
+          width: 'min(90vw, 42rem)', // This ensures consistent width - 90vw on mobile, 42rem (672px) on desktop
+          maxWidth: 'none' // Override any max-width from the base component
+        }}
       >
         <div className="flex-shrink-0">
           <SearchHeader

@@ -70,15 +70,19 @@ export function AnimeSearchDialog({ open, onOpenChange }: AnimeSearchDialogProps
     return () => document.removeEventListener("keydown", handleKeyDown)
   }, [open, onOpenChange, results]) // Dependency on `results` is crucial
 
+  // Calculate if we should show full height
+  const hasContent = results && results.length > 0
+  const shouldShowFullHeight = hasContent || loading
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
         className="p-0 gap-0 flex flex-col"
         style={{ 
-          maxHeight: '80vh', 
-          height: '80vh',
-          width: 'min(90vw, 42rem)', // This ensures consistent width - 90vw on mobile, 42rem (672px) on desktop
-          maxWidth: 'none' // Override any max-width from the base component
+          maxHeight: shouldShowFullHeight ? '80vh' : 'auto',
+          height: shouldShowFullHeight ? '80vh' : 'auto',
+          width: 'min(90vw, 42rem)',
+          maxWidth: 'none'
         }}
       >
         <div className="flex-shrink-0">
@@ -87,15 +91,21 @@ export function AnimeSearchDialog({ open, onOpenChange }: AnimeSearchDialogProps
             onSearchQueryChange={setSearchQuery}
           />
         </div>
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          <SearchResults
-            selectedIndex={selectedIndex}
-            // Pass an empty array if results is null to satisfy the component's prop type
-            searchData={results || []}
-            isLoading={loading}
-            error={error}
-          />
-        </div>
+        {shouldShowFullHeight && (
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <SearchResults
+              selectedIndex={selectedIndex}
+              searchData={results || []}
+              isLoading={loading}
+              error={error}
+            />
+          </div>
+        )}
+        {!shouldShowFullHeight && searchQuery && !loading && (
+          <div className="p-4 text-center text-muted-foreground">
+            No results found
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   )

@@ -7,7 +7,7 @@ import { pipeline, env } from '@huggingface/transformers';
 
 if (import.meta.env.BROWSER === "firefox" && env.backends.onnx.wasm) {
   env.backends.onnx.wasm.wasmPaths = chrome.runtime.getURL("assets/");
-  console.log("Lol Kek")
+  console.log("[Hikka Forge] Browser: Firefox")
 }
 
 // Singleton to hold the pipeline instance

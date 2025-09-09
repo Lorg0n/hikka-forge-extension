@@ -94,30 +94,18 @@ class ModuleManager {
 			enabledStates,
 			moduleSettings
 		);
-		let changed = false;
+		let settingsChanged = false;
+		
 		this.moduleDefinitions.forEach((moduleDef) => {
+			// Update enabled state
 			const newState = enabledStates[moduleDef.id];
-			if (
-				newState !== undefined &&
-				this.moduleEnabledStates.get(moduleDef.id) !== newState
-			) {
+			if (newState !== undefined) {
 				this.moduleEnabledStates.set(moduleDef.id, newState);
-				console.log(
-					`[Hikka Forge] State updated for ${moduleDef.name}: ${newState}`
-				);
-				changed = true;
-			} else if (
-				newState === undefined &&
-				this.moduleEnabledStates.has(moduleDef.id)
-			) {
-				console.log(
-					`[Hikka Forge] State for ${moduleDef.name} not provided in sync, keeping current.`
-				);
 			}
 
+			// Update settings
 			if (moduleSettings[moduleDef.id]) {
 				const currentModuleSettings = this.moduleSettings[moduleDef.id] || {};
-				let settingsChangedForModule = false;
 				for (const settingId in moduleSettings[moduleDef.id]) {
 					if (
 						moduleSettings[moduleDef.id][settingId] !==
@@ -125,121 +113,79 @@ class ModuleManager {
 					) {
 						currentModuleSettings[settingId] =
 							moduleSettings[moduleDef.id][settingId];
-						settingsChangedForModule = true;
+						settingsChanged = true;
 					}
 				}
-				if (settingsChangedForModule) {
-					this.moduleSettings[moduleDef.id] = currentModuleSettings;
-					changed = true;
-					console.log(`[Hikka Forge] Settings updated for ${moduleDef.name}.`);
-				}
+				this.moduleSettings[moduleDef.id] = currentModuleSettings;
 			}
 		});
-		this.manageModuleStyles();
-		if (changed) {
-			console.log(
-				"[Hikka Forge] Module states or settings changed, re-evaluating modules for current URL."
-			);
-			this.evaluateModulesForCurrentUrl();
-		} else {
-			console.log(
-				"[Hikka Forge] No module state or setting changes detected during sync."
-			);
-			this.evaluateModulesForCurrentUrl(true);
+
+		if (settingsChanged) {
+			console.log("[Hikka Forge] Module settings changed, re-evaluating styles.");
+			this.manageModuleStyles();
 		}
+		
+		// **FIX for Bug #1**: Always perform a full evaluation after any sync.
+		// The previous logic with the 'changed' flag and 'onlyLoadMissing' was causing
+		// the initial load to fail because the state wasn't technically "changing" from its default.
+		// This ensures that after the first (or any) sync, the content script has the correct state
+		// and evaluates everything properly.
+		console.log(
+			"[Hikka Forge] Module states synced, re-evaluating modules for current URL."
+		);
+		this.evaluateModulesForCurrentUrl();
 	}
 
-	private evaluateModulesForCurrentUrl(onlyLoadMissing: boolean = false): void {
+	/**
+	 * **FIX for Bug #2 and #3**: This function has been completely rewritten.
+	 * The old logic was "aggressive", deactivating and reactivating modules on every URL change
+	 * or settings update, which caused flickering and unnecessary reloads.
+	 *
+	 * This new logic is simpler and more robust:
+	 * 1. It iterates through all module definitions.
+	 * 2. It determines if a module *should* be active based on its enabled state and URL patterns.
+	 * 3. It compares this desired state with the *actual* state (is it currently in the DOM?).
+	 * 4. It only takes action if there is a mismatch:
+	 *    - If a module should be active but isn't, it loads it.
+	 *    - If a module is active but shouldn't be, it unloads it.
+	 *    - If a module is active and should remain active, it does nothing, preventing reloads.
+	 */
+	private evaluateModulesForCurrentUrl(): void {
 		console.log(`[Hikka Forge] Evaluating modules for URL: ${this.currentUrl}`);
 
 		this.manageModuleStyles();
 
-		const modulesToActivate: ForgeModuleDef[] = [];
-		const modulesToDeactivate: string[] = [];
-
 		this.moduleDefinitions.forEach((moduleDef) => {
 			if (moduleDef.styles && !moduleDef.component) {
-				return;
+				return; // Style-only modules are handled by manageModuleStyles
 			}
 
-			const isEnabled = this.moduleEnabledStates.get(moduleDef.id) ?? false;
-			const matchesUrl = this.matchesUrlPatterns(
-				this.currentUrl,
-				moduleDef.urlPatterns
-			);
-			const isComponentCurrentlyInDom = this.activeModuleRoots.has(
-				moduleDef.id
-			);
+			const shouldBeActive = 
+				(this.moduleEnabledStates.get(moduleDef.id) ?? false) &&
+				this.matchesUrlPatterns(this.currentUrl, moduleDef.urlPatterns);
+			
+			const isCurrentlyActive = this.activeModuleRoots.has(moduleDef.id);
 
-			const isCurrentlyUnloading = this.unloadingModules.has(moduleDef.id);
-
-			const isCurrentlyManagedAsActiveOrUnloading =
-				isComponentCurrentlyInDom || isCurrentlyUnloading;
-
-			if (isEnabled && matchesUrl) {
-				if (!isComponentCurrentlyInDom && !isCurrentlyUnloading) {
-					modulesToActivate.push(moduleDef);
-				} else if (isCurrentlyUnloading) {
-					console.log(
-						`[Hikka Forge] Module ${moduleDef.name} was unloading, but is needed for new URL. Cancelling unload and reactivating.`
-					);
-					modulesToDeactivate.push(moduleDef.id);
-					modulesToActivate.push(moduleDef);
-				} else if (isComponentCurrentlyInDom) {
-					if (!onlyLoadMissing) {
-						console.log(
-							`[Hikka Forge] Module ${moduleDef.name} component is already active but URL changed or full re-eval. Marking for re-load.`
-						);
-						modulesToDeactivate.push(moduleDef.id);
-						modulesToActivate.push(moduleDef);
-					} else {
-						console.log(
-							`[Hikka Forge] Module ${moduleDef.name} component is already active and onlyLoadMissing is true. No action.`
-						);
-					}
+			if (shouldBeActive && !isCurrentlyActive) {
+				// Condition: Should be running, but isn't. Load it.
+				console.log(`[Hikka Forge] Activating module: ${moduleDef.name}`);
+				if (this.unloadingModules.has(moduleDef.id)) {
+					// It was in the process of unloading, cancel it.
+					const unloading = this.unloadingModules.get(moduleDef.id)!;
+					clearTimeout(unloading.timeout);
+					this.unloadingModules.delete(moduleDef.id);
+					console.log(`[Hikka Forge] Cancelled pending unload for ${moduleDef.name} due to reactivation.`);
 				}
-			} else {
-				if (isCurrentlyManagedAsActiveOrUnloading && !onlyLoadMissing) {
-					modulesToDeactivate.push(moduleDef.id);
-				}
+				this.loadModuleComponent(moduleDef);
+
+			} else if (!shouldBeActive && isCurrentlyActive) {
+				// Condition: Is running, but shouldn't be. Unload it.
+				console.log(`[Hikka Forge] Deactivating module: ${moduleDef.name}`);
+				this.unloadModuleComponent(moduleDef.id);
 			}
+			// If (shouldBeActive && isCurrentlyActive) -> do nothing, it's correct.
+			// If (!shouldBeActive && !isCurrentlyActive) -> do nothing, it's also correct.
 		});
-
-		if (modulesToDeactivate.length > 0) {
-			console.log(
-				"[Hikka Forge] Components to Deactivate:",
-				modulesToDeactivate
-			);
-			modulesToDeactivate.forEach((id) => this.unloadModuleComponent(id));
-		}
-		if (modulesToActivate.length > 0) {
-			console.log(
-				"[Hikka Forge] Components to Activate:",
-				modulesToActivate.map((m) => m.name)
-			);
-
-			setTimeout(() => {
-				modulesToActivate.forEach((moduleDef) => {
-					if (moduleDef.component) {
-						const isEnabled =
-							this.moduleEnabledStates.get(moduleDef.id) ?? false;
-						const matchesUrl = this.matchesUrlPatterns(
-							this.currentUrl,
-							moduleDef.urlPatterns
-						);
-						if (isEnabled && matchesUrl) {
-							this.loadModuleComponent(moduleDef);
-						} else {
-							console.log(
-								`[Hikka Forge] Conditions for ${moduleDef.name} component changed before delayed activation. Skipping.`
-							);
-						}
-					}
-				});
-			}, ANIMATION_DURATION_MS + 50);
-		} else {
-			console.log("[Hikka Forge] No components to activate.");
-		}
 	}
 
 	private matchesUrlPatterns(url: string, patterns: string[]): boolean {
@@ -536,6 +482,7 @@ class ModuleManager {
 				this.unloadingModules.delete(moduleId);
 			}, ANIMATION_DURATION_MS);
 			this.unloadingModules.set(moduleId, { timeout });
+			this.activeModuleRoots.delete(moduleId); // Mark as inactive immediately
 			console.log(
 				`[Hikka Forge] Unload process initiated for ${name} component. DOM removal delayed.`
 			);
@@ -669,41 +616,14 @@ class ModuleManager {
 		console.log(
 			`[Hikka Forge] Processing URL change: ${this.currentUrl} -> ${newUrl}`
 		);
+		this.currentUrl = newUrl;
 
-		// Cleanup observers
 		this.observers.forEach((observer, moduleId) => {
 			observer.disconnect();
 			this.observers.delete(moduleId);
 		});
-		console.log("[Hikka Forge] All MutationObservers disconnected due to URL change.");
 
-		// Cancel and clean up unloading modules
-		this.unloadingModules.forEach((unloading, moduleId) => {
-			clearTimeout(unloading.timeout);
-			const moduleName = this.moduleDefinitions.get(moduleId)?.name || moduleId;
-			console.log(
-				`[Hikka Forge] Cancelled pending unload animation for module ${moduleName} due to URL change.`
-			);
-			const activeComponent = this.activeModuleRoots.get(moduleId);
-			if (activeComponent) {
-				try {
-					activeComponent.root.unmount();
-					activeComponent.container.remove();
-				} catch (error) {
-					console.error(
-						`[Hikka Forge] Error force-removing component for ${moduleName} during URL change cleanup:`,
-						error
-					);
-				}
-				this.activeModuleRoots.delete(moduleId);
-			}
-		});
-		this.unloadingModules.clear();
-		console.log("[Hikka Forge] All pending unload animations cancelled and associated components removed.");
-
-		this.currentUrl = newUrl;
-		this.manageModuleStyles();
-		this.evaluateModulesForCurrentUrl(false);
+		this.evaluateModulesForCurrentUrl();
 	}
 
 	private initMessageListener(): void {
@@ -774,8 +694,10 @@ class ModuleManager {
 
 	refreshAllActiveModules(): void {
 		console.log("[Hikka Forge] Refreshing all active modules...");
-		const activeModuleIds = Array.from(this.activeModuleRoots.keys());
-		activeModuleIds.forEach((id) => this.unloadModuleComponent(id));
+		
+		this.activeModuleRoots.forEach((_, moduleId) => {
+			this.unloadModuleComponent(moduleId);
+		});
 
 		setTimeout(() => {
 			console.log("[Hikka Forge] Re-evaluating modules after refresh...");
@@ -806,10 +728,6 @@ class ModuleManager {
 							`[Hikka Forge] Re-injecting dynamic styles for ${moduleDef.name} due to potential setting change.`
 						);
 						this.injectStyles(moduleDef);
-					} else {
-						console.log(
-							`[Hikka Forge] Styles for ${moduleDef.name} already active.`
-						);
 					}
 				}
 			} else {

@@ -4,9 +4,10 @@ import type {
 	ContentMessage,
 } from "./types/module";
 import { pipeline, env } from '@huggingface/transformers';
+import browser from 'webextension-polyfill';
 
 if (import.meta.env.BROWSER === "firefox" && env.backends.onnx.wasm) {
-  env.backends.onnx.wasm.wasmPaths = chrome.runtime.getURL("assets/");
+  env.backends.onnx.wasm.wasmPaths = browser.runtime.getURL("assets/");
   console.log("[Hikka Forge] Browser: Firefox")
 }
 
@@ -83,7 +84,7 @@ class BackgroundManager {
 	// }
 
 	private initTabsListeners(): void {
-		chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+		browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 			if (
 				changeInfo.status === "complete" &&
 				tab.url?.startsWith("https://hikka.io/")
@@ -93,13 +94,13 @@ class BackgroundManager {
 		}
 		);
 
-		chrome.tabs.onRemoved.addListener((tabId) => {
+		browser.tabs.onRemoved.addListener((tabId) => {
 			this.tabStates.delete(tabId);
 		});
 	}
 
 	private initInstallAndUpdateListeners(): void {
-		chrome.runtime.onInstalled.addListener((details) => {
+		browser.runtime.onInstalled.addListener((details) => {
 			if (details.reason === "install") {
 				console.log("[Hikka Forge] Extension installed. Default states will be applied on first use.");
 			} else if (details.reason === "update") {
@@ -109,126 +110,95 @@ class BackgroundManager {
 	}
 
 	private initMessageListener(): void {
-		chrome.runtime.onMessage.addListener(
-			(message: BackgroundMessage | any, sender, sendResponse) => {
-				let isAsync = false;
+	browser.runtime.onMessage.addListener(
+		// FIX: Accept `message` as `any` to match the listener's expected signature.
+		async (message: any, sender: browser.Runtime.MessageSender) => {
 
-				if (message.type === "REGISTER_CONTENT_SCRIPT") {
-					console.log(`[Hikka Forge] Content script from tab ${sender.tab?.id} registered with ${message.modules.length} modules.`);
-					isAsync = true;
-					this.handleContentScriptRegistration(message.modules, sender.tab?.id)
-						.then(() => sendResponse({ success: true }))
-						.catch(error => {
-							console.error("[Hikka Forge] Error handling content script registration:", error);
-							sendResponse({ success: false, error: String(error) });
-						});
-				} else if (message.type === "GET_MODULE_DEFINITIONS") {
-					isAsync = true;
-					this.getModuleDefinitionsWithState()
-						.then((result) =>
-							sendResponse({
-								success: true,
-								modules: result.modules,
-								moduleSettings: result.moduleSettings,
-							})
-						)
-						.catch((error) => {
-							console.error(
-								"[Hikka Forge] Error getting module definitions:",
-								error
-							);
-							sendResponse({ success: false, error: String(error) });
-						});
-				} else if (message.type === "MODULE_ACTION") {
-					if (
-						message.action === "TOGGLE" &&
-						message.moduleId &&
-						typeof message.enabled === "boolean"
-					) {
-						isAsync = true;
-						this.toggleModuleState(message.moduleId, message.enabled)
-							.then(() => sendResponse({ success: true }))
-							.catch((error) => {
-								console.error(
-									`[Hikka Forge] Error toggling module ${message.moduleId}:`,
-									error
-								);
-								sendResponse({ success: false, error: String(error) });
-							});
-					} else if (
-						message.action === "UPDATE_SETTING" &&
-						message.moduleId &&
-						message.settingId
-					) {
-						isAsync = true;
-						this.updateModuleSetting(
-							message.moduleId,
-							message.settingId,
-							message.value
-						)
-							.then(() => sendResponse({ success: true }))
-							.catch((error) => {
-								console.error(`[Hikka Forge] Error updating setting:`, error);
-								sendResponse({ success: false, error: String(error) });
-							});
-					} else if (message.action === "REFRESH") {
-						isAsync = true;
-						this.refreshContentInAllTabs()
-							.then(() => sendResponse({ success: true }))
-							.catch((error) => {
-								console.error("[Hikka Forge] Error refreshing content:", error);
-								sendResponse({ success: false, error: String(error) });
-							});
-					} else {
-						console.warn(
-							"[Hikka Forge] Unknown MODULE_ACTION received:",
-							message
-						);
-						sendResponse({ success: false, error: "Invalid module action" });
-					}
-				} else if (message.type === "FETCH_EMBEDDING") {
-					isAsync = true;
-					const { prompt } = message.payload;
+			// Then, you can cast it to your specific type for use within the function.
+			// This gives you type safety and autocompletion.
+			const backgroundMessage = message as BackgroundMessage;
 
-					(async () => {
-						try {
-							console.log("[Hikka Forge][DEBUG] Starting embedding generation");
-							console.log(`[Hikka Forge][DEBUG] Prompt: "${prompt}" (length: ${prompt.length})`);
-
-							const extractor = await EmbeddingPipeline.getInstance();
-							console.log(`[Hikka Forge][DEBUG] Extractor type: ${typeof extractor}`);
-
-							// FIX: The pipeline expects an array of strings.
-							const modelInput = [prompt];
-							console.log("[Hikka Forge][DEBUG] Calling model with input:", modelInput);
-
-							// The extractor function handles tokenization internally
-							const embeddings = await extractor(modelInput, { pooling: 'mean', normalize: true });
-
-							console.log("[Hikka Forge][DEBUG] Model execution completed successfully");
-
-							// Convert tensor to JavaScript array and get the embedding for the first (and only) sentence
-							const embeddingVector = embeddings[0].tolist();
-
-							console.log(`[Hikka Forge][DEBUG] Generated embedding vector (length: ${embeddingVector.length})`);
-							sendResponse({ success: true, embedding: embeddingVector });
-						} catch (e: any) {
-							console.error("[Hikka Forge] Transformers.js error in background script:");
-							console.error("Error object:", e);
-							console.error("Error stack:", e.stack);
-							// Log the inner details if the error has them
-							if (e.message.includes('model execution')) {
-								console.error("This often happens due to incorrect input format or memory issues.");
-							}
-							sendResponse({ success: false, error: e.message });
-						}
-					})();
-					return true; // Keep the message channel open for async response
+			if (backgroundMessage.type === "REGISTER_CONTENT_SCRIPT") {
+				console.log(`[Hikka Forge] Content script from tab ${sender.tab?.id} registered with ${backgroundMessage.modules.length} modules.`);
+				try {
+					await this.handleContentScriptRegistration(backgroundMessage.modules, sender.tab?.id);
+					return { success: true };
+				} catch (error) {
+					console.error("[Hikka Forge] Error handling content script registration:", error);
+					return { success: false, error: String(error) };
 				}
-				return isAsync;
 			}
-		);
-	}
+
+			if (backgroundMessage.type === "GET_MODULE_DEFINITIONS") {
+				try {
+					const result = await this.getModuleDefinitionsWithState();
+					return {
+						success: true,
+						modules: result.modules,
+						moduleSettings: result.moduleSettings,
+					};
+				} catch (error) {
+					console.error("[Hikka Forge] Error getting module definitions:", error);
+					return { success: false, error: String(error) };
+				}
+			}
+
+			if (backgroundMessage.type === "MODULE_ACTION") {
+				try {
+					if (backgroundMessage.action === "TOGGLE" && backgroundMessage.moduleId && typeof backgroundMessage.enabled === "boolean") {
+						await this.toggleModuleState(backgroundMessage.moduleId, backgroundMessage.enabled);
+						return { success: true };
+					}
+					if (backgroundMessage.action === "UPDATE_SETTING" && backgroundMessage.moduleId && backgroundMessage.settingId) {
+						await this.updateModuleSetting(backgroundMessage.moduleId, backgroundMessage.settingId, backgroundMessage.value);
+						return { success: true };
+					}
+					if (backgroundMessage.action === "REFRESH") {
+						await this.refreshContentInAllTabs();
+						return { success: true };
+					}
+
+					console.warn("[Hikka Forge] Unknown MODULE_ACTION received:", backgroundMessage);
+					return { success: false, error: "Invalid module action" };
+
+				} catch (error) {
+					console.error(`[Hikka Forge] Error processing MODULE_ACTION:`, error);
+					return { success: false, error: String(error) };
+				}
+			}
+
+			if (backgroundMessage.type === "FETCH_EMBEDDING") {
+				try {
+					const { prompt } = backgroundMessage.payload;
+					console.log("[Hikka Forge][DEBUG] Starting embedding generation");
+					console.log(`[Hikka Forge][DEBUG] Prompt: "${prompt}" (length: ${prompt.length})`);
+
+					const extractor = await EmbeddingPipeline.getInstance();
+					console.log(`[Hikka Forge][DEBUG] Extractor type: ${typeof extractor}`);
+
+					const modelInput = [prompt];
+					console.log("[Hikka Forge][DEBUG] Calling model with input:", modelInput);
+
+					const embeddings = await extractor(modelInput, { pooling: 'mean', normalize: true });
+					console.log("[Hikka Forge][DEBUG] Model execution completed successfully");
+
+					const embeddingVector = embeddings[0].tolist();
+					console.log(`[Hikka Forge][DEBUG] Generated embedding vector (length: ${embeddingVector.length})`);
+
+					return { success: true, embedding: embeddingVector };
+				} catch (e: any) {
+					console.error("[Hikka Forge] Transformers.js error in background script:");
+					console.error("Error object:", e);
+					console.error("Error stack:", e.stack);
+					if (e.message.includes('model execution')) {
+						console.error("This often happens due to incorrect input format or memory issues.");
+					}
+					return { success: false, error: e.message };
+				}
+			}
+		}
+	);
+}
 
 	// private handleUrlChange(tabId: number, url: string): void {
 	// 	const now = Date.now();
@@ -251,7 +221,7 @@ class BackgroundManager {
 		const storageKey = `module_enabled_${moduleId}`;
 		console.log(`[Hikka Forge] Setting ${storageKey} to ${enabled}`);
 		try {
-			await chrome.storage.sync.set({ [storageKey]: enabled });
+			await browser.storage.sync.set({ [storageKey]: enabled });
 			this.invalidateModuleCache();
 			await this.syncAllTabs();
 		} catch (error: any) {
@@ -267,7 +237,7 @@ class BackgroundManager {
 		if (!this.moduleCache || this.moduleCache.definitions.length === 0) {
 			console.log("[Hikka Forge] Populating module cache from registration.");
 			this.moduleCache = {
-				definitions: modules.map(m => ({ ...m, enabled: false, isBeta: m.isBeta })),
+				definitions: modules.map((m: ModuleInfo) => ({ ...m, enabled: false as boolean, isBeta: m.isBeta })),
 				timestamp: Date.now()
 			};
 		}
@@ -294,7 +264,7 @@ class BackgroundManager {
 		const storageKey = `module_setting_${moduleId}_${settingId}`;
 		console.log(`[Hikka Forge] Setting ${storageKey} to:`, value);
 		try {
-			await chrome.storage.sync.set({ [storageKey]: value });
+			await browser.storage.sync.set({ [storageKey]: value });
 			this.invalidateModuleCache();
 			await this.syncAllTabs();
 		} catch (error: any) {
@@ -364,12 +334,15 @@ class BackgroundManager {
 		}
 
 		try {
-			const allStoredData = await chrome.storage.sync.get(null);
+			const allStoredData = await browser.storage.sync.get(null);
 			const moduleSettings: Record<string, Record<string, any>> = {};
 
 			const updatedModules = definitions.map((def) => {
 				const enabledKey = `module_enabled_${def.id}`;
-				const enabled = allStoredData[enabledKey] ?? def.enabledByDefault ?? false;
+
+				// FIX: Cast the result to boolean to solve the type inference issue.
+				// The value from storage is 'any', so we assert the type we expect.
+				const enabled = (allStoredData[enabledKey] ?? def.enabledByDefault ?? false) as boolean;
 
 				const settings: Record<string, any> = {};
 				if (def.settings) {
@@ -383,7 +356,7 @@ class BackgroundManager {
 
 				return {
 					...def,
-					enabled,
+					enabled, // `enabled` is now correctly typed as boolean
 					isBeta: def.isBeta,
 				};
 			});
@@ -397,7 +370,7 @@ class BackgroundManager {
 
 	private async fetchModuleDefinitionsFromContentScript(): Promise<ModuleInfo[]> {
 		try {
-			const tabs = await chrome.tabs.query({
+			const tabs = await browser.tabs.query({
 				url: "https://hikka.io/*",
 				status: "complete",
 			});
@@ -416,11 +389,11 @@ class BackgroundManager {
 					console.log(
 						`[Hikka Forge] Requesting module info from tab ${tab.id}`
 					);
-					const response = await chrome.tabs.sendMessage(tab.id, {
+					const response: { success: boolean; modules?: ModuleInfo[] } = await browser.tabs.sendMessage(tab.id, {
 						type: "GET_CONTENT_MODULES_INFO",
 					} as ContentMessage);
 
-					if (response?.success && Array.isArray(response.modules)) {
+					if (response.success && Array.isArray(response.modules)) {
 						console.log(
 							`[Hikka Forge] Received module info from tab ${tab.id}:`,
 							response.modules.length
@@ -478,9 +451,9 @@ class BackgroundManager {
 	private async syncAllTabs(): Promise<void> {
 		console.log("[Hikka Forge] Syncing states with all Hikka tabs...");
 		try {
-			const tabs = await chrome.tabs.query({ url: "https://hikka.io/*" });
+			const tabs = await browser.tabs.query({ url: "https://hikka.io/*" });
 			const syncPromises = tabs
-				.filter((tab): tab is chrome.tabs.Tab => tab.id !== undefined)
+				.filter((tab): tab is any => tab.id !== undefined)
 				.map((tab) => this.sendSyncMessageToTab(tab.id!));
 
 			await Promise.allSettled(syncPromises);
@@ -508,7 +481,7 @@ class BackgroundManager {
 				enabledStates,
 				flatModuleSettings
 			);
-			await chrome.tabs.sendMessage(tabId, {
+			await browser.tabs.sendMessage(tabId, {
 				type: "SYNC_MODULES",
 				enabledStates: enabledStates,
 				moduleSettings: flatModuleSettings,
@@ -532,11 +505,11 @@ class BackgroundManager {
 	private async refreshContentInAllTabs(): Promise<void> {
 		console.log("[Hikka Forge] Sending REFRESH action to all Hikka tabs...");
 		try {
-			const tabs = await chrome.tabs.query({ url: "https://hikka.io/*" });
+			const tabs = await browser.tabs.query({ url: "https://hikka.io/*" });
 			const refreshPromises = tabs
-				.filter((tab): tab is chrome.tabs.Tab & { id: number } => tab.id !== undefined)
+				.filter((tab): tab is any & { id: number } => tab.id !== undefined)
 				.map((tab) =>
-					chrome.tabs
+					browser.tabs
 						.sendMessage(tab.id, {
 							type: "MODULE_ACTION",
 							action: "REFRESH",

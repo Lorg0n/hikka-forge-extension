@@ -133,13 +133,21 @@ interface RegisterContentScriptMessage {
     modules: ModuleInfo[];
 }
 
+export interface FetchEmbeddingMessage {
+	type: "FETCH_EMBEDDING";
+	payload: {
+		prompt: string;
+	};
+}
+
 export type BackgroundMessage =
 	| ModuleToggleAction
 	| ModuleUpdateSettingAction
 	| ModuleRefreshAction
 	| GetModuleDefinitions
 	| GetContentModulesInfo
-    | RegisterContentScriptMessage;
+    | RegisterContentScriptMessage
+	| FetchEmbeddingMessage;
 
 export type ContentMessage =
 	| ModuleRefreshAction

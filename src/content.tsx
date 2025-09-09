@@ -6,6 +6,7 @@ import type {
 	ContentMessage,
 	InsertPosition,
 } from "@/types/module";
+import browser from 'webextension-polyfill';
 import "@/index.css";
 
 // Constants
@@ -77,7 +78,7 @@ class ModuleManager {
 	private registerWithBackground(): void {
 		console.log("[Hikka Forge] Registering with background script...");
 		const modulesInfo = this.getModulesInfo();
-		chrome.runtime.sendMessage({
+		browser.runtime.sendMessage({
 			type: "REGISTER_CONTENT_SCRIPT",
 			modules: modulesInfo
 		}).catch(error => {
@@ -627,56 +628,55 @@ class ModuleManager {
 	}
 
 	private initMessageListener(): void {
-		chrome.runtime.onMessage.addListener(
-			(message: ContentMessage, sender, sendResponse) => {
-				console.log("[Hikka Forge] Content script received message:", message);
-				let isAsync = false;
-				try {
-					switch (message.type) {
-						case "SYNC_MODULES":
-							if (message.enabledStates && message.moduleSettings) {
-								this.syncModuleStates(
-									message.enabledStates,
-									message.moduleSettings
-								);
-								sendResponse({ success: true });
-							} else {
-								sendResponse({
-									success: false,
-									error: "Missing enabledStates or moduleSettings in SYNC_MODULES message.",
-								});
-							}
-							break;
-						case "GET_CONTENT_MODULES_INFO":
-							const modulesInfo = this.getModulesInfo();
-							sendResponse({ success: true, modules: modulesInfo });
-							break;
-						case "MODULE_ACTION":
-							if (message.action === "REFRESH") {
-								this.refreshAllActiveModules();
-								sendResponse({ success: true });
-							} else {
-								sendResponse({
-									success: false,
-									error: "Unknown MODULE_ACTION action for content script",
-								});
-							}
-							break;
-						default:
-							return false;
-					}
-				} catch (error: any) {
-					console.error(
-						"[Hikka Forge] Error processing message in content script:",
-						error
-					);
-					if (!isAsync) {
-						sendResponse({ success: false, error: String(error) });
-					}
+		browser.runtime.onMessage.addListener(
+		async (message: any, _sender: browser.Runtime.MessageSender) => {
+			console.log("[Hikka Forge] Content script received message:", message);
+
+			const contentMessage = message as ContentMessage;
+
+			try {
+				switch (contentMessage.type) {
+					case "SYNC_MODULES":
+						if (contentMessage.enabledStates && contentMessage.moduleSettings) {
+							this.syncModuleStates(
+								contentMessage.enabledStates,
+								contentMessage.moduleSettings
+							);
+							return { success: true };
+						} else {
+							return {
+								success: false,
+								error: "Missing enabledStates or moduleSettings in SYNC_MODULES message.",
+							};
+						}
+
+					case "GET_CONTENT_MODULES_INFO":
+						const modulesInfo = this.getModulesInfo();
+						return { success: true, modules: modulesInfo };
+
+					case "MODULE_ACTION":
+						if (contentMessage.action === "REFRESH") {
+							this.refreshAllActiveModules();
+							return { success: true };
+						} else {
+							return {
+								success: false,
+								error: "Unknown MODULE_ACTION action for content script",
+							};
+						}
+
+					default:
+						break;
 				}
-				return isAsync;
+			} catch (error: any) {
+				console.error(
+					"[Hikka Forge] Error processing message in content script:",
+					error
+				);
+				return { success: false, error: String(error) };
 			}
-		);
+		}
+	);
 	}
 
 	getModulesInfo(): ModuleInfo[] {

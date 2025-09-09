@@ -3,15 +3,34 @@
 import { AnimeResultItem } from "./anime-result-item"
 import { SimilarAnimeItem } from "@/types"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useRef, useEffect } from "react"
 
 interface SearchResultsProps {
   selectedIndex: number
   searchData: SimilarAnimeItem[]
   isLoading: boolean
   error: string | null
+  onAnimeSelect: (anime: SimilarAnimeItem) => void
+  onMouseMove: () => void
+  onMouseSelect: (index: number) => void
 }
 
-export function SearchResults({ selectedIndex, searchData, isLoading, error }: SearchResultsProps) {
+export function SearchResults({ selectedIndex, searchData, isLoading, error, onAnimeSelect, onMouseMove, onMouseSelect }: SearchResultsProps) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    const selectedElement = container.children[selectedIndex] as HTMLElement
+    if (selectedElement) {
+      selectedElement.scrollIntoView({
+        block: "nearest",
+        behavior: "smooth",
+      })
+    }
+  }, [selectedIndex])
+  
   if (isLoading) {
     return (
       <div className="p-4 space-y-3">
@@ -52,12 +71,18 @@ export function SearchResults({ selectedIndex, searchData, isLoading, error }: S
   }
 
   return (
-    <div className="p-2 space-y-1 animate-fade-in">
+    <div
+      ref={scrollContainerRef}
+      onMouseMove={onMouseMove}
+      className="p-2 space-y-1 animate-fade-in"
+    >
       {searchData.map((anime, index) => (
         <AnimeResultItem
           key={anime.slug || index}
           anime={anime}
           isSelected={index === selectedIndex}
+          onSelect={() => onAnimeSelect(anime)}
+          onMouseEnter={() => onMouseSelect(index)}
         />
       ))}
     </div>

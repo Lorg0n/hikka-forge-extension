@@ -6,6 +6,7 @@ import { SearchHeader } from "./search-header"
 import { SearchResults } from "./search-results"
 import { useAnimeSearch } from "@/hooks/useAnimeSearch"
 import { useDebounce } from "@/hooks/useDebounce"
+import { SimilarAnimeItem } from "@/types" 
 
 interface AnimeSearchDialogProps {
   open: boolean
@@ -15,9 +16,9 @@ interface AnimeSearchDialogProps {
 export function AnimeSearchDialog({ open, onOpenChange }: AnimeSearchDialogProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [isKeyboardMode, setIsKeyboardMode] = useState(false)
 
   const { results, loading, error, search, clear } = useAnimeSearch()
-
   const debouncedSearchQuery = useDebounce(searchQuery, 500)
 
   useEffect(() => {
@@ -36,8 +37,20 @@ export function AnimeSearchDialog({ open, onOpenChange }: AnimeSearchDialogProps
     if (!open) {
       setSearchQuery("")
       clear()
+      setIsKeyboardMode(false)
     }
   }, [open, clear])
+
+  const handleAnimeSelect = (anime: SimilarAnimeItem) => {
+    onOpenChange(false)
+    window.location.href = `https://hikka.io/anime/${anime.slug}`
+  }
+
+  const handleMouseSelect = (index: number) => {
+    if (!isKeyboardMode) {
+      setSelectedIndex(index)
+    }
+  }
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -45,21 +58,33 @@ export function AnimeSearchDialog({ open, onOpenChange }: AnimeSearchDialogProps
 
       if (e.key === "Escape") {
         onOpenChange(false)
-      } else if (e.key === "ArrowDown") {
+        return
+      }
+
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault()
-        const maxIndex = (results?.length ?? 0) - 1
-        if (maxIndex >= 0) {
-          setSelectedIndex((prev) => Math.min(prev + 1, maxIndex))
+        setIsKeyboardMode(true) 
+
+        if (e.key === "ArrowDown") {
+          const maxIndex = (results?.length ?? 0) - 1
+          if (maxIndex >= 0) {
+            setSelectedIndex((prev) => Math.min(prev + 1, maxIndex))
+          }
+        } else { 
+          setSelectedIndex((prev) => Math.max(prev - 1, 0))
         }
-      } else if (e.key === "ArrowUp") {
+      } else if (e.key === "Enter") {
         e.preventDefault()
-        setSelectedIndex((prev) => Math.max(prev - 1, 0))
+        const selectedAnime = results?.[selectedIndex]
+        if (selectedAnime) {
+          handleAnimeSelect(selectedAnime)
+        }
       }
     }
 
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [open, onOpenChange, results])
+  }, [open, onOpenChange, results, selectedIndex])
 
   const hasContent = results && results.length > 0
   const shouldShowFullHeight = hasContent || loading
@@ -89,6 +114,9 @@ export function AnimeSearchDialog({ open, onOpenChange }: AnimeSearchDialogProps
               searchData={results || []}
               isLoading={loading}
               error={error}
+              onAnimeSelect={handleAnimeSelect}
+              onMouseSelect={handleMouseSelect}
+              onMouseMove={() => setIsKeyboardMode(false)}
             />
           </div>
         )}

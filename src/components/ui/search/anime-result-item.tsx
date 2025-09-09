@@ -5,15 +5,26 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { Star, Tv } from "lucide-react"
 import { SimilarAnimeItem } from "@/types"
+import { CONTENT_TYPE_URL } from "@/constants"
 
 interface AnimeResultItemProps {
   anime: SimilarAnimeItem
   isSelected: boolean
+  onSelect: () => void
+  onMouseEnter: () => void
 }
 
-export function AnimeResultItem({ anime, isSelected }: AnimeResultItemProps) {
+export function AnimeResultItem({ anime, isSelected, onSelect, onMouseEnter }: AnimeResultItemProps) {
   return (
-    <div className={cn("flex items-center gap-4 p-3 rounded-lg cursor-pointer transition-colors", isSelected ? "bg-accent" : "hover:bg-accent/50")}>
+    <a
+      href={`https://hikka.io/${CONTENT_TYPE_URL.anime}/${anime.slug}`}
+      onClick={onSelect}
+      onMouseEnter={onMouseEnter}
+      className={cn(
+        "flex items-center gap-4 p-3 rounded-lg cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+        isSelected ? "bg-accent" : "hover:bg-accent/50"
+      )}
+    >
       <Avatar className="w-10 h-14 rounded-sm flex-shrink-0">
         <AvatarImage src={anime.imageUrl} alt={anime.title} className="object-cover" />
         <AvatarFallback className="rounded-sm"><Tv className="w-4 h-4" /></AvatarFallback>
@@ -31,6 +42,6 @@ export function AnimeResultItem({ anime, isSelected }: AnimeResultItemProps) {
         <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
         <span className="font-medium">{anime.score.toFixed(1)}</span>
       </div>
-    </div>
+    </a>
   )
 }

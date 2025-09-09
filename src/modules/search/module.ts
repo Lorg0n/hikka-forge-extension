@@ -3,9 +3,9 @@ import { SearchTrigger } from './SearchTriggerComponent';
 import { supportsWebAssembly } from '@/utils/webassembly-check';
 
 const animeSearchModule: ForgeModuleDef = {
-  id: 'anime-search',
-  name: 'Пошук аніме',
-  description: 'Пошук аніме за описом природною мовою з використанням текстових ембедингів. Потребує підтримки WebAssembly.',
+  id: 'search',
+  name: 'Пошук',
+  description: 'Пошук за описом природною мовою з використанням текстових ембедингів. Потребує підтримки WebAssembly.',
   urlPatterns: ['https://hikka.io/*'],
   enabledByDefault: supportsWebAssembly(),
   isBeta: true,

@@ -1,5 +1,4 @@
 import React from 'react';
-import NotFound from '@/components/ui/not-found';
 import { useAnimeDetails } from '@/hooks/useAnimeDetails';
 import { useMangaDetails } from '@/hooks/useMangaDetails';
 import { useNovelDetails } from '@/hooks/useNovelDetail';
@@ -28,20 +27,11 @@ const UserRatingComponent: React.FC = () => {
         return null;
     }
 
-
+    // 7.51983 avg for native score
     const rating = ((data?.native_scored_by * data?.native_score) + (25 * 7.51983)) / (data?.native_scored_by + 25)
 
     if (error || rating == null) {
-        return (
-        <NotFound
-            title="Рейтинг недоступний"
-            description={
-            error
-                ? 'Не вдалося завантажити рейтинг'
-                : 'Користувач ще не має рейтингу'
-            }
-        />
-        );
+        return null;
     }
 
     return (

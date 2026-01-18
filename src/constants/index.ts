@@ -2,7 +2,7 @@ export const CONTENT_TYPE_URL = {
     "anime": "anime",
     "manga": "manga",
     "novel": "novel",
-    "collection": "collection",
+    "collection": "collections",
     "article": "articles",
     "edit": "edit"
 } as const;

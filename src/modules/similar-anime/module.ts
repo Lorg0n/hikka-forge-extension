@@ -1,7 +1,7 @@
 import type { ForgeModuleDef } from '@/types/module';
 import SimilarAnimeComponent  from './SimilarAnimeComponent';
 
-const userCommentModule: ForgeModuleDef = {
+const animeSimilarModule: ForgeModuleDef = {
   id: 'similar-anime',
   name: 'Схожі аніме',
   description: 'Додає модуль схожих аніме, які визначаються за допомогою спеціальної моделі.',
@@ -14,4 +14,4 @@ const userCommentModule: ForgeModuleDef = {
   component: SimilarAnimeComponent,
 };
 
-export default userCommentModule;
+export default animeSimilarModule;

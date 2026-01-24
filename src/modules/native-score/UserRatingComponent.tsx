@@ -36,22 +36,22 @@ const UserRatingComponent: React.FC = () => {
 
     return (
         <div className="bg-secondary/20 flex items-center gap-1 rounded-md border px-2 backdrop-blur">
-        <div className="font-display text-xl font-bold">
-            {rating.toFixed(1)}
-        </div>
+            <div className="font-display text-xl font-bold">
+                {rating.toFixed(1)}
+            </div>
 
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="1em"
-            height="1em"
-            viewBox="0 0 24 24"
-            className="text-xl text-yellow-400"
-        >
-            <path
-            fill="currentColor"
-            d="m12 17.275l-4.15 2.5q-.275.175-.575.15t-.525-.2t-.35-.437t-.05-.588l1.1-4.725L3.775 10.8q-.25-.225-.312-.513t.037-.562t.3-.45t.55-.225l4.85-.425l1.875-4.45q.125-.3.388-.45t.537-.15t.537.15t.388.45l1.875 4.45l4.85.425q.35.05.55.225t.3.45t.038.563t-.313.512l-3.675 3.175l1.1 4.725q.075.325-.05.588t-.35.437t-.525.2t-.575-.15z"
-            />
-        </svg>
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="1em"
+                height="1em"
+                viewBox="0 0 24 24"
+                className="text-xl text-primary-foreground"
+            >
+                <path
+                fill="currentColor"
+                d="m12 17.275l-4.15 2.5q-.275.175-.575.15t-.525-.2t-.35-.437t-.05-.588l1.1-4.725L3.775 10.8q-.25-.225-.312-.513t.037-.562t.3-.45t.55-.225l4.85-.425l1.875-4.45q.125-.3.388-.45t.537-.15t.537.15t.388.45l1.875 4.45l4.85.425q.35.05.55.225t.3.45t.038.563t-.313.512l-3.675 3.175l1.1 4.725q.075.325-.05.588t-.35.437t-.525.2t-.575-.15z"
+                />
+            </svg>
         </div>
     );
 };

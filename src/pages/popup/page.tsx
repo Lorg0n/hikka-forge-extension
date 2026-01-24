@@ -3,7 +3,7 @@ import browser from "webextension-polyfill";
 import logo from "@/assets/logo.svg";
 
 import { Button } from "@/components/ui/button";
-import { ModuleList } from "@/components/ui/module-list"; 
+import { ModuleList } from "@/components/ui/module-list";
 
 import type {
 	ModuleInfo,
@@ -22,6 +22,7 @@ function App() {
 	const [expandedModules, setExpandedModules] = useState<Set<string>>(
 		new Set()
 	);
+	const [hasPermission, setHasPermission] = useState(true);
 
 	const settingUpdateTimers = useRef<Record<string, NodeJS.Timeout>>({});
 
@@ -54,15 +55,37 @@ function App() {
 		}
 	}, []);
 
+	const checkPermissions = useCallback(async () => {
+		const has = await browser.permissions.contains({
+			origins: ["https://hikka.io/*"],
+		});
+		setHasPermission(has);
+		if (has) {
+			loadModules();
+		} else {
+			setIsLoading(false);
+		}
+	}, [loadModules]);
+
 	useEffect(() => {
-		loadModules();
+		checkPermissions();
 
 		return () => {
 			for (const timerId in settingUpdateTimers.current) {
 				clearTimeout(settingUpdateTimers.current[timerId]);
 			}
 		};
-	}, [loadModules]);
+	}, [checkPermissions]);
+
+	const handleRequestPermission = useCallback(async () => {
+        const granted = await browser.permissions.request({
+            origins: ["https://hikka.io/*"],
+        });
+        if (granted) {
+            setHasPermission(true);
+            window.location.reload();
+        }
+    }, []);
 
 	const handleToggleChange = useCallback(
 		async (moduleId: string, enabled: boolean) => {
@@ -260,6 +283,20 @@ function App() {
 			return newSet;
 		});
 	}, []);
+
+	if (!hasPermission && !isLoading) {
+        return (
+            <div className="flex flex-col min-w-[350px] p-4 gap-4 bg-background text-foreground">
+                <h1 className="font-bold text-xl">Потрібен дозвіл</h1>
+                <p className="text-sm text-muted-foreground">
+                    Hikka Forge потрібен дозвіл для роботи на сайті hikka.io.
+                </p>
+                <Button variant={"default"} onClick={handleRequestPermission}>
+                    Надати дозвіл
+                </Button>
+            </div>
+        );
+    }
 
 	return (
 		<div className="flex flex-col min-w-[350px] max-w-[450px] relative overflow-hidden p-4 gap-6 bg-background text-foreground">

@@ -23,7 +23,15 @@ const UserRatingComponent: React.FC = () => {
 
     const { data, loading, error } = dataHook;
 
-    if (loading || !data?.native_score || !data?.native_scored_by) {
+    if (loading) {
+        return (
+            <div className="bg-secondary/20 w-16 h-8 flex items-center rounded-md border backdrop-blur p-2">
+                <div className="bg-secondary/20 w-full h-full rounded-md backdrop-blur animate-pulse"/>
+            </div>
+        );
+    } 
+
+    if (!data?.native_score || !data?.native_scored_by) {
         return null;
     }
 

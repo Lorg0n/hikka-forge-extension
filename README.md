@@ -1,6 +1,6 @@
 # Hikka Forge
 
-![Version](https://img.shields.io/badge/version-0.2.9-blue.svg)
+![Version](https://img.shields.io/badge/version-0.2.12-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Browser Support](https://img.shields.io/badge/browsers-Chrome%20%7C%20Firefox-orange.svg)
 

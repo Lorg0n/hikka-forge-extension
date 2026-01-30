@@ -1,3 +1,5 @@
+/* OUTDATED
+
 import type { ForgeModuleDef } from "@/types/module";
 
 function hexToHsl(hex: string): string {
@@ -500,3 +502,5 @@ const customColorsModule: ForgeModuleDef = {
 };
 
 export default customColorsModule;
+
+*/

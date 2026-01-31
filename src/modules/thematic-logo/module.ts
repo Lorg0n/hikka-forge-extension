@@ -28,7 +28,7 @@ const thematicEvents: ThematicEvent[] = [
 		id: "new-year",
 		name: "Новий Рік",
 		startDate: { month: 11, day: 15 },
-		endDate: { month: 0, day: 31 },
+		endDate: { month: 0, day: 21 },
 		lightLogoFull: newYearLightFull,
 		darkLogoFull: newYearDarkFull,
 	},

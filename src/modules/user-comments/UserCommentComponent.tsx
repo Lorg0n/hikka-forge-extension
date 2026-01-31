@@ -3,6 +3,7 @@ import { useUserComments } from '@/hooks/useUserComments';
 import { Card } from '@/components/ui/card';
 import NotFound from '@/components/ui/not-found';
 import UserCommentCard from '@/components/ui/user/user-comment-card';
+import { UserCommentHeader } from './UserCommentHeader';
 
 const UserCommentComponent: React.FC = () => {
   const username = typeof window !== 'undefined' ? window.location.pathname.split('/u/')[1] : '';
@@ -18,7 +19,8 @@ const UserCommentComponent: React.FC = () => {
   if (loading) {
     return (
       <div className="flex flex-col gap-8">
-        <h3 className="font-display text-lg font-bold">Коментарі</h3>
+        <UserCommentHeader />
+
         <div className="flex flex-col md:flex-row w-full gap-4">
           {Array.from({ length: 3 }).map((_, index) => (
             <Card key={index} className="flex flex-col w-full md:w-1/3 bg-background-secondary p-4 isolate gap-6 overflow-hidden rounded-lg">
@@ -49,7 +51,8 @@ const UserCommentComponent: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-8">
-      <h3 className="font-display text-lg font-bold">Коментарі</h3>
+      <UserCommentHeader />
+      
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
         {comments.map((comment) => (
           <UserCommentCard key={`${comment.contentSlug}-${comment.createdAt}`} comment={comment} />

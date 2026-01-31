@@ -2,7 +2,7 @@ import React from 'react';
 import NotFound from '@/components/ui/not-found';
 import { useUserComments } from '@/hooks/useUserComments';
 import { UserCommentsPageHeader } from './UserCommentsPageHeader';
-import { UserCommentsPageList } from './UserCommentsPageList'; // <-- Changed import
+import { UserCommentsPageList } from './UserCommentsPageList';
 import { UserCommentsPageSkeleton } from './UserCommentsPageSkeleton';
 
 const UserCommentsPageComponent: React.FC = () => {
@@ -13,7 +13,9 @@ const UserCommentsPageComponent: React.FC = () => {
     const { 
         data: commentsData, 
         loading: commentsLoading, 
-        error: commentsError 
+        error: commentsError,
+        sort,
+        setSort,
     } = useUserComments({
         username,
         initialPage: 0,
@@ -52,9 +54,11 @@ const UserCommentsPageComponent: React.FC = () => {
                     avatarUrl={avatarUrl}
                 />
                 
-                <UserCommentsPageList // <-- Changed component
+                <UserCommentsPageList
                     items={commentsData.content} 
-                    totalElements={commentsData.totalElements} 
+                    totalElements={commentsData.totalElements}
+                    sort={sort}
+                    onSortChange={setSort}
                 />
             </div>
         </main>

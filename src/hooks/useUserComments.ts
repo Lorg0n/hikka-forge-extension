@@ -15,8 +15,10 @@ interface UseUserCommentsReturn {
     error: string | null;
     currentPage: number;
     pageSize: number;
+    sort: string;
     setPage: (page: number) => void;
     setSize: (size: number) => void;
+    setSort: (sort: string) => void;
     refresh: () => void;
 }
 
@@ -72,9 +74,14 @@ export const useUserComments = ({
         }
     };
 
+    const handleSetSort = (newSort: string) => {
+        setSort(newSort);
+        setCurrentPage(0);
+    };
+
     const refresh = () => {
         loadComments(currentPage, pageSize, sort);
     };
 
-    return { data, loading, error, currentPage, pageSize, setPage, setSize, refresh };
+    return { data, loading, error, currentPage, pageSize, sort, setPage, setSize, setSort: handleSetSort, refresh };
 };

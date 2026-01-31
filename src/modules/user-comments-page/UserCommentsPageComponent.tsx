@@ -1,10 +1,10 @@
-import React, { useEffect } from 'react';
+import React from 'react'; // Removed useEffect
 import NotFound from '@/components/ui/not-found';
 import { useUserComments } from '@/hooks/useUserComments';
 import { UserCommentsPageHeader } from './UserCommentsPageHeader';
 import { UserCommentsPageList } from './UserCommentsPageList';
 import { UserCommentsPageSkeleton } from './UserCommentsPageSkeleton';
-import { Pagination } from '@/components/ui/pagination'; 
+import { Pagination } from '@/components/ui/pagination';
 
 const UserCommentsPageComponent: React.FC = () => {
     const username = typeof window !== 'undefined'
@@ -15,8 +15,8 @@ const UserCommentsPageComponent: React.FC = () => {
         data: commentsData, 
         loading: commentsLoading, 
         error: commentsError,
-        currentPage, 
-        setPage,    
+        currentPage,
+        setPage,
         sort,
         setSort,
     } = useUserComments({
@@ -27,18 +27,7 @@ const UserCommentsPageComponent: React.FC = () => {
     
     const avatarUrl = commentsData?.content?.[0]?.authorAvatarUrl;
 
-    useEffect(() => {
-        if (!commentsLoading && commentsData) {
-            const headerElement = document.getElementById('comments-header');
-            if (headerElement) {
-                headerElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            } else {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-        }
-    }, [currentPage, commentsLoading]);
-
-    if (commentsLoading) {
+    if (commentsLoading && !commentsData) {
         return (
             <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
                 <UserCommentsPageSkeleton />
@@ -46,14 +35,14 @@ const UserCommentsPageComponent: React.FC = () => {
         );
     }
     
-    if (commentsError || !commentsData || commentsData.content.length === 0) {
+    if (commentsError || (!commentsData && !commentsLoading)) {
         return (
             <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
                  <div className="flex flex-col gap-12 mt-12">
                     <UserCommentsPageHeader username={username} /> 
                     <NotFound
                         title="Не вдалося завантажити коментарі"
-                        description={commentsError || 'Користувач ще не залишив жодного коментаря, або сталася помилка.'}
+                        description={commentsError || 'Користувач ще не залишив жодного коментаря.'}
                     />
                 </div>
             </main>
@@ -71,18 +60,19 @@ const UserCommentsPageComponent: React.FC = () => {
                 </div>
                 
                 <UserCommentsPageList
-                    items={commentsData.content} 
-                    totalElements={commentsData.totalElements}
+                    items={commentsData!.content} 
+                    totalElements={commentsData!.totalElements}
                     sort={sort}
                     onSortChange={setSort}
+                    isLoading={commentsLoading}
                 />
 
-                {commentsData.totalPages > 1 && (
+                {!commentsLoading && commentsData && commentsData.totalPages > 1 && (
                     <div className="mt-4">
                         <Pagination 
-                            currentPage={currentPage + 1} 
+                            currentPage={currentPage + 1}
                             totalPages={commentsData.totalPages}
-                            onPageChange={(page) => setPage(page - 1)} 
+                            onPageChange={(page) => setPage(page - 1)}
                         />
                     </div>
                 )}

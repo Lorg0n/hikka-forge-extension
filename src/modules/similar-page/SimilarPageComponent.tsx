@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react'; 
 import NotFound from '@/components/ui/not-found';
 import { useForgeAnimeDetails } from '@/hooks/useForgeAnimeDetails';
 import { useSimilarAnime } from '@/hooks/useSimilarAnime';
@@ -12,9 +12,9 @@ const SimilarPageComponent: React.FC = () => {
         ? window.location.pathname.split('/anime/')[1]?.split('#')[0] || ''
         : '';
 
-    const {
-        data: similarData,
-        loading: similarLoading,
+    const { 
+        data: similarData, 
+        loading: similarLoading, 
         error: similarError,
         currentPage,
         setPage
@@ -28,13 +28,7 @@ const SimilarPageComponent: React.FC = () => {
 
     const isLoading = similarLoading || detailsLoading;
 
-    useEffect(() => {
-        if (!similarLoading && similarData) {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    }, [currentPage, similarLoading]);
-
-    if (isLoading) {
+    if (isLoading && !similarData) {
         return (
             <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
                 <SimilarPageSkeleton />
@@ -43,9 +37,9 @@ const SimilarPageComponent: React.FC = () => {
     }
 
     if ((similarError || !animeDetails || !similarData) && !isLoading) {
-        return (
-            <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
-                <div className="flex flex-col gap-12 mt-12">
+         return (
+             <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
+                 <div className="flex flex-col gap-12 mt-12">
                     <NotFound
                         title="Не вдалося завантажити схожі аніме"
                         description={similarError || 'Спробуйте оновити сторінку'}
@@ -58,19 +52,18 @@ const SimilarPageComponent: React.FC = () => {
     return (
         <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
             <div className="flex flex-col gap-12">
-                <SimilarPageHeader
-                    details={animeDetails!}
-                    slug={slug}
+                <SimilarPageHeader 
+                    details={animeDetails!} 
+                    slug={slug} 
                 />
-
-                <SimilarPageGrid
-                    items={similarData!.content}
-                    totalElements={similarData!.totalElements}
+                <SimilarPageGrid 
+                    items={similarData!.content} 
+                    totalElements={similarData!.totalElements} 
                 />
 
                 {similarData && similarData.totalPages > 1 && (
                     <div className="mt-4">
-                        <Pagination
+                        <Pagination 
                             currentPage={currentPage + 1}
                             totalPages={similarData.totalPages}
                             onPageChange={(page) => setPage(page - 1)}

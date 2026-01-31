@@ -388,6 +388,7 @@ class ModuleManager {
 			this.retryInjection(moduleDef);
 		}
 	}
+
 	private insertElement(
 		elementToInsert: HTMLElement,
 		targetElement: Element,
@@ -411,15 +412,34 @@ class ModuleManager {
 				break;
 			case "replace":
 				console.warn(
-					`[Hikka Forge] Using 'replace' for ${elementToInsert.dataset.moduleId}. This can be risky.`
+					`[Hikka Forge] Using 'replace' for ${elementToInsert.dataset.moduleId}. Using safe replace mechanism.`
 				);
-				targetElement.parentNode?.replaceChild(elementToInsert, targetElement);
+
+				(targetElement as HTMLElement).style.display = 'none';
+				targetElement.setAttribute('data-hikka-forge-replaced', 'true');
+				targetElement.setAttribute('data-hikka-forge-module-id', elementToInsert.dataset.moduleId || '');
+
+				targetElement.parentNode?.insertBefore(elementToInsert, targetElement.nextSibling);
 				break;
 			default:
 				console.error(`[Hikka Forge] Invalid insert position: ${position}`);
 				targetElement.appendChild(elementToInsert);
 		}
 	}
+
+	private restoreReplacedElement(moduleId: string): void {
+		const replacedElements = document.querySelectorAll(
+			`[data-hikka-forge-replaced="true"][data-hikka-forge-module-id="${moduleId}"]`
+		);
+
+		replacedElements.forEach((element) => {
+			(element as HTMLElement).style.display = '';
+			element.removeAttribute('data-hikka-forge-replaced');
+			element.removeAttribute('data-hikka-forge-module-id');
+			console.log(`[Hikka Forge] Restored original element for module ${moduleId}`);
+		});
+	}
+
 	private retryInjection(moduleDef: ForgeModuleDef, attempt: number = 1): void {
 		if (!moduleDef.elementSelector) {
 			console.warn(
@@ -467,20 +487,24 @@ class ModuleManager {
 			}
 		}, 500 * attempt);
 	}
+
 	private unloadModuleComponent(moduleId: string): void {
 		const moduleDef = this.moduleDefinitions.get(moduleId);
 		const name = moduleDef?.name ?? moduleId;
 		console.log(`[Hikka Forge] Unloading module component: ${name}`);
+
 		if (this.unloadingModules.has(moduleId)) {
 			clearTimeout(this.unloadingModules.get(moduleId)!);
 			console.log(
 				`[Hikka Forge] Cleared existing unload timeout for ${name} component.`
 			);
 		}
+
 		const activeInstance = this.activeModuleRoots.get(moduleId);
 		if (activeInstance) {
 			const container = activeInstance.container;
 			container.classList.remove("visible");
+
 			const timeout = setTimeout(() => {
 				console.log(
 					`[Hikka Forge] Removing DOM after animation for ${name} component`
@@ -501,23 +525,35 @@ class ModuleManager {
 						error
 					);
 				}
+
+				if (moduleDef?.elementSelector?.position === 'replace') {
+					this.restoreReplacedElement(moduleId);
+				}
+
 				this.activeModuleRoots.delete(moduleId);
 				this.unloadingModules.delete(moduleId);
 			}, ANIMATION_DURATION_MS);
+
 			this.unloadingModules.set(moduleId, timeout);
 			console.log(
 				`[Hikka Forge] Unload process initiated for ${name} component. DOM removal delayed.`
 			);
 		} else {
+			if (moduleDef?.elementSelector?.position === 'replace') {
+				this.restoreReplacedElement(moduleId);
+			}
+
 			this.activeModuleRoots.delete(moduleId);
 			this.unloadingModules.delete(moduleId);
 			console.log(
 				`[Hikka Forge] No active component instance for ${name} to animate out. Ensuring it's marked as unloaded.`
 			);
 		}
+
 		this.observers.get(moduleId)?.disconnect();
 		this.observers.delete(moduleId);
 	}
+
 	private waitForSelector(moduleDef: ForgeModuleDef): void {
 		if (!moduleDef.component || !moduleDef.elementSelector) {
 			return;
@@ -620,6 +656,7 @@ class ModuleManager {
 			}
 		});
 	}
+
 	private handleUrlChange(newUrl: string): void {
 		if (newUrl === this.currentUrl) {
 			console.log(
@@ -627,21 +664,25 @@ class ModuleManager {
 			);
 			return;
 		}
+
 		console.log(
 			`[Hikka Forge] Processing URL change: ${this.currentUrl} -> ${newUrl}`
 		);
 		this.currentUrl = newUrl;
+
 		this.observers.forEach((observer) => observer.disconnect());
 		this.observers.clear();
 		console.log(
 			"[Hikka Forge] All MutationObservers disconnected due to URL change."
 		);
+
 		this.unloadingModules.forEach((timeout, moduleId) => {
 			clearTimeout(timeout);
 			const moduleName = this.moduleDefinitions.get(moduleId)?.name || moduleId;
 			console.log(
 				`[Hikka Forge] Cancelled pending unload animation for module ${moduleName} due to URL change.`
 			);
+
 			const activeComponent = this.activeModuleRoots.get(moduleId);
 			if (activeComponent) {
 				try {
@@ -655,14 +696,21 @@ class ModuleManager {
 				}
 				this.activeModuleRoots.delete(moduleId);
 			}
+
+			const moduleDef = this.moduleDefinitions.get(moduleId);
+			if (moduleDef?.elementSelector?.position === 'replace') {
+				this.restoreReplacedElement(moduleId);
+			}
 		});
 		this.unloadingModules.clear();
 		console.log(
 			"[Hikka Forge] All pending unload animations cancelled and associated components removed."
 		);
+
 		this.manageModuleStyles();
 		this.evaluateModulesForCurrentUrl(false);
 	}
+
 	private initMessageListener(): void {
 		chrome.runtime.onMessage.addListener(
 			(message: ContentMessage, sender, sendResponse) => {

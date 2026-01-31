@@ -54,14 +54,14 @@ class BackgroundManager {
 				changeInfo.status === "complete" &&
 				tab.url?.startsWith("https://hikka.io/")
 			) {
-				this.syncTabIfNeeded(tabId); 
+				this.syncTabIfNeeded(tabId);
 			}
 		}
-	);
+		);
 
-    chrome.tabs.onRemoved.addListener((tabId) => {
-        this.tabStates.delete(tabId);
-    });
+		chrome.tabs.onRemoved.addListener((tabId) => {
+			this.tabStates.delete(tabId);
+		});
 	}
 
 	private initInstallAndUpdateListeners(): void {
@@ -196,7 +196,7 @@ class BackgroundManager {
 	private async handleContentScriptRegistration(modules: ModuleInfo[], tabId?: number): Promise<void> {
 		if (!moduleDefinitionsCache || moduleDefinitionsCache.length === 0) {
 			console.log("[Hikka Forge] Populating module definition cache from registration.");
-			moduleDefinitionsCache = modules.map(m => ({ ...m, enabled: false })); 
+			moduleDefinitionsCache = modules.map(m => ({ ...m, enabled: false }));
 			cacheTimestamp = Date.now();
 		}
 
@@ -297,6 +297,7 @@ class BackgroundManager {
 				return {
 					...def,
 					enabled,
+					hidden: def.hidden ?? false, 
 				};
 			});
 
@@ -329,7 +330,7 @@ class BackgroundManager {
 					const response = await chrome.tabs.sendMessage(tab.id, {
 						type: "GET_CONTENT_MODULES_INFO",
 					} as ContentMessage);
-					
+
 					if (response?.success && Array.isArray(response.modules)) {
 						console.log(
 							`[Hikka Forge] Received module info from tab ${tab.id}:`,
@@ -340,10 +341,10 @@ class BackgroundManager {
 							id: m.id,
 							name: m.name,
 							description: m.description,
-							enabled: false, 
+							enabled: false,
 							urlPatterns: m.urlPatterns,
 							settings: m.settings || [],
-							enabledByDefault: m.enabledByDefault, 
+							enabledByDefault: m.enabledByDefault,
 						}));
 					} else {
 						console.warn(
@@ -375,7 +376,7 @@ class BackgroundManager {
 		if (this.tabStates.has(tabId)) {
 			try {
 				await this.sendSyncMessageToTab(tabId);
-			} catch (error) {}
+			} catch (error) { }
 		}
 	}
 

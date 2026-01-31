@@ -8,7 +8,7 @@ export const SimilarAnimeHeader = () => {
         <div className="flex items-center justify-between gap-2">
             <div className="flex flex-1 items-center gap-4">
                 <div className="flex items-center gap-4">
-                    <a href="#similar">
+                    <a className="hover:underline text-left text-foreground" href="#similar">
                         <h3 className="scroll-m-20 font-display text-lg font-bold tracking-normal">
                             Може бути схожим
                         </h3>

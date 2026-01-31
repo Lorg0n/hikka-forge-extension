@@ -7,6 +7,7 @@ const similarPageModule: ForgeModuleDef = {
   description: 'Додає повноцінну сторінку схожих аніме з навігацією',
   urlPatterns: ['https://hikka.io/anime/*#similar'],
   enabledByDefault: true,
+  hidden: true,
   elementSelector: {
     selector: 'main',
     position: 'replace',

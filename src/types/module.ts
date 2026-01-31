@@ -75,6 +75,7 @@ export interface ForgeModuleDef {
 	styles?: string | ((settings: Record<string, any>) => string);
 	persistentStyles?: boolean;
 	settings?: ModuleSetting[];
+	hidden?: boolean;
 }
 
 export interface ModuleInfo {
@@ -85,6 +86,7 @@ export interface ModuleInfo {
 	enabled: boolean;
 	urlPatterns: string[];
 	settings?: ModuleSetting[];
+	hidden?: boolean;
 }
 
 interface ModuleToggleAction {

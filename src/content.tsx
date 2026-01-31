@@ -764,6 +764,7 @@ class ModuleManager {
 			}
 		);
 	}
+
 	getModulesInfo(): ModuleInfo[] {
 		return Array.from(this.moduleDefinitions.values()).map((moduleDef) => ({
 			id: moduleDef.id,
@@ -773,8 +774,10 @@ class ModuleManager {
 			urlPatterns: moduleDef.urlPatterns,
 			enabledByDefault: moduleDef.enabledByDefault,
 			settings: moduleDef.settings,
+			hidden: moduleDef.hidden ?? false, 
 		}));
 	}
+
 	refreshAllActiveModules(): void {
 		console.log("[Hikka Forge] Refreshing all active modules...");
 		const activeModuleIds = Array.from(this.activeModuleRoots.keys());

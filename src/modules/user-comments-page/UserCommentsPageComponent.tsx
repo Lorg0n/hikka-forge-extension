@@ -29,7 +29,7 @@ const UserCommentsPageComponent: React.FC = () => {
 
     if (commentsLoading && !commentsData) {
         return (
-            <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
+            <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
                 <UserCommentsPageSkeleton />
             </main>
         );

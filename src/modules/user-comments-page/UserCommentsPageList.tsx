@@ -57,11 +57,11 @@ export const UserCommentsPageList: React.FC<UserCommentsPageListProps> = ({
                     Array.from({ length: 3 }).map((_, i) => (
                         <Card key={i} className="flex flex-col w-full bg-background-secondary p-4 gap-6 rounded-lg">
                             <div className="flex flex-col gap-2 w-full">
-                                <Skeleton className="w-full h-3 bg-secondary/20 rounded-lg" />
-                                <Skeleton className="w-5/6 h-3 bg-secondary/20 rounded-lg" />
-                                <Skeleton className="w-4/6 h-3 bg-secondary/20 rounded-lg" />
+                                <Skeleton className="w-full h-3 rounded-lg animate-pulse bg-secondary/20" />
+                                <Skeleton className="w-5/6 h-3 rounded-lg animate-pulse bg-secondary/20" />
+                                <Skeleton className="w-4/6 h-3 rounded-lg animate-pulse bg-secondary/20" />
                             </div>
-                            <Skeleton className="w-20 h-3 bg-secondary/20 rounded-lg mt-auto" />
+                            <Skeleton className="w-20 h-3 rounded-lg mt-auto animate-pulse bg-secondary/20" />
                         </Card>
                     ))
                 ) : (

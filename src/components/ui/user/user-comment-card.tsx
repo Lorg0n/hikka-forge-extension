@@ -16,6 +16,11 @@ interface UserCommentCardProps {
 const UserCommentCard: React.FC<UserCommentCardProps> = ({ comment, className }) => {
   const contentUrl = `${HIKKA_BASE}/${CONTENT_TYPE_URL[comment.contentType]}/${comment.contentSlug}`;
 
+  const title =
+        comment.contentType === 'edit' && !comment.contentTitle
+            ? `Правка ${comment.contentSlug}`
+            : comment.contentTitle;
+
   return (
     <Card className={cn(
       "flex flex-col min-w-0 p-4 isolate rounded-lg justify-between gap-4",
@@ -30,7 +35,7 @@ const UserCommentCard: React.FC<UserCommentCardProps> = ({ comment, className })
           href={contentUrl} 
           className="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors truncate pr-2"
         >
-          {comment.contentTitle}
+          {title}
         </Link>
 
         <div className="flex flex-row gap-0 flex-shrink-0">

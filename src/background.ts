@@ -345,6 +345,7 @@ class BackgroundManager {
 							urlPatterns: m.urlPatterns,
 							settings: m.settings || [],
 							enabledByDefault: m.enabledByDefault,
+							hidden: m.hidden
 						}));
 					} else {
 						console.warn(

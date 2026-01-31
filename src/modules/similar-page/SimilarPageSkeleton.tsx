@@ -11,12 +11,12 @@ export const SimilarPageSkeleton: React.FC = () => {
                     <div className="flex flex-1 items-center gap-4">
                         <div className="w-12 shrink-0">
                             <AspectRatio ratio={0.7}>
-                                <Skeleton className="h-full w-full rounded-md" />
+                                <Skeleton className="h-full w-full rounded-md animate-pulse bg-secondary/20" />
                             </AspectRatio>
                         </div>
                         <div className="flex flex-1 flex-col gap-2">
-                            <Skeleton className="h-5 w-1/3 rounded-md" />
-                            <Skeleton className="h-4 w-16 rounded-md" />
+                            <Skeleton className="h-5 w-1/3 rounded-md animate-pulse bg-secondary/20" />
+                            <Skeleton className="h-4 w-16 rounded-md animate-pulse bg-secondary/20" />
                         </div>
                     </div>
                     <Skeleton className="h-8 w-8 rounded-lg" />
@@ -26,18 +26,18 @@ export const SimilarPageSkeleton: React.FC = () => {
             {/* Grid Skeleton */}
             <section className="flex flex-col gap-8">
                 <div className="flex items-start gap-2">
-                    <Skeleton className="h-7 w-48 rounded-md" />
+                    <Skeleton className="h-7 w-48 rounded-md animate-pulse bg-secondary/20" />
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {Array.from({ length: 15 }).map((_, i) => (
                         <div key={i} className="flex flex-col gap-2">
                             <AspectRatio ratio={2 / 3}>
-                                <Skeleton className="h-full w-full rounded-lg" />
+                                <Skeleton className="h-full w-full rounded-lg animate-pulse bg-secondary/20" />
                             </AspectRatio>
                             <div className="space-y-1">
-                                <Skeleton className="h-3 w-1/2" />
-                                <Skeleton className="h-4 w-full" />
+                                <Skeleton className="h-3 w-1/2 animate-pulse bg-secondary/20" />
+                                <Skeleton className="h-4 w-full animate-pulse bg-secondary/20" />
                             </div>
                         </div>
                     ))}

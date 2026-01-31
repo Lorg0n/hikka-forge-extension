@@ -1,7 +1,5 @@
 import React from 'react';
-import { useAnimeDetails } from '@/hooks/useAnimeDetails';
-import { useMangaDetails } from '@/hooks/useMangaDetails';
-import { useNovelDetails } from '@/hooks/useNovelDetail';
+import { useForgeAnimeDetails } from '@/hooks/useForgeAnimeDetails';
 
 const UserRatingComponent: React.FC = () => {
     let slug = "";
@@ -16,9 +14,7 @@ const UserRatingComponent: React.FC = () => {
     }
 
     let dataHook;
-    if (content_type === "anime") dataHook = useAnimeDetails({ slug });
-    else if (content_type === "manga") dataHook = useMangaDetails({ slug });
-    else if (content_type === "novel") dataHook = useNovelDetails({ slug });
+    if (content_type === "anime") dataHook = useForgeAnimeDetails({ slug });
     else return null; 
 
     const { data, loading, error } = dataHook;
@@ -31,21 +27,18 @@ const UserRatingComponent: React.FC = () => {
         );
     } 
 
-    if (!data?.native_score || !data?.native_scored_by) {
+    if (!data?.weightedRating) {
         return null;
     }
 
-    // 7.51983 avg for native score
-    const rating = ((data?.native_scored_by * data?.native_score) + (25 * 7.51983)) / (data?.native_scored_by + 25)
-
-    if (error || rating == null) {
+    if (error || data.weightedRating == null) {
         return null;
     }
 
     return (
         <div className="bg-secondary/20 flex items-center gap-1 rounded-md border px-2 backdrop-blur">
             <div className="font-display text-xl font-bold">
-                {rating.toFixed(1)}
+                {data.weightedRating.toFixed(1)}
             </div>
 
             <svg

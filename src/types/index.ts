@@ -6,14 +6,14 @@ export interface ApiErrorResponse {
     error: string;
     message?: string;
     path?: string;
-    details?: any; 
+    details?: any;
 }
 
 export interface CommentItem {
     text: string;
     voteScore: number;
     totalReplies: number;
-    createdAt: string; 
+    createdAt: string;
     authorUsername: string;
     authorAvatarUrl: string;
     contentSlug: string;
@@ -61,4 +61,21 @@ export interface Pageable {
     offset: number;
     paged: boolean;
     unpaged: boolean;
+}
+
+export interface ForgeAnimeDetails {
+    slug: string;
+    titleEn: string;
+    titleUa: string;
+    titleNative: string;
+    synonyms: string[];
+    imageUrl: string;
+    synopsis: string;
+    synopsisUa: string;
+    score: number;
+    scoredBy: number;
+    hikkaScore: number;
+    hikkaScoredBy: number;
+    weightedRating: number;
+    malId: number;
 }

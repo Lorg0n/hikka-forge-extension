@@ -1,6 +1,5 @@
 import React from 'react';
 import { CommentItem } from '@/types';
-import UserCommentCard from '@/components/ui/user/user-comment-card';
 import {
     Select,
     SelectContent,
@@ -8,6 +7,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import UserCommentCardDetailed from '@/components/ui/user/user-comment-card-detailed';
 
 interface UserCommentsPageListProps {
     items: CommentItem[];
@@ -44,7 +44,7 @@ export const UserCommentsPageList: React.FC<UserCommentsPageListProps> = ({ item
 
             <div className="flex flex-col gap-4">
                 {items.map((comment) => (
-                    <UserCommentCard 
+                    <UserCommentCardDetailed 
                         key={`${comment.contentSlug}-${comment.createdAt}`} 
                         comment={comment}
                     />

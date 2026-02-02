@@ -79,3 +79,23 @@ export interface ForgeAnimeDetails {
     weightedRating: number;
     malId: number;
 }
+
+export interface WeeklyTopAnimeItem {
+    slug: string;
+    title: string;
+    poster: string;
+    mal_id: number;
+    currentRank: number;
+    previousRank: number;
+    rankChange: number;
+    currentScore: number;
+    previousScore: number;
+}
+
+export interface WeeklyTopAnimeApiResponse {
+    content: WeeklyTopAnimeItem[];
+    totalElements: number;
+    totalPages: number;
+    currentPage: number;
+    last: boolean;
+}

@@ -21,7 +21,7 @@ export const WeeklyTopAnimeList: React.FC<WeeklyTopAnimeListProps> = ({ items, t
     return (
         <section className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
-                <h3 className="font-bold text-lg">Список ({totalElements})</h3>
+                <h3 className="font-bold text-lg">Список</h3>
             </div>
 
             <div className="flex flex-col gap-3">

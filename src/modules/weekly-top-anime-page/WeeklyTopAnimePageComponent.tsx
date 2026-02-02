@@ -3,7 +3,6 @@ import { WeeklyTopPageHeader } from './WeeklyTopPageHeader';
 import { useWeeklyTopAnime } from '@/hooks/useWeeklyTopAnime';
 import { WeeklyTopAnimeList } from './WeeklyTopAnimeList';
 import { WeeklyTopAnimeSkeleton } from './WeeklyTopAnimeSkeleton';
-import { Pagination } from '@/components/ui/pagination';
 import NotFound from '@/components/ui/not-found';
 
 const WeeklyTopAnimePageComponent: React.FC = () => {
@@ -33,8 +32,6 @@ const WeeklyTopAnimePageComponent: React.FC = () => {
         data,
         loading,
         error,
-        currentPage,
-        setPage
     } = useWeeklyTopAnime({
         startDate,
         endDate,
@@ -75,16 +72,6 @@ const WeeklyTopAnimePageComponent: React.FC = () => {
                     items={data?.content || []}
                     totalElements={data?.totalElements || 0}
                 />
-
-                {!loading && data && data.totalPages > 1 && (
-                    <div className="mt-4">
-                        <Pagination
-                            currentPage={currentPage + 1}
-                            totalPages={data.totalPages}
-                            onPageChange={(page) => setPage(page - 1)}
-                        />
-                    </div>
-                )}
             </div>
         </main>
     );

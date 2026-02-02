@@ -11,9 +11,9 @@ interface WeeklyTopAnimeCardProps {
 export const WeeklyTopAnimeCard: React.FC<WeeklyTopAnimeCardProps> = ({ item, className }) => {
     let rankChangeEl = null;
     if (item.rankChange > 0) {
-        rankChangeEl = <span className="text-xs text-completed-foreground font-bold ml-1">▲{item.rankChange}</span>;
+        rankChangeEl = <span className="text-xs text-completed-foreground font-bold ml-1">▲ {item.rankChange}</span>;
     } else if (item.rankChange < 0) {
-        rankChangeEl = <span className="text-xs text-dropped-foreground font-bold ml-1">▼{Math.abs(item.rankChange)}</span>;
+        rankChangeEl = <span className="text-xs text-dropped-foreground font-bold ml-1">▼ {Math.abs(item.rankChange)}</span>;
     } else {
         rankChangeEl = <span className="text-xs text-muted-foreground ml-1">—</span>;
     }

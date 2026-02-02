@@ -5,11 +5,11 @@ import React from 'react';
 const WeeklyTopAnimeComponent: React.FC = () => {
     return (
         <div>
-            <Button size={"icon-sm"} variant={"outline"}>
-                <a href="#weekly-top-anime">
+            <a href="#weekly-top-anime">
+                <Button size={"icon-sm"} variant={"outline"}>
                     <Icon icon={"material-symbols:bar-chart-4-bars-rounded"} />
-                </a>
-            </Button>
+                </Button>
+            </a>
         </div>
     );
 };

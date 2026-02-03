@@ -1,21 +1,22 @@
 # Hikka Forge
 
-![Version](https://img.shields.io/badge/version-0.2.12-blue.svg)
+![Version](https://img.shields.io/amo/v/hikka-forge?label=Version&color=blue)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Browser Support](https://img.shields.io/badge/browsers-Chrome%20%7C%20Firefox-orange.svg)
 
-Hikka Forge is an open-source browser extension designed to enhance your Hikka.io browsing experience with custom features and personalized styles. It offers a modular system, allowing users to easily enable or disable specific functionalities and deeply customize the website's appearance.
+Hikka Forge is a modular browser extension designed to inject custom features and styles into the hikka.io website. It is architected to be extensible, allowing new features (termed "Modules") to be developed and integrated with minimal boilerplate.
 
-## ✨ Features
+![Features preview](docs/features.png)
 
-*   **Advanced Theme Customizer:** Take complete control over Hikka.io's visual theme. Adjust primary and secondary colors, background gradients, text colors, card backgrounds, borders, and even the global border-radius to match your aesthetic.
-*   **Font Override:** Replace the default website fonts with a modern and clean typeface like 'Inter', enhancing readability and visual appeal.
-*   **Enhanced User Profiles:** Integrate additional information and components directly into user profile pages, such as displaying recent user comments.
-*   **Modular System:** All functionalities are built as independent modules. Users can easily toggle these modules on or off via the extension's popup, ensuring a tailored experience without unnecessary clutter.
-*   **Persistent Settings:** Your personalized theme settings and module preferences are automatically saved and restored across browser sessions.
-*   **Dynamic Injection:** Hikka Forge intelligently injects features and styles only when needed on `hikka.io` pages, ensuring minimal performance impact and a smooth browsing experience.
+## Features
 
-## 🚀 Getting Started (for Developers)
+- Recommendations using the custom [anime2vec](https://huggingface.co/Lorg0n/hikka-forge-anime2vec) model.
+- Weekly top lists for ongoing anime
+- Native Hikka weighted scores instead of MAL ratings.
+- Full, searchable users comment history.
+- Seasonal thematic logos.
+
+## Getting Started (for Developers)
 
 To get a local copy up and running, follow these simple steps.
 
@@ -39,12 +40,6 @@ To get a local copy up and running, follow these simple steps.
 ### Development
 
 Hikka Forge uses Vite for a fast development experience with hot module replacement (HMR).
-
-*   **Run development server (for popup/options pages):**
-    ```bash
-    pnpm dev
-    ```
-    This will run a Vite development server for the popup and options pages.
 
 *   **Build with watch mode for extension development:**
     For browser extension development, you'll want to use the `build:watch` scripts which compile the extension files directly into the `dist` folder.
@@ -76,7 +71,7 @@ To create a production-ready build of the extension:
     ```
     This will generate the extension files in the `dist/` directory, optimized for Firefox.
 
-## 📦 Loading the Extension in Your Browser
+## Loading the Extension in Your Browser
 
 After building the extension (or while using `build:watch`):
 
@@ -96,7 +91,7 @@ After building the extension (or while using `build:watch`):
 4.  Select the `manifest.json` file inside the `dist` folder.
 5.  The "Hikka Forge" extension will be loaded. Note that temporary add-ons are removed when Firefox is closed. For persistent loading during development, you might want to use a tool like `web-ext run`.
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
@@ -110,11 +105,11 @@ If you have a suggestion that would make this better, please fork the repo and c
 
 Please ensure your code adheres to the existing style and pass ESLint checks.
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License. See the `LICENSE` file
 
-## 🙏 Acknowledgements
+## Acknowledgements
 
 *   [Hikka Features](https://github.com/rosset-nocpes/hikka-features)
 *   [React](https://react.dev/)

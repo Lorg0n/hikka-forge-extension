@@ -30,7 +30,9 @@ type CustomComponents = Components & {
 const previewComponents: CustomComponents = {
     spoiler: NoSpoiler,
     a: ({ children, className }) => (
-        <span className={cn('text-primary hover:underline', className)}>
+        <span
+            className={cn('text-primary-foreground hover:underline', className)}
+        >
             {children}
         </span>
     ),

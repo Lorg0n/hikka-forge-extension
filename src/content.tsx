@@ -6,12 +6,15 @@ import type {
 	ContentMessage,
 	InsertPosition,
 } from "@/types/module";
+import { ModuleAuthProvider } from "@/contexts/ModuleAuthContext";
 import "@/index.css";
+
 const moduleImports = import.meta.glob<{ default: ForgeModuleDef }>(
 	"/src/modules/*/module.ts",
 	{ eager: true }
 );
 const ANIMATION_DURATION_MS = 300;
+
 class ModuleManager {
 	private moduleDefinitions: Map<string, ForgeModuleDef> = new Map();
 	private moduleEnabledStates: Map<string, boolean> = new Map();
@@ -24,6 +27,7 @@ class ModuleManager {
 	private observers: Map<string, MutationObserver> = new Map();
 	private activeStyleTags: Map<string, HTMLStyleElement> = new Map();
 	private unloadingModules: Map<string, NodeJS.Timeout> = new Map();
+
 	constructor() {
 		this.loadModuleDefinitions();
 		this.initUrlChangeListener();
@@ -32,6 +36,7 @@ class ModuleManager {
 		console.log("[Hikka Forge] Module Manager initialized");
 		this.registerWithBackground();
 	}
+
 	private loadModuleDefinitions(): void {
 		console.log("[Hikka Forge] Loading module definitions...");
 		for (const path in moduleImports) {
@@ -47,7 +52,7 @@ class ModuleManager {
 					});
 				}
 				console.log(
-					`[Hikka Forge] Registered module definition: ${moduleDef.name} (${moduleDef.id})`
+					`[Hikka Forge] Registered module definition: ${moduleDef.name} (${moduleDef.id})${moduleDef.authRequired ? ' [AUTH REQUIRED]' : ''}`
 				);
 			} else {
 				console.warn(
@@ -56,6 +61,7 @@ class ModuleManager {
 			}
 		}
 	}
+
 	private registerWithBackground(): void {
 		console.log("[Hikka Forge] Registering with background script...");
 		const modulesInfo = this.getModulesInfo();
@@ -66,6 +72,7 @@ class ModuleManager {
 			console.error("[Hikka Forge] Failed to register with background script:", error);
 		});
 	}
+
 	private syncModuleStates(
 		enabledStates: Record<string, boolean>,
 		moduleSettings: Record<string, Record<string, any>>
@@ -129,6 +136,7 @@ class ModuleManager {
 			this.evaluateModulesForCurrentUrl(true);
 		}
 	}
+
 	private evaluateModulesForCurrentUrl(onlyLoadMissing: boolean = false): void {
 		console.log(`[Hikka Forge] Evaluating modules for URL: ${this.currentUrl}`);
 
@@ -221,6 +229,7 @@ class ModuleManager {
 			console.log("[Hikka Forge] No components to activate.");
 		}
 	}
+
 	private matchesUrlPatterns(url: string, patterns: string[]): boolean {
 		return patterns.some((pattern) => {
 			const regexPattern = pattern
@@ -235,6 +244,7 @@ class ModuleManager {
 			}
 		});
 	}
+
 	private loadModuleComponent(moduleDef: ForgeModuleDef): void {
 		if (!moduleDef.component || !moduleDef.elementSelector) {
 			console.warn(
@@ -282,6 +292,7 @@ class ModuleManager {
 		}
 		this.injectModuleComponent(moduleDef, elements);
 	}
+
 	private injectStyles(moduleDef: ForgeModuleDef): void {
 		if (!moduleDef.styles) return;
 		this.removeStyles(moduleDef.id);
@@ -299,6 +310,7 @@ class ModuleManager {
 		this.activeStyleTags.set(moduleDef.id, styleElement);
 		console.log(`[Hikka Forge] Styles for ${moduleDef.name} injected.`);
 	}
+
 	private removeStyles(moduleId: string): void {
 		const styleTag = this.activeStyleTags.get(moduleId);
 		if (styleTag) {
@@ -307,6 +319,7 @@ class ModuleManager {
 			console.log(`[Hikka Forge] Styles for module ${moduleId} removed.`);
 		}
 	}
+
 	private injectModuleComponent(
 		moduleDef: ForgeModuleDef,
 		elements: NodeListOf<Element>
@@ -355,11 +368,18 @@ class ModuleManager {
 			}
 			const root = createRoot(container);
 			const currentModuleSettings = this.moduleSettings[moduleDef.id] || {};
+			
+			// Wrap component with ModuleAuthProvider
 			root.render(
-				React.createElement(moduleDef.component, {
-					settings: currentModuleSettings,
-				})
+				React.createElement(
+					ModuleAuthProvider,
+					{},
+					React.createElement(moduleDef.component, {
+						settings: currentModuleSettings,
+					})
+				)
 			);
+			
 			this.activeModuleRoots.set(moduleDef.id, { container, root });
 			console.log(
 				`[Hikka Forge] Injecting ${moduleDef.name} ${moduleDef.elementSelector.position} ${moduleDef.elementSelector.selector}`
@@ -602,6 +622,7 @@ class ModuleManager {
 		});
 		this.observers.set(moduleDef.id, observer);
 	}
+
 	private initUrlChangeListener(): void {
 		const handleLocationChange = () => {
 			requestAnimationFrame(() => {
@@ -629,6 +650,7 @@ class ModuleManager {
 		};
 		window.addEventListener("historystatechanged", handleLocationChange);
 	}
+
 	private startUrlPolling(): void {
 		let lastCheckedUrl = window.location.href;
 		let pollInterval: number | null = null;
@@ -774,7 +796,8 @@ class ModuleManager {
 			urlPatterns: moduleDef.urlPatterns,
 			enabledByDefault: moduleDef.enabledByDefault,
 			settings: moduleDef.settings,
-			hidden: moduleDef.hidden ?? false, 
+			hidden: moduleDef.hidden ?? false,
+			authRequired: moduleDef.authRequired ?? false,
 		}));
 	}
 
@@ -829,6 +852,7 @@ class ModuleManager {
 		});
 	}
 }
+
 const moduleManager = new ModuleManager();
 declare global {
 	interface Window {

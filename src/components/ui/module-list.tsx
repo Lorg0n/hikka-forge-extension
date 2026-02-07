@@ -14,6 +14,7 @@ interface ModuleListProps {
 	handleSettingChange: (moduleId: string, settingId: string, value: any) => void;
 	handleResetSettings: (moduleId: string) => Promise<void>;
 	toggleModuleExpansion: (moduleId: string) => void;
+	isAuthenticated?: boolean;
 }
 
 export function ModuleList({
@@ -26,6 +27,7 @@ export function ModuleList({
 	handleSettingChange,
 	handleResetSettings,
 	toggleModuleExpansion,
+	isAuthenticated = false,
 }: ModuleListProps) {
 	const form = useForm();
 
@@ -69,6 +71,7 @@ export function ModuleList({
 						onSettingChange={handleSettingChange}
 						onResetSettings={handleResetSettings}
 						onToggleExpansion={toggleModuleExpansion}
+						isAuthenticated={isAuthenticated}
 					/>
 				))}
 			</div>

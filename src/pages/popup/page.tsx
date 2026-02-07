@@ -4,6 +4,9 @@ import logo from "@/assets/logo.svg";
 
 import { Button } from "@/components/ui/button";
 import { ModuleList } from "@/components/ui/module-list";
+import { UserMenu } from "@/components/ui/auth/user-menu";
+import { LoginDialog } from "@/components/ui/auth/login-dialog";
+import { useAuth } from "@/contexts/AuthContext";
 
 import type {
 	ModuleInfo,
@@ -23,6 +26,9 @@ function App() {
 		new Set()
 	);
 	const [hasPermission, setHasPermission] = useState(true);
+	const [loginDialogOpen, setLoginDialogOpen] = useState(false);
+
+	const { isAuthenticated, login } = useAuth();
 
 	const settingUpdateTimers = useRef<Record<string, NodeJS.Timeout>>({});
 
@@ -90,6 +96,14 @@ function App() {
 
 	const handleToggleChange = useCallback(
 		async (moduleId: string, enabled: boolean) => {
+			const module = modules.find(m => m.id === moduleId);
+			
+			// Check if module requires auth and user is not authenticated
+			if (module?.authRequired && !isAuthenticated) {
+				console.log(`Popup: Module ${moduleId} requires authentication`);
+				return;
+			}
+
 			console.log(`Popup: Toggling ${moduleId} to ${enabled}`);
 			setModules((prevModules) =>
 				prevModules.map((mod) =>
@@ -124,7 +138,7 @@ function App() {
 				loadModules();
 			}
 		},
-		[loadModules]
+		[loadModules, isAuthenticated, modules]
 	);
 
 	const handleSettingChange = useCallback(
@@ -285,6 +299,15 @@ function App() {
 		});
 	}, []);
 
+	const handleLogin = async (token: string): Promise<boolean> => {
+		const success = await login(token);
+		if (success) {
+			// Reload modules after successful login
+			await loadModules();
+		}
+		return success;
+	};
+
 	if (!hasPermission && !isLoading) {
 		return (
 			<div className="flex flex-col min-w-[350px] p-4 gap-4 bg-background text-foreground">
@@ -306,19 +329,36 @@ function App() {
 					<img src={logo} alt="Logo" className="size-7" />
 					<h1 className="font-bold text-xl">Hikka Forge</h1>
 				</div>
-				<Button
-					variant="ghost"
-					size="sm"
-					onClick={handleRefresh}
-					title="Refresh active modules on page"
-				>
-					Refresh Content
-				</Button>
+				
+				<div className="flex items-center gap-2">
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						onClick={handleRefresh}
+						title="Оновити активні модулі"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="2"
+							strokeLinecap="round"
+							strokeLinejoin="round"
+						>
+							<path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+						</svg>
+					</Button>
+					
+					<UserMenu onLoginClick={() => setLoginDialogOpen(true)} />
+				</div>
 			</div>
 
 			{error && (
 				<div className="p-3 bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-md">
-					Error: {error}
+					Помилка: {error}
 				</div>
 			)}
 
@@ -333,8 +373,15 @@ function App() {
 					handleSettingChange={handleSettingChange}
 					handleResetSettings={handleResetSettings}
 					toggleModuleExpansion={toggleModuleExpansion}
+					isAuthenticated={isAuthenticated}
 				/>
 			</div>
+
+			<LoginDialog
+				open={loginDialogOpen}
+				onOpenChange={setLoginDialogOpen}
+				onLogin={handleLogin}
+			/>
 		</div>
 	);
 }

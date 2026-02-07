@@ -76,6 +76,7 @@ export interface ForgeModuleDef {
 	persistentStyles?: boolean;
 	settings?: ModuleSetting[];
 	hidden?: boolean;
+	authRequired?: boolean;
 }
 
 export interface ModuleInfo {
@@ -87,6 +88,7 @@ export interface ModuleInfo {
 	urlPatterns: string[];
 	settings?: ModuleSetting[];
 	hidden?: boolean;
+	authRequired?: boolean;
 }
 
 interface ModuleToggleAction {

@@ -13,7 +13,6 @@ class BackgroundManager {
 		new Map();
 
 	constructor() {
-		// this.initWebNavigationListeners();
 		this.initTabsListeners();
 		this.initMessageListener();
 		this.initInstallAndUpdateListeners();
@@ -21,32 +20,6 @@ class BackgroundManager {
 
 		this.primeModuleDefinitionsCache();
 	}
-
-	// private initWebNavigationListeners(): void {
-	// 	chrome.webNavigation.onHistoryStateUpdated.addListener(
-	// 		(details) => {
-	// 			if (
-	// 				details.frameId === 0 &&
-	// 				details.url.startsWith("https://hikka.io/")
-	// 			) {
-	// 				this.handleUrlChange(details.tabId, details.url);
-	// 			}
-	// 		},
-	// 		{ url: [{ hostEquals: "hikka.io" }] }
-	// 	);
-
-	// 	chrome.webNavigation.onCompleted.addListener(
-	// 		(details) => {
-	// 			if (
-	// 				details.frameId === 0 &&
-	// 				details.url.startsWith("https://hikka.io/")
-	// 			) {
-	// 				this.handleUrlChange(details.tabId, details.url);
-	// 			}
-	// 		},
-	// 		{ url: [{ hostEquals: "hikka.io" }] }
-	// 	);
-	// }
 
 	private initTabsListeners(): void {
 		chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
@@ -158,20 +131,6 @@ class BackgroundManager {
 		);
 	}
 
-	// private handleUrlChange(tabId: number, url: string): void {
-	// 	const now = Date.now();
-	// 	const tabState = this.tabStates.get(tabId);
-
-	// 	if (tabState && tabState.url === url && now - tabState.lastChecked < 500) {
-	// 		return;
-	// 	}
-
-	// 	console.log(`[Hikka Forge] URL change detected for tab ${tabId}: ${url}`);
-	// 	this.tabStates.set(tabId, { url, lastChecked: now });
-
-	// 	this.syncTabIfNeeded(tabId);
-	// }
-
 	private async toggleModuleState(
 		moduleId: string,
 		enabled: boolean
@@ -180,9 +139,6 @@ class BackgroundManager {
 		console.log(`[Hikka Forge] Setting ${storageKey} to ${enabled}`);
 		try {
 			await chrome.storage.sync.set({ [storageKey]: enabled });
-
-			// moduleDefinitionsCache = null;
-
 			await this.syncAllTabs();
 		} catch (error) {
 			console.error(
@@ -297,7 +253,8 @@ class BackgroundManager {
 				return {
 					...def,
 					enabled,
-					hidden: def.hidden ?? false, 
+					hidden: def.hidden ?? false,
+					authRequired: def.authRequired ?? false,
 				};
 			});
 
@@ -345,7 +302,8 @@ class BackgroundManager {
 							urlPatterns: m.urlPatterns,
 							settings: m.settings || [],
 							enabledByDefault: m.enabledByDefault,
-							hidden: m.hidden
+							hidden: m.hidden,
+							authRequired: m.authRequired ?? false,
 						}));
 					} else {
 						console.warn(

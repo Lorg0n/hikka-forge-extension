@@ -10,6 +10,11 @@ import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
 import type { ModuleInfo } from "@/types/module";
 import { ModuleSettingsSection } from "./module-settings-section";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface ModuleCardProps {
 	moduleInfo: ModuleInfo;
@@ -19,6 +24,7 @@ interface ModuleCardProps {
 	onSettingChange: (moduleId: string, settingId: string, value: any) => void;
 	onResetSettings: (moduleId: string) => void;
 	onToggleExpansion: (moduleId: string) => void;
+	isAuthenticated?: boolean;
 }
 
 export function ModuleCard({
@@ -29,13 +35,25 @@ export function ModuleCard({
 	onSettingChange,
 	onResetSettings,
 	onToggleExpansion,
+	isAuthenticated = false,
 }: ModuleCardProps) {
 	const hasSettings = moduleInfo.settings && moduleInfo.settings.length > 0;
+	const requiresAuth = moduleInfo.authRequired && !isAuthenticated;
+
+	const switchComponent = (
+		<Switch
+			checked={moduleInfo.enabled}
+			onCheckedChange={(checked) => onToggle(moduleInfo.id, checked)}
+			disabled={requiresAuth}
+			aria-label={`Toggle ${moduleInfo.name}`}
+		/>
+	);
 
 	return (
 		<div>
 			<FormItem
 				className={`flex flex-row items-center justify-between p-3 shadow-sm hover:bg-accent/50 transition-colors 
+					${requiresAuth ? 'opacity-60' : ''}
 					${
 						isExpanded && hasSettings
 							? "border-l border-r border-t rounded-t-lg rounded-bl-none rounded-br-none"
@@ -43,7 +61,14 @@ export function ModuleCard({
 					}`}
 			>
 				<div className="space-y-0.5 mr-4 flex-1">
-					<FormLabel className="text-base">{moduleInfo.name}</FormLabel>
+					<div className="flex items-center gap-2">
+						<FormLabel className="text-base">{moduleInfo.name}</FormLabel>
+						{requiresAuth && (
+							<span className="text-xs px-2 py-0.5 bg-warning/20 text-warning-foreground rounded-md border border-warning-border">
+								Потрібна авторизація
+							</span>
+						)}
+					</div>
 					<FormDescription>{moduleInfo.description}</FormDescription>
 				</div>
 				<div className="flex items-center gap-2">
@@ -62,11 +87,18 @@ export function ModuleCard({
 						</Button>
 					)}
 					<FormControl>
-						<Switch
-							checked={moduleInfo.enabled}
-							onCheckedChange={(checked) => onToggle(moduleInfo.id, checked)}
-							aria-label={`Toggle ${moduleInfo.name}`}
-						/>
+						{requiresAuth ? (
+							<Tooltip delayDuration={200}>
+								<TooltipTrigger asChild>
+									<div>{switchComponent}</div>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>Увійдіть для використання цього модуля</p>
+								</TooltipContent>
+							</Tooltip>
+						) : (
+							switchComponent
+						)}
 					</FormControl>
 				</div>
 			</FormItem>

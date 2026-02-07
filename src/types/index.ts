@@ -99,3 +99,22 @@ export interface WeeklyTopAnimeApiResponse {
     currentPage: number;
     last: boolean;
 }
+
+export interface RecommendationItem {
+    slug: string;
+    title: string;
+    imageUrl: string;
+    year: number;
+    score: number;
+    episodesReleased: number;
+    episodesTotal: number;
+    similarityScore: number;
+}
+
+export interface UserRecommendationsApiResponse {
+    content: RecommendationItem[];
+    totalElements: number;
+    totalPages: number;
+    currentPage: number;
+    last: boolean;
+}

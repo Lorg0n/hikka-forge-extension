@@ -1,4 +1,5 @@
 import { API_BACKEND_BASE } from '@/constants';
+import { AuthCallbackResponse } from '@/types';
 
 export interface UserProfile {
     id: number;
@@ -55,6 +56,45 @@ export class AuthService {
         } catch (error) {
             console.error('Failed to fetch user profile:', error);
             return null;
+        }
+    }
+
+    /**
+     * Call the Hikka authentication callback endpoint
+     * @param reference - The Hikka reference ID (e.g., "123")
+     * @returns AuthCallbackResponse with expires timestamp and secret token
+     */
+    static async hikkaCallback(reference: string): Promise<AuthCallbackResponse> {
+        const url = new URL(`${API_BACKEND_BASE}/auth/hikka/callback`);
+        url.searchParams.append('reference', reference);
+
+        try {
+            const response = await fetch(url.toString(), {
+                method: 'GET',
+                headers: {
+                    'accept': '*/*'
+                }
+            });
+
+            if (!response.ok) {
+                let errorMessage = `HTTP error! status: ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    if (errorData && errorData.error) {
+                        errorMessage = errorData.error;
+                    } else if (errorData && errorData.message) {
+                        errorMessage = errorData.message;
+                    }
+                } catch (e) {
+                    console.error("Failed to parse error response:", e);
+                }
+                throw new Error(errorMessage);
+            }
+
+            return await response.json() as AuthCallbackResponse;
+        } catch (error) {
+            console.error('Hikka callback failed:', error);
+            throw error;
         }
     }
 

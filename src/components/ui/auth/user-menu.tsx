@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface UserMenuProps {
-    onLoginClick: () => void;
+    onLoginClick?: () => void;
 }
 
 export const UserMenu: React.FC<UserMenuProps> = ({ onLoginClick }) => {
@@ -26,25 +26,31 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onLoginClick }) => {
             <Button
                 variant="outline"
                 size="sm"
-                onClick={onLoginClick}
-                className="gap-2"
+                asChild 
+                className="gap-2 cursor-pointer"
             >
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                <a
+                    href="https://hikka.io/oauth?reference=8dca46ce-c233-4b5f-b895-8684c82c0f1d&scope=all"
+                    target="_blank"
+                    rel="noopener noreferrer"
                 >
-                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-                    <polyline points="10 17 15 12 10 7" />
-                    <line x1="15" y1="12" x2="3" y2="12" />
-                </svg>
-                Увійти
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
+                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                        <polyline points="10 17 15 12 10 7" />
+                        <line x1="15" y1="12" x2="3" y2="12" />
+                    </svg>
+                    Увійти
+                </a>
             </Button>
         );
     }

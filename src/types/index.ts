@@ -118,3 +118,8 @@ export interface UserRecommendationsApiResponse {
     currentPage: number;
     last: boolean;
 }
+
+export interface AuthCallbackResponse {
+    expires: number;
+    secret: string;
+}

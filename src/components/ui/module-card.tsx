@@ -15,6 +15,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Icon } from "@iconify/react/dist/iconify.js";
 
 interface ModuleCardProps {
 	moduleInfo: ModuleInfo;
@@ -61,12 +62,15 @@ export function ModuleCard({
 					}`}
 			>
 				<div className="space-y-0.5 mr-4 flex-1">
-					<div className="flex items-center gap-2">
+					<div className="flex flex-row items-center gap-2">
 						<FormLabel className="text-base">{moduleInfo.name}</FormLabel>
 						{requiresAuth && (
-							<span className="text-xs px-2 py-0.5 bg-warning/20 text-warning-foreground rounded-md border border-warning-border">
-								Потрібна авторизація
-							</span>
+							<Button variant={"ghost"} size={"icon-sm"}>
+								<Icon 
+									icon={"material-symbols:lock-person-rounded"}
+									className="text-red-500"
+								/>
+							</Button>
 						)}
 					</div>
 					<FormDescription>{moduleInfo.description}</FormDescription>

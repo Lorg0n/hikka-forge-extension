@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { UserRecommendationsApiResponse } from '@/types';
 import { fetchUserRecommendations } from '@/services/userService';
+import { AuthService } from '@/services/authService';
 
 interface UseUserRecommendationsProps {
     initialPage?: number;
@@ -18,18 +19,9 @@ interface UseUserRecommendationsReturn {
     refresh: () => void;
 }
 
-// Helper to get token from Hikka's local storage
-const getToken = (): string | null => {
-    if (typeof window === 'undefined') return null;
-    // Common keys, adjust if Hikka uses a specific key like 'auth-storage' or just 'token'
-    return localStorage.getItem('access_token') || 
-           localStorage.getItem('token') || 
-           localStorage.getItem('auth_token');
-};
-
 export const useUserRecommendations = ({
     initialPage = 0,
-    initialSize = 20,
+    initialSize = 10, // Default to 10 or whatever fits your grid
 }: UseUserRecommendationsProps = {}): UseUserRecommendationsReturn => {
     const [data, setData] = useState<UserRecommendationsApiResponse | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
@@ -38,18 +30,17 @@ export const useUserRecommendations = ({
     const [pageSize, setPageSize] = useState<number>(initialSize);
 
     const loadRecommendations = useCallback(async (pageToLoad: number, sizeToLoad: number) => {
-        const token = getToken();
-
-        if (!token) {
-            setError("Authorization token not found. Please log in.");
-            setLoading(false);
-            setData(null);
-            return;
-        }
-
         setLoading(true);
         setError(null);
+
         try {
+            // Get token asynchronously from Chrome storage via AuthService
+            const token = await AuthService.getToken();
+
+            if (!token) {
+                throw new Error("Authorization required");
+            }
+
             const result = await fetchUserRecommendations({ 
                 page: pageToLoad, 
                 size: sizeToLoad,

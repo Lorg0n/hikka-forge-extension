@@ -30,7 +30,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onLoginClick }) => {
                 className="gap-2 cursor-pointer"
             >
                 <a
-                    href="https://hikka.io/oauth?reference=8dca46ce-c233-4b5f-b895-8684c82c0f1d&scope=all"
+                    href="https://hikka.io/oauth?reference=8dca46ce-c233-4b5f-b895-8684c82c0f1d&scope=read:watchlist,read:readlist,read:user-details"
                     target="_blank"
                     rel="noopener noreferrer"
                 >

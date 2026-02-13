@@ -54,7 +54,9 @@ export class FeedbackService {
                 throw new Error(errorMessage);
             }
 
-            const data = await response.json();
+            const text = await response.text();
+            const data = text ? JSON.parse(text) : {};
+
             return {
                 success: true,
                 message: data.message || 'Feedback submitted successfully'

@@ -14,6 +14,7 @@ import type {
 	GetModulesResponse,
 	SimpleActionResponse
 } from "@/types/module";
+import { GITHUB_REPO, HIKKA_BASE, POLICY_PAGE } from "@/constants";
 
 function App() {
 	const [modules, setModules] = useState<ModuleInfo[]>([]);
@@ -27,6 +28,8 @@ function App() {
 	);
 	const [hasPermission, setHasPermission] = useState(true);
 	const [loginDialogOpen, setLoginDialogOpen] = useState(false);
+
+	const [version, setVersion] = useState('');
 
 	const { isAuthenticated, login } = useAuth();
 
@@ -77,6 +80,9 @@ function App() {
 	useEffect(() => {
 		checkPermissions();
 
+		const manifest = browser.runtime.getManifest();
+		setVersion(manifest.version);
+
 		return () => {
 			for (const timerId in settingUpdateTimers.current) {
 				clearTimeout(settingUpdateTimers.current[timerId]);
@@ -97,7 +103,7 @@ function App() {
 	const handleToggleChange = useCallback(
 		async (moduleId: string, enabled: boolean) => {
 			const module = modules.find(m => m.id === moduleId);
-			
+
 			// Check if module requires auth and user is not authenticated
 			if (module?.authRequired && !isAuthenticated) {
 				console.log(`Popup: Module ${moduleId} requires authentication`);
@@ -329,7 +335,7 @@ function App() {
 					<img src={logo} alt="Logo" className="size-7" />
 					<h1 className="font-bold text-xl">Hikka Forge</h1>
 				</div>
-				
+
 				<div className="flex items-center gap-2">
 					<Button
 						variant="ghost"
@@ -351,7 +357,7 @@ function App() {
 							<path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
 						</svg>
 					</Button>
-					
+
 					<UserMenu onLoginClick={() => setLoginDialogOpen(true)} />
 				</div>
 			</div>
@@ -382,6 +388,23 @@ function App() {
 				onOpenChange={setLoginDialogOpen}
 				onLogin={handleLogin}
 			/>
+
+			<footer className="mt-2 pt-4 px-2 border-t border-border/50 flex justify-between items-center text-xs text-muted-foreground">
+				<a href={`${GITHUB_REPO}/releases`} target="_blank" rel="noopener noreferrer" title="GitHub" className="hover:text-foreground transition-colors">
+					v{version}
+				</a>
+				<div className="flex items-center gap-4">
+					<a href={POLICY_PAGE} target="_blank" rel="noopener noreferrer" title="GitHub" className="hover:text-foreground transition-colors">
+						Policy
+					</a>
+					<a href={GITHUB_REPO} target="_blank" rel="noopener noreferrer" title="GitHub" className="hover:text-foreground transition-colors">
+						GitHub
+					</a>
+					<a href={`${HIKKA_BASE}/articles?page=1&tags=forge&author=Lorg0n`} target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors font-medium">
+						Hikka
+					</a>
+				</div>
+			</footer>
 		</div>
 	);
 }

@@ -9,9 +9,8 @@ const userRecommendationsModule: ForgeModuleDef = {
     enabledByDefault: false,
     authRequired: true, 
     elementSelector: {
-        selector: 'main > div', 
-        position: 'prepend', 
-        index: 0
+        selector: '.flex.flex-col.gap-16 > div.flex.flex-col.gap-8', 
+        position: 'before', 
     },
     
     component: UserRecommendationsComponent,

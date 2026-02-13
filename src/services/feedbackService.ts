@@ -4,17 +4,17 @@ import { ApiErrorResponse } from '@/types';
 export interface SimilarityFeedbackParams {
     targetSlug: string;
     contextSlug: string;
-    isPositive: boolean;
+    positive: boolean;
 }
 
 export interface RecommendationFeedbackParams {
     targetSlug: string;
-    isPositive: boolean;
+    positive: boolean;
 }
 
 export interface AlchemyFeedbackParams {
     targetSlug: string;
-    isPositive: boolean;
+    positive: boolean;
     contextSlug: string;
     alchemyElementId?: number;
 }

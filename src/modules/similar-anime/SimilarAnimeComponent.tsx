@@ -1,14 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useSimilarAnime } from '@/hooks/useSimilarAnime';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import NotFound from '@/components/ui/not-found';
-import SimilarAnimeCard from '@/components/ui/anime/similar-anime-card';
+import SimilarAnimeCardWithFeedback from '@/components/ui/anime/similar-anime-card-with-feedback';
 import { SimilarAnimeHeader } from './SimilarAnimeHeader';
 
 const SimilarAnimeComponent: React.FC = () => {
     const slug = typeof window !== 'undefined' ? window.location.pathname.split('/anime/')[1] : '';
-    const { data, loading, error } = useSimilarAnime({ slug, initialSize: 4 });
-    const similarAnimeList = data?.content || [];
+    const { data, loading, error, refresh } = useSimilarAnime({ slug, initialSize: 4 });
+    const [hiddenItems, setHiddenItems] = useState<Set<string>>(new Set());
+    
+    const similarAnimeList = data?.content?.filter(item => !hiddenItems.has(item.slug)) || [];
+
+    const handleFeedbackSuccess = (itemSlug: string) => {
+        // Optionally refresh data after feedback
+        refresh();
+    };
 
     if (loading) {
         return (
@@ -48,7 +55,12 @@ const SimilarAnimeComponent: React.FC = () => {
             <SimilarAnimeHeader />
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 w-full gap-4">
                 {similarAnimeList.map((anime) => (
-                    <SimilarAnimeCard key={anime.slug} anime={anime} />
+                    <SimilarAnimeCardWithFeedback 
+                        key={anime.slug} 
+                        anime={anime}
+                        contextSlug={slug}
+                        onFeedbackSuccess={() => handleFeedbackSuccess(anime.slug)}
+                    />
                 ))}
             </div>
         </div>

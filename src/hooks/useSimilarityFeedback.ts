@@ -48,7 +48,7 @@ export const useSimilarityFeedback = (): UseSimilarityFeedbackReturn => {
                 {
                     targetSlug: params.targetSlug,
                     contextSlug: params.contextSlug,
-                    isPositive: params.isPositive
+                    positive: params.positive
                 },
                 token
             );

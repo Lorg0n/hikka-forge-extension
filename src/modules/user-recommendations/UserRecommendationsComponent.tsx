@@ -1,20 +1,26 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useUserRecommendations } from '@/hooks/useUserRecommendations';
 import { useAuth } from '@/contexts/ModuleAuthContext';
 import { Header, HeaderContainer, HeaderTitle } from '@/components/ui/header';
 import NotFound from '@/components/ui/not-found';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
-import RecommendationCard from '@/components/ui/anime/recommendation-card';
+import RecommendationCardWithFeedback from '@/components/ui/anime/recommendation-card-with-feedback';
 
-const UserRecommendationsComponent: React.FC = ({ }) => {
+const UserRecommendationsComponent: React.FC = () => {
     const { isAuthenticated, isLoading: authLoading } = useAuth();
     
-    const { data, loading: dataLoading, error } = useUserRecommendations({ 
+    const { data, loading: dataLoading, error, refresh } = useUserRecommendations({ 
         initialSize: 20
     });
 
+    const [hiddenItems, setHiddenItems] = useState<Set<string>>(new Set());
+
     const isLoading = authLoading || (isAuthenticated && dataLoading);
-    const list = data?.content || [];
+    const list = data?.content?.filter(item => !hiddenItems.has(item.slug)) || [];
+
+    const handleFeedbackSuccess = (slug: string) => {
+        refresh();
+    };
 
     if (!isAuthenticated && !authLoading) {
         return (
@@ -62,7 +68,10 @@ const UserRecommendationsComponent: React.FC = ({ }) => {
                         {!isLoading && list && list.length > 0 &&
                             list.map((item) => (
                                 <div key={item.slug} className="w-[120px] shrink-0 snap-start flex">
-                                     <RecommendationCard anime={item} />
+                                     <RecommendationCardWithFeedback 
+                                        anime={item}
+                                        onFeedbackSuccess={() => handleFeedbackSuccess(item.slug)}
+                                     />
                                 </div>
                             ))}
                     </div>

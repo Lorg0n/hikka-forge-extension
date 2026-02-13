@@ -46,7 +46,7 @@ export const useRecommendationFeedback = (): UseRecommendationFeedbackReturn => 
             await FeedbackService.rateRecommendation(
                 {
                     targetSlug: params.targetSlug,
-                    isPositive: params.isPositive
+                    positive: params.positive
                 },
                 token
             );

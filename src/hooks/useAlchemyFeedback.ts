@@ -57,7 +57,7 @@ export const useAlchemyFeedback = (): UseAlchemyFeedbackReturn => {
                 {
                     targetSlug: params.targetSlug,
                     contextSlug: params.contextSlug,
-                    isPositive: params.isPositive,
+                    positive: params.positive,
                     alchemyElementId: params.alchemyElementId
                 },
                 token

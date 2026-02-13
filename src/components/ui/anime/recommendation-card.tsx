@@ -30,7 +30,10 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({ anime, classNam
         <div className={cn("flex flex-col w-[120px] gap-2", className)} style={{ minWidth: '120px', maxWidth: '120px' }}>
             <Link href={`/anime/${anime.slug}`} className="relative block w-full mb-3">
                 <div className="relative w-full" style={{ paddingBottom: '150%' }}>
-                    <div className="absolute inset-0 bg-secondary/20 rounded-lg overflow-hidden">
+                    <div className={cn(
+                        "absolute inset-0 bg-secondary/20 rounded-lg overflow-hidden",
+                        isLoading && 'animate-pulse'
+                    )}>
                         <Image
                             src={anime.imageUrl}
                             alt={anime.title}

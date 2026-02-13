@@ -53,7 +53,7 @@ export function ModuleList({
 	if (modules.length === 0 && !error) {
 		return (
 			<p className="text-muted-foreground text-center py-4">
-				No modules found or Hikka tab not active.
+				Модулі не знайдено. Спробуй перезавантажити сторінку hikka.io
 			</p>
 		);
 	}

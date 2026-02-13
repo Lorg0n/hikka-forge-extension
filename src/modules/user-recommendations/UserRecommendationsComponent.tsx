@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/ModuleAuthContext';
 import { Header, HeaderContainer, HeaderTitle } from '@/components/ui/header';
 import NotFound from '@/components/ui/not-found';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
-import RecommendationCardWithFeedback from '@/components/ui/anime/recommendation-card-with-feedback';
+import { ConnectedRecommendationCard } from '@/components/ui/anime/connected-recommendation-card';
 
 const UserRecommendationsComponent: React.FC = () => {
     const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -68,7 +68,7 @@ const UserRecommendationsComponent: React.FC = () => {
                         {!isLoading && list && list.length > 0 &&
                             list.map((item) => (
                                 <div key={item.slug} className="w-[120px] shrink-0 snap-start flex">
-                                     <RecommendationCardWithFeedback 
+                                     <ConnectedRecommendationCard 
                                         anime={item}
                                         onFeedbackSuccess={() => handleFeedbackSuccess(item.slug)}
                                      />

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useSimilarAnime } from '@/hooks/useSimilarAnime';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import NotFound from '@/components/ui/not-found';
-import SimilarAnimeCardWithFeedback from '@/components/ui/anime/similar-anime-card-with-feedback';
+import { ConnectedSimilarAnimeCard } from '@/components/ui/anime/connected-similar-anime-card';
 import { SimilarAnimeHeader } from './SimilarAnimeHeader';
 
 const SimilarAnimeComponent: React.FC = () => {
@@ -55,7 +55,7 @@ const SimilarAnimeComponent: React.FC = () => {
             <SimilarAnimeHeader />
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 w-full gap-4">
                 {similarAnimeList.map((anime) => (
-                    <SimilarAnimeCardWithFeedback 
+                    <ConnectedSimilarAnimeCard 
                         key={anime.slug} 
                         anime={anime}
                         contextSlug={slug}

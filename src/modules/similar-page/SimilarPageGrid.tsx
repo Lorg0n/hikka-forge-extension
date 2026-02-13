@@ -1,5 +1,5 @@
 import React from 'react';
-import SimilarAnimeCard from '@/components/ui/anime/similar-anime-card';
+import { SimilarAnimeCard } from '@/components/ui/anime/similar-anime-card';
 import { SimilarAnimeItem } from '@/types';
 
 interface SimilarPageGridProps {

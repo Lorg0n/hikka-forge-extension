@@ -9,7 +9,7 @@ const userRecommendationsModule: ForgeModuleDef = {
     enabledByDefault: false,
     authRequired: true, 
     elementSelector: {
-        selector: '.flex.flex-col.gap-16 > div.flex.flex-col.gap-8', 
+        selector: '.flex.flex-col.gap-12 > div.flex.flex-col.gap-8', 
         position: 'before', 
     },
     

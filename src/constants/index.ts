@@ -4,6 +4,7 @@ export const CONTENT_TYPE_URL = {
     "novel": "novel",
     "collection": "collections",
     "article": "articles",
+    "character": "characters",
     "edit": "edit"
 } as const;
 

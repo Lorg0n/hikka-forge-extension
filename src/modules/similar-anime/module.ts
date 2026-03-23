@@ -8,8 +8,9 @@ const animeSimilarModule: ForgeModuleDef = {
   urlPatterns: ['https://hikka.io/anime/*'],
   enabledByDefault: true,
   elementSelector: {
-    selector: 'div[class="flex flex-col gap-12 lg:col-span-2"]',
-    position: 'append',
+    selector: 'div.contents.lg\\:flex.lg\\:flex-col.lg\\:gap-8 > div.order-last',
+    position: 'prepend',
+    index: 0
   },
   component: SimilarAnimeComponent,
 };

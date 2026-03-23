@@ -8,8 +8,9 @@ const userCommentModule: ForgeModuleDef = {
   urlPatterns: ['https://hikka.io/u/*'],
   enabledByDefault: true,
   elementSelector: {
-    selector: 'div.order-2.flex.flex-col.gap-12',
+    selector: 'div.contents.lg\\:flex.lg\\:flex-col.lg\\:gap-8',
     position: 'append',
+    index: 0,
   },
   component: UserCommentComponent,
 };

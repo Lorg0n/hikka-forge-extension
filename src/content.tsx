@@ -259,6 +259,7 @@ class ModuleManager {
 			console.log(
 				`[Hikka Forge] Cancelled unloading of ${moduleDef.name} component because it's being loaded again.`
 			);
+
 			const oldInstance = this.activeModuleRoots.get(moduleDef.id);
 			if (oldInstance) {
 				console.log(
@@ -280,16 +281,31 @@ class ModuleManager {
 		console.log(
 			`[Hikka Forge] Attempting to load component for module: ${moduleDef.name}`
 		);
-		const elements = document.querySelectorAll(
+
+		let elements = document.querySelectorAll(
 			moduleDef.elementSelector.selector
 		);
+
+		const config = moduleDef.elementSelector;
+
+		if (config.visibleOnly !== false) {
+			const visibleElements = this.filterVisibleElements(elements);
+			elements = visibleElements as any;
+
+			console.log(
+				`[Hikka Forge] ${moduleDef.name}: знайдено ${visibleElements.length} видимих елементів ` +
+				`(з ${document.querySelectorAll(config.selector).length} всього)`
+			);
+		}
+
 		if (elements.length === 0) {
 			console.log(
-				`[Hikka Forge] Selector "${moduleDef.elementSelector.selector}" not found for ${moduleDef.name}. Waiting...`
+				`[Hikka Forge] Selector "${moduleDef.elementSelector.selector}" not found (visible only). Waiting...`
 			);
 			this.waitForSelector(moduleDef);
 			return;
 		}
+
 		this.injectModuleComponent(moduleDef, elements);
 	}
 
@@ -810,6 +826,22 @@ class ModuleManager {
 			console.log("[Hikka Forge] Re-evaluating modules after refresh...");
 			this.evaluateModulesForCurrentUrl();
 		}, ANIMATION_DURATION_MS + 50);
+	}
+
+	private filterVisibleElements(elements: NodeListOf<Element>): Element[] {
+		return Array.from(elements).filter((el) => {
+			if (!(el instanceof HTMLElement)) return false;
+
+			if (el.hasAttribute('hidden') || el.style.display === 'none') {
+			return false;
+			}
+
+			const style = window.getComputedStyle(el);
+			if (style.display === 'none' || style.visibility === 'hidden') {
+			return false;
+			}
+			return el.offsetParent !== null;
+		});
 	}
 
 	private manageModuleStyles(): void {

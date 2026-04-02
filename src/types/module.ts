@@ -8,9 +8,10 @@ export type InsertPosition =
 	| "replace";
 
 export interface ModuleSelector {
-	selector: string;
-	position: InsertPosition;
-	index?: number;
+  selector: string;
+  position: InsertPosition;
+  index?: number;
+  visibleOnly?: boolean;
 }
 
 export type ModuleSettingType =

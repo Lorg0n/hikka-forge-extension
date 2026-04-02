@@ -3,12 +3,12 @@ import UserRatingComponent from './UserRatingComponent';
 
 const nativeScoreModule: ForgeModuleDef = {
   id: 'native-score',
-  name: 'Оцінка від Hikka', 
-  description: 'Замість оцінки MAL відображаємо оцінку від hikka.io', 
+  name: 'Зважена оцінка Hikka',
+  description: 'Замінює стандартну (сиру) оцінку Hikka на зважену',
   urlPatterns: ['https://hikka.io/anime/*'],
   enabledByDefault: false,
   elementSelector: {
-    selector: 'div.bg-secondary\\/20.flex.items-center.gap-1.rounded-md.border.px-2.backdrop-blur',
+    selector: 'div.bg-secondary\\/20 > div.flex.gap-2.items-center:last-of-type > div > div',
     position: 'replace',
   },
   component: UserRatingComponent,

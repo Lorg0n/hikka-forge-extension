@@ -9,9 +9,9 @@ export const SimilarAnimeHeader = () => {
             <div className="flex flex-1 items-center gap-4">
                 <div className="flex items-center gap-4">
                     <a className="hover:underline text-left text-foreground" href="#similar">
-                        <h3 className="scroll-m-20 font-display text-lg font-bold tracking-normal">
+                        <h2 className="scroll-m-20 font-display text-lg font-bold tracking-normal">
                             Може бути схожим
-                        </h3>
+                        </h2>
                     </a>
                     
                     <TooltipProvider delayDuration={200}>

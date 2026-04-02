@@ -9,7 +9,7 @@ const userRecommendationsModule: ForgeModuleDef = {
     enabledByDefault: false,
     authRequired: true, 
     elementSelector: {
-        selector: 'aside.sticky.top-20.hidden.xl\\:block > div', 
+        selector: '#sidebar', 
         position: 'append', 
     },
     

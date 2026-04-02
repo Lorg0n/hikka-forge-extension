@@ -8,7 +8,7 @@ const nativeScoreModule: ForgeModuleDef = {
   urlPatterns: ['https://hikka.io/anime/*'],
   enabledByDefault: false,
   elementSelector: {
-    selector: 'div.bg-secondary\\/20 > div.flex.gap-2.items-center:last-of-type > div > div',
+    selector: '#content-scores svg[width="27"] + div > div',
     position: 'replace',
   },
   component: UserRatingComponent,

@@ -29,11 +29,13 @@ const UserRecommendationsComponent: React.FC = () => {
     }
 
     return (
-        <div className="relative flex flex-col gap-4 rounded-lg border border-border p-4">
-            <section className="flex flex-col gap-8">
+        <div className="border-border relative flex-col gap-4 rounded-lg border p-4 isolate will-change-transform bg-secondary/20 items-center backdrop-blur-xl">
+            <section className="flex flex-col gap-2">
                 <Header>
                     <HeaderContainer>
-                        <HeaderTitle>Персональні рекомендації</HeaderTitle>
+                        <HeaderTitle>
+                            <h4>Персональні рекомендації</h4>
+                        </HeaderTitle>
                     </HeaderContainer>
                 </Header>
 

@@ -279,34 +279,66 @@ class ModuleManager {
 		}
 
 		console.log(
-			`[Hikka Forge] Attempting to load component for module: ${moduleDef.name}`
+			`[Hikka Forge] Waiting for React hydration before loading module: ${moduleDef.name}`
 		);
 
-		let elements = document.querySelectorAll(
-			moduleDef.elementSelector.selector
-		);
-
-		const config = moduleDef.elementSelector;
-
-		if (config.visibleOnly !== false) {
-			const visibleElements = this.filterVisibleElements(elements);
-			elements = visibleElements as any;
-
+		this.waitForHydration().then(() => {
 			console.log(
-				`[Hikka Forge] ${moduleDef.name}: знайдено ${visibleElements.length} видимих елементів ` +
-				`(з ${document.querySelectorAll(config.selector).length} всього)`
+				`[Hikka Forge] Attempting to load component for module: ${moduleDef.name} after hydration check`
 			);
-		}
 
-		if (elements.length === 0) {
-			console.log(
-				`[Hikka Forge] Selector "${moduleDef.elementSelector.selector}" not found (visible only). Waiting...`
+			let elements = document.querySelectorAll(
+				moduleDef.elementSelector!.selector
 			);
-			this.waitForSelector(moduleDef);
-			return;
-		}
 
-		this.injectModuleComponent(moduleDef, elements);
+			const config = moduleDef.elementSelector!;
+
+			if (config.visibleOnly !== false) {
+				const visibleElements = this.filterVisibleElements(elements);
+				elements = visibleElements as any;
+
+				console.log(
+					`[Hikka Forge] ${moduleDef.name}: знайдено ${visibleElements.length} видимих елементів ` +
+					`(з ${document.querySelectorAll(config.selector).length} всього)`
+				);
+			}
+
+			if (elements.length === 0) {
+				console.log(
+					`[Hikka Forge] Selector "${moduleDef.elementSelector!.selector}" not found (visible only). Waiting...`
+				);
+				this.waitForSelector(moduleDef);
+				return;
+			}
+
+			this.injectModuleComponent(moduleDef, elements);
+		});
+	}
+
+	private waitForHydration(): Promise<void> {
+		return new Promise((resolve) => {
+			const isClientNav = performance.getEntriesByType('navigation')
+				.some((e: any) => e.type === 'navigate');
+			
+			if (isClientNav) {
+				resolve();
+				return;
+			}
+			
+			let attempts = 0;
+			const poll = setInterval(() => {
+				attempts++;
+				const testEl = document.querySelector('main') || document.body;
+				const fiberKey = Object.keys(testEl).find(
+					k => k.startsWith('__reactFiber') || k.startsWith('__reactInternals')
+				);
+				
+				if (fiberKey || attempts > 20) {
+					clearInterval(poll);
+					resolve();
+				}
+			}, 100);
+		});
 	}
 
 	private injectStyles(moduleDef: ForgeModuleDef): void {
@@ -451,11 +483,11 @@ class ModuleManager {
 					`[Hikka Forge] Using 'replace' for ${elementToInsert.dataset.moduleId}. Using safe replace mechanism.`
 				);
 
+				targetElement.parentNode?.insertBefore(elementToInsert, targetElement);
+				
 				(targetElement as HTMLElement).style.display = 'none';
 				targetElement.setAttribute('data-hikka-forge-replaced', 'true');
 				targetElement.setAttribute('data-hikka-forge-module-id', elementToInsert.dataset.moduleId || '');
-
-				targetElement.parentNode?.insertBefore(elementToInsert, targetElement.nextSibling);
 				break;
 			default:
 				console.error(`[Hikka Forge] Invalid insert position: ${position}`);

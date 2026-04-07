@@ -56,7 +56,7 @@ const UserRecommendationsComponent: React.FC = () => {
                 )}
 
                 {!isLoading && list.length > 0 && (
-                    <div className="flex gap-6 overflow-x-auto no-scrollbar pb-2 -mb-2 snap-x">
+                    <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 -mb-2 snap-x">
                         {list.map((item) => (
                             <div key={item.slug} className="w-[120px] shrink-0 snap-start flex">
                                 <ConnectedRecommendationCard

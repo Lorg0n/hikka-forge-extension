@@ -9,7 +9,7 @@ const userRecommendationsModule: ForgeModuleDef = {
     enabledByDefault: false,
     authRequired: true, 
     elementSelector: {
-        selector: '#sidebar', 
+        selector: '#feed-left', 
         position: 'append', 
     },
     

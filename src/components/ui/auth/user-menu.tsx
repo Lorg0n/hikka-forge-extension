@@ -15,10 +15,12 @@ interface UserMenuProps {
 export const UserMenu: React.FC<UserMenuProps> = ({ onLoginClick }) => {
     const { user, isLoading, isAuthenticated, logout } = useAuth();
 
+    const handleLoginClick = async () => {
+        chrome.tabs.create({ url: "https://hikka.io/oauth?reference=8dca46ce-c233-4b5f-b895-8684c82c0f1d&scope=read:watchlist,read:readlist,read:user-details" }); 
+    };
+
     if (isLoading) {
-        return (
-            <Skeleton className="h-8 w-8 rounded-full" />
-        );
+        return <Skeleton className="h-8 w-8 rounded-full" />;
     }
 
     if (!isAuthenticated || !user) {
@@ -26,31 +28,25 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onLoginClick }) => {
             <Button
                 variant="outline"
                 size="sm"
-                asChild 
+                onClick={handleLoginClick}
                 className="gap-2 cursor-pointer"
             >
-                <a
-                    href="https://hikka.io/oauth?reference=8dca46ce-c233-4b5f-b895-8684c82c0f1d&scope=read:watchlist,read:readlist,read:user-details"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                 >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    >
-                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-                        <polyline points="10 17 15 12 10 7" />
-                        <line x1="15" y1="12" x2="3" y2="12" />
-                    </svg>
-                    Увійти
-                </a>
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                    <polyline points="10 17 15 12 10 7" />
+                    <line x1="15" y1="12" x2="3" y2="12" />
+                </svg>
+                Увійти
             </Button>
         );
     }

@@ -5,6 +5,7 @@ import type {
 	ModuleInfo,
 	ContentMessage,
 	InsertPosition,
+	ModuleSelector,
 } from "@/types/module";
 import { ModuleAuthProvider } from "@/contexts/ModuleAuthContext";
 import "@/index.css";
@@ -35,6 +36,13 @@ class ModuleManager {
 		this.initMessageListener();
 		console.log("[Hikka Forge] Module Manager initialized");
 		this.registerWithBackground();
+	}
+
+	private isStructuralSelector(config: ModuleSelector): boolean {
+		// Simple structural selectors that exist before React hydration
+		const STRUCTURAL_SELECTORS = ['main', 'body', 'header', 'footer', 'nav', 'aside'];
+		const selector = config.selector.trim().toLowerCase();
+		return STRUCTURAL_SELECTORS.includes(selector);
 	}
 
 	private loadModuleDefinitions(): void {
@@ -282,7 +290,10 @@ class ModuleManager {
 			`[Hikka Forge] Waiting for React hydration before loading module: ${moduleDef.name}`
 		);
 
-		this.waitForHydration().then(() => {
+		const needsHydration = !this.isStructuralSelector(moduleDef.elementSelector!);
+		const hydrationPromise = needsHydration ? this.waitForHydration() : Promise.resolve();
+
+		hydrationPromise.then(() => {
 			console.log(
 				`[Hikka Forge] Attempting to load component for module: ${moduleDef.name} after hydration check`
 			);

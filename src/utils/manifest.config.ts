@@ -62,6 +62,7 @@ export const generateManifest = (browser: string) => {
                     id: "forge@hikka.io",
                     strict_min_version: "109.0",
                 },
+                gecko_android: {}
             },
         };
     }

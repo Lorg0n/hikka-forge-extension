@@ -6,7 +6,7 @@ const nativeScoreModule: ForgeModuleDef = {
   name: 'Зважена оцінка Hikka',
   description: 'Замінює стандартну (сиру) оцінку Hikka на зважену',
   urlPatterns: ['https://hikka.io/anime/*'],
-  enabledByDefault: false,
+  enabledByDefault: true,
   elementSelector: {
     selector: '#content-scores svg[width="27"] + div > div',
     position: 'replace',

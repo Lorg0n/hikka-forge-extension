@@ -15,7 +15,11 @@ const fontOverrideModule: ForgeModuleDef = {
   urlPatterns: ['https://hikka.io/*'],
 
   styles: fontOverrideStyles,
-  persistentStyles: true, 
+  persistentStyles: true,
+  icon: {
+    name: 'lucide:a-large-small',
+    color: '#5947ff',
+  },
 };
 
 export default fontOverrideModule;

@@ -857,6 +857,7 @@ class ModuleManager {
 			settings: moduleDef.settings,
 			hidden: moduleDef.hidden ?? false,
 			authRequired: moduleDef.authRequired ?? false,
+			icon: moduleDef.icon,
 		}));
 	}
 

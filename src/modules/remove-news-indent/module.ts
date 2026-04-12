@@ -12,6 +12,10 @@ const removeNewsIndentModule: ForgeModuleDef = {
             margin-left: 0 !important;
         }
     `,
+    icon: {
+        name: 'lucide:align-start-vertical',
+        color: '#fff347',
+    },
 };
 
 export default removeNewsIndentModule;

@@ -13,6 +13,10 @@ const userCommentModule: ForgeModuleDef = {
     index: 0,
   },
   component: UserCommentComponent,
+  icon: {
+		name: 'mingcute:comment-fill',
+		color: '#b649e9'
+	},
 };
 
 export default userCommentModule;

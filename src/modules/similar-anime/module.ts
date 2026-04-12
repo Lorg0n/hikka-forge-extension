@@ -1,5 +1,5 @@
 import type { ForgeModuleDef } from '@/types/module';
-import SimilarAnimeComponent  from './SimilarAnimeComponent';
+import SimilarAnimeComponent from './SimilarAnimeComponent';
 
 const animeSimilarModule: ForgeModuleDef = {
   id: 'similar-anime',
@@ -13,6 +13,10 @@ const animeSimilarModule: ForgeModuleDef = {
     index: 0
   },
   component: SimilarAnimeComponent,
+  icon: {
+    name: 'lucide:tv-minimal-play',
+    color: '#47ff56',
+  },
 };
 
 export default animeSimilarModule;

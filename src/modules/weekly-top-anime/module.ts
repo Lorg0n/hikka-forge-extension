@@ -12,7 +12,11 @@ const weeklyTopAnimeModule: ForgeModuleDef = {
         position: 'append',
         visibleOnly: true,
     },
-    component: WeeklyTopAnimeComponent
+    component: WeeklyTopAnimeComponent,
+    icon: {
+		name: 'material-symbols:bar-chart-4-bars-rounded',
+		color: '#2bc78b'
+	},
 };
 
 export default weeklyTopAnimeModule;

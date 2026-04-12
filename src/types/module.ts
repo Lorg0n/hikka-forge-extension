@@ -78,6 +78,10 @@ export interface ForgeModuleDef {
 	settings?: ModuleSetting[];
 	hidden?: boolean;
 	authRequired?: boolean;
+	icon?: {
+        name: string; // iconify icon id, e.g. "material-symbols:translate"
+        color?: string; // optional color, e.g. "#ec70bb" or "text-primary-foreground"
+    };
 }
 
 export interface ModuleInfo {
@@ -90,6 +94,10 @@ export interface ModuleInfo {
 	settings?: ModuleSetting[];
 	hidden?: boolean;
 	authRequired?: boolean;
+	icon?: {
+        name: string; 
+        color?: string; 
+    };
 }
 
 interface ModuleToggleAction {

@@ -67,6 +67,11 @@ const ThematicLogoModule: ForgeModuleDef = {
 	urlPatterns: ["https://hikka.io/*"],
 	persistentStyles: true,
 
+	icon: {
+		name: 'mdi:theme',
+		color: '#e69823'
+	},
+
 	styles: () => {
 		const now = new Date();
 		const currentMonth = now.getMonth();

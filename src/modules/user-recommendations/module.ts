@@ -12,8 +12,11 @@ const userRecommendationsModule: ForgeModuleDef = {
         selector: '#feed-left', 
         position: 'append', 
     },
-    
     component: UserRecommendationsComponent,
+    icon: {
+		name: 'si:ai-fill',
+		color: '#2bb0c7'
+	},
 };
 
 export default userRecommendationsModule;

@@ -9,7 +9,7 @@ const authPageModule: ForgeModuleDef = {
   enabledByDefault: true,
   hidden: true,
   elementSelector: {
-    selector: 'div.flex.w-52.flex-col.gap-8',
+    selector: 'div.flex.w-full.max-w-md.flex-col.text-center',
     position: 'replace',
   },
   component: AuthPageComponent

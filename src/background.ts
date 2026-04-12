@@ -255,6 +255,7 @@ class BackgroundManager {
 					enabled,
 					hidden: def.hidden ?? false,
 					authRequired: def.authRequired ?? false,
+					icon: def.icon,
 				};
 			});
 
@@ -304,6 +305,7 @@ class BackgroundManager {
 							enabledByDefault: m.enabledByDefault,
 							hidden: m.hidden,
 							authRequired: m.authRequired ?? false,
+							icon: m.icon,
 						}));
 					} else {
 						console.warn(

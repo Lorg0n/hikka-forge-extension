@@ -1,17 +1,19 @@
-import type { ForgeModuleDef } from '@/types/module';
-import UserRatingComponent from './UserRatingComponent';
+// DEPRECATED
 
-const nativeScoreModule: ForgeModuleDef = {
-  id: 'native-score',
-  name: 'Зважена оцінка Hikka',
-  description: 'Замінює стандартну (сиру) оцінку Hikka на зважену',
-  urlPatterns: ['https://hikka.io/anime/*'],
-  enabledByDefault: true,
-  elementSelector: {
-    selector: '#content-scores svg[width="27"] + div > div',
-    position: 'replace',
-  },
-  component: UserRatingComponent,
-};
+// import type { ForgeModuleDef } from '@/types/module';
+// import UserRatingComponent from './UserRatingComponent';
 
-export default nativeScoreModule;
+// const nativeScoreModule: ForgeModuleDef = {
+//   id: 'native-score',
+//   name: 'Зважена оцінка Hikka',
+//   description: 'Замінює стандартну (сиру) оцінку Hikka на зважену',
+//   urlPatterns: ['https://hikka.io/anime/*'],
+//   enabledByDefault: true,
+//   elementSelector: {
+//     selector: '#content-scores svg[width="27"] + div > div',
+//     position: 'replace',
+//   },
+//   component: UserRatingComponent,
+// };
+
+// export default nativeScoreModule;

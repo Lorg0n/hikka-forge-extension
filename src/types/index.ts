@@ -76,7 +76,6 @@ export interface ForgeAnimeDetails {
     scoredBy: number;
     hikkaScore: number;
     hikkaScoredBy: number;
-    weightedRating: number;
     malId: number;
 }
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useUserRecommendations } from '@/hooks/useUserRecommendations';
 import { useAuth } from '@/contexts/ModuleAuthContext';
-import { Header, HeaderContainer, HeaderTitle } from '@/components/ui/header';
+import { Header, HeaderContainer, HeaderTitle, HeaderNavButton } from '@/components/ui/header';
 import NotFound from '@/components/ui/not-found';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { ConnectedRecommendationCard } from '@/components/ui/anime/connected-recommendation-card';
@@ -19,11 +19,10 @@ const UserRecommendationsComponent: React.FC = () => {
 
     const list = data?.content?.filter(item => !hiddenItems.has(item.slug)) || [];
 
-    const handleFeedbackSuccess = (slug: string) => {
+    const handleFeedbackSuccess = (_slug: string) => {
         refresh();
     };
 
-    // If we've finished checking auth and the user isn't logged in, hide the module entirely.
     if (!authLoading && !isAuthenticated) {
         return null;
     }
@@ -31,12 +30,13 @@ const UserRecommendationsComponent: React.FC = () => {
     return (
         <div className="border-border relative flex-col gap-4 rounded-lg border p-4 isolate will-change-transform bg-secondary/20 items-center backdrop-blur-xl">
             <section className="flex flex-col gap-2">
-                <Header>
+                <Header href="#recommendations">
                     <HeaderContainer>
                         <HeaderTitle>
                             <h4>Персональні рекомендації</h4>
                         </HeaderTitle>
                     </HeaderContainer>
+                    <HeaderNavButton />
                 </Header>
 
                 {isLoading && (

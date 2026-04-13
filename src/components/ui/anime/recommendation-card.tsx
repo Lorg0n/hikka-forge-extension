@@ -8,6 +8,7 @@ import { RecommendationItem } from '@/types';
 interface RecommendationCardProps {
     anime: RecommendationItem;
     className?: string;
+    variant?: 'widget' | 'page';
 }
 
 const getSimilarityText = (distance: number): string => {
@@ -23,11 +24,20 @@ const getSimilarityVariant = (distance: number): "success" | "warning" | "second
     return "secondary";
 };
 
-const RecommendationCard: React.FC<RecommendationCardProps> = ({ anime, className }) => {
+const RecommendationCard: React.FC<RecommendationCardProps> = ({ anime, className, variant = 'widget' }) => {
     const [isLoading, setIsLoading] = useState(true);
 
+    const isPage = variant === 'page';
+
     return (
-        <div className={cn("flex flex-col w-[120px] gap-2", className)} style={{ minWidth: '90px', maxWidth: '90px' }}>
+        <div
+            className={cn(
+                "flex flex-col gap-2",
+                isPage ? "w-full" : "w-[120px]",
+                className
+            )}
+            style={isPage ? undefined : { minWidth: '90px', maxWidth: '90px' }}
+        >
             <Link href={`/anime/${anime.slug}`} className="relative block w-full mb-3">
                 <div className="relative w-full" style={{ paddingBottom: '150%' }}>
                     <div className={cn(
@@ -37,8 +47,8 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({ anime, classNam
                         <Image
                             src={anime.imageUrl}
                             alt={anime.title}
-                            width={120}
-                            height={180}
+                            width={isPage ? 200 : 120}
+                            height={isPage ? 300 : 180}
                             className={cn(
                                 "absolute inset-0 w-full h-full object-cover rounded-lg transition-all duration-300",
                                 "group-hover:scale-105",
@@ -52,26 +62,23 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({ anime, classNam
             </Link>
 
             <div className="flex flex-col gap-1">
-                <div className="flex items-center justify-between gap-2 mt-auto">
-                    {/* {anime.year > 0 && (
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                            {anime.year}
-                        </span>
-                    )} */}
-
-                    <Badge
-                        variant={getSimilarityVariant(anime.similarityScore)}
-                        className="text-[10px] px-2 py-0 whitespace-nowrap flex-shrink-0"
-                    >
-                        {getSimilarityText(anime.similarityScore)}
-                    </Badge>
-                </div>
+                <Badge
+                    variant={getSimilarityVariant(anime.similarityScore)}
+                    className={cn(
+                        "px-2 py-0 whitespace-nowrap w-fit text-[10px]",
+                    )}
+                >
+                    {getSimilarityText(anime.similarityScore)}
+                </Badge>
 
                 <Link
                     href={`/anime/${anime.slug}`}
-                    className="text-sm font-medium line-clamp-1"
+                    className={cn(
+                        "font-medium leading-snug",
+                        isPage ? "text-sm line-clamp-2" : "text-sm line-clamp-1"
+                    )}
                 >
-                    {anime.title}
+                    {anime.title} <span className="text-xs text-muted-foreground">({anime.year})</span>
                 </Link>
             </div>
         </div>

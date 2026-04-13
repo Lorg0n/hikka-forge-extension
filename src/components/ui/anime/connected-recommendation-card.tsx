@@ -7,11 +7,13 @@ import RecommendationCard from './recommendation-card';
 interface ConnectedRecommendationCardProps {
     anime: RecommendationItem;
     onFeedbackSuccess?: () => void;
+    variant?: 'widget' | 'page';
 }
 
 export const ConnectedRecommendationCard: React.FC<ConnectedRecommendationCardProps> = ({
     anime,
-    onFeedbackSuccess
+    onFeedbackSuccess,
+    variant = 'widget',
 }) => {
     const { submitFeedback } = useRecommendationFeedback();
 
@@ -23,12 +25,12 @@ export const ConnectedRecommendationCard: React.FC<ConnectedRecommendationCardPr
     };
 
     return (
-        <FeedbackContainer 
-            onSubmit={handleSubmit} 
+        <FeedbackContainer
+            onSubmit={handleSubmit}
             onRemove={onFeedbackSuccess}
             className="h-full"
         >
-            <RecommendationCard anime={anime} />
+            <RecommendationCard anime={anime} variant={variant} />
         </FeedbackContainer>
     );
 };

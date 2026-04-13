@@ -19,11 +19,12 @@ export const RecommendationsPageGrid: React.FC<RecommendationsPageGridProps> = (
                 <h3 className="font-bold text-lg">Рекомендації ({totalElements})</h3>
             </div>
 
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
                 {items.map((anime) => (
                     <ConnectedRecommendationCard
                         key={anime.slug}
                         anime={anime}
+                        variant="page"
                         onFeedbackSuccess={() => onFeedbackSuccess(anime.slug)}
                     />
                 ))}

@@ -10,7 +10,7 @@ const userCommentModule: ForgeModuleDef = {
   elementSelector: {
     selector: '#profile-left-side',
     position: 'append',
-    index: 0,
+    visibleOnly: false,
   },
   component: UserCommentComponent,
   icon: {

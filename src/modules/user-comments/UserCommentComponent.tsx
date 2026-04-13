@@ -10,28 +10,30 @@ const UserCommentComponent: React.FC = () => {
 
   const { data, loading, error } = useUserComments({
     username: username,
-    initialSize: 3,                
-    initialSort: 'hikkaCreated,desc', 
+    initialSize: 3,
+    initialSort: 'hikkaCreated,desc',
   });
 
   const comments = data?.content || [];
 
   if (loading) {
     return (
-      <div className="flex flex-col gap-8">
-        <UserCommentHeader />
+      <div className="order-5 lg:order-0">
+        <div className="flex flex-col gap-8">
+          <UserCommentHeader />
 
-        <div className="flex flex-col md:flex-row w-full gap-4">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <Card key={index} className="flex flex-col w-full md:w-1/3 bg-background-secondary p-4 isolate gap-6 overflow-hidden rounded-lg">
-              <div className="flex flex-col gap-2 w-full">
-                <div className="w-full h-3 animate-pulse bg-secondary/20 rounded-lg"></div>
-                <div className="w-5/6 h-3 animate-pulse bg-secondary/20 rounded-lg"></div>
-                <div className="w-4/6 h-3 animate-pulse bg-secondary/20 rounded-lg"></div>
-              </div>
-              <div className="w-20 h-3 animate-pulse bg-secondary/20 rounded-lg mt-auto"></div>
-            </Card>
-          ))}
+          <div className="flex flex-col md:flex-row w-full gap-4">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <Card key={index} className="flex flex-col w-full md:w-1/3 bg-background-secondary p-4 isolate gap-6 overflow-hidden rounded-lg">
+                <div className="flex flex-col gap-2 w-full">
+                  <div className="w-full h-3 animate-pulse bg-secondary/20 rounded-lg"></div>
+                  <div className="w-5/6 h-3 animate-pulse bg-secondary/20 rounded-lg"></div>
+                  <div className="w-4/6 h-3 animate-pulse bg-secondary/20 rounded-lg"></div>
+                </div>
+                <div className="w-20 h-3 animate-pulse bg-secondary/20 rounded-lg mt-auto"></div>
+              </Card>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -39,24 +41,28 @@ const UserCommentComponent: React.FC = () => {
 
   if (error || comments.length === 0) {
     return (
-      <div className="flex flex-col gap-8">
-        <h3 className="font-display text-lg font-bold">Коментарі</h3>
-        <NotFound
-          title="Коментарів поки немає"
-          description={error ? 'Не вдалося завантажити коментарі' : 'Можливо, вони ще не оновилися або їх ще ніхто не залишив'}
-        />
+      <div className="order-5 lg:order-0">
+        <div className="flex flex-col gap-8">
+          <h3 className="font-display text-lg font-bold">Коментарі</h3>
+          <NotFound
+            title="Коментарів поки немає"
+            description={error ? 'Не вдалося завантажити коментарі' : 'Можливо, вони ще не оновилися або їх ще ніхто не залишив'}
+          />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      <UserCommentHeader />
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-        {comments.map((comment) => (
-          <UserCommentCard key={`${comment.contentSlug}-${comment.createdAt}`} comment={comment} />
-        ))}
+    <div className="order-5 lg:order-0">
+      <div className="flex flex-col gap-8">
+        <UserCommentHeader />
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+          {comments.map((comment) => (
+            <UserCommentCard key={`${comment.contentSlug}-${comment.createdAt}`} comment={comment} />
+          ))}
+        </div>
       </div>
     </div>
   );

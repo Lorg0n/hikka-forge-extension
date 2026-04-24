@@ -40,15 +40,23 @@ const UserRecommendationsComponent: React.FC = () => {
                 </Header>
 
                 {isLoading && (
-                    <div className="flex gap-6 overflow-x-auto no-scrollbar pb-2 -mb-2 snap-x">
+                    <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 -mb-2 snap-x">
                         {Array.from({ length: 6 }).map((_, v) => (
-                            <div key={v} className="w-[120px] shrink-0 snap-start flex flex-col gap-2">
-                                <div className="relative w-full pb-[150%]">
-                                    <div className="absolute inset-0 bg-secondary/20 rounded-lg animate-pulse" />
-                                </div>
-                                <div className="space-y-1">
-                                    <div className="h-3 w-full bg-secondary/20 rounded animate-pulse" />
-                                    <div className="h-3 w-1/2 bg-secondary/20 rounded animate-pulse" />
+                            <div key={v} className="w-[120px] shrink-0 snap-start flex">
+                                <div 
+                                    className="flex flex-col gap-2 w-[120px] h-full"
+                                    style={{ minWidth: '90px', maxWidth: '90px' }}
+                                >
+                                    <div className="relative block w-full mb-3">
+                                        <div className="relative w-full" style={{ paddingBottom: '150%' }}>
+                                            <div className="absolute inset-0 bg-secondary/20 rounded-lg animate-pulse" />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-col gap-1">
+                                        <div className="h-[18px] w-[50px] bg-secondary/20 rounded-full animate-pulse" />
+                                        <div className="h-4 w-full bg-secondary/20 rounded animate-pulse mt-0.5" />
+                                    </div>
                                 </div>
                             </div>
                         ))}

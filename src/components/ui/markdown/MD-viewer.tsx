@@ -44,7 +44,7 @@ const components = (preview?: boolean): CustomComponents =>
         spoiler: withProps(Spoiler, { className: 'mb-4' }),
         p: withProps(P, { className: 'mb-4' }),
         blockquote: withProps(Blockquote, { className: 'mb-4' }),
-        a: Link,
+        a: withProps(Link, { className: 'text-primary-foreground' }),
         ul: withProps(Ul, { className: 'mb-4' }),
         ol: withProps(Ol, { className: 'mb-4' }),
         li: Li,

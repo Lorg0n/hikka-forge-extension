@@ -30,7 +30,7 @@ const UserCommentCardDetailed: React.FC<UserCommentCardDetailedProps> = ({
     return (
         <Card
             className={cn(
-                'flex flex-col min-w-0 p-4 isolate rounded-lg gap-8',
+                'flex flex-col min-w-0 p-4 isolate rounded-lg gap-8 backdrop-blur',
                 className
             )}
         >

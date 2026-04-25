@@ -55,7 +55,7 @@ export const UserCommentsPageList: React.FC<UserCommentsPageListProps> = ({
             <div className="flex flex-col gap-4">
                 {isLoading ? (
                     Array.from({ length: 3 }).map((_, i) => (
-                        <Card key={i} className="flex flex-col w-full bg-background-secondary p-4 gap-6 rounded-lg">
+                        <Card key={i} className="flex flex-col w-full bg-background-secondary p-4 gap-6 rounded-lg backdrop-blur">
                             <div className="flex flex-col gap-2 w-full">
                                 <Skeleton className="w-full h-3 rounded-lg animate-pulse bg-secondary/20" />
                                 <Skeleton className="w-5/6 h-3 rounded-lg animate-pulse bg-secondary/20" />

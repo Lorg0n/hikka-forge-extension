@@ -39,9 +39,12 @@ steps:
         from_secret: CWS_CLIENT_SECRET
       REFRESH_TOKEN:
         from_secret: CWS_REFRESH_TOKEN
+      PUBLISHER_ID:
+        from_secret: CWS_PUBLISHER_ID
     commands:
-      - npm install -g chrome-webstore-upload-cli
-      - chrome-webstore-upload upload --source dist/hikka-forge-chrome-${DRONE_TAG}.zip --auto-publish
+      - npm install -g chrome-webstore-upload-cli@4.0.0
+      - chrome-webstore-upload upload --source dist/hikka-forge-chrome-${DRONE_TAG}.zip
+      - chrome-webstore-upload publish --extension-id $EXTENSION_ID
 
   - name: publish-to-firefox-store
     image: node:20-slim

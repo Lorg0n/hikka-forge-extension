@@ -84,11 +84,13 @@ export interface WeeklyTopAnimeItem {
     title: string;
     poster: string;
     mal_id: number;
-    currentRank: number;
-    previousRank: number;
-    rankChange: number;
-    currentScore: number;
-    previousScore: number;
+    current_rank: number;
+    previous_rank: number | null; 
+    rank_change: number | null;   
+    current_score: number;
+    new_voters: number;
+    voter_growth_pct: number;
+    hot_score: number;
 }
 
 export interface WeeklyTopAnimeApiResponse {

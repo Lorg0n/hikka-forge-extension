@@ -34,7 +34,7 @@ export const WeeklyTopPageHeader: React.FC<WeeklyTopPageHeaderProps> = ({ startD
                             )}
                         </div>
                         <p className="text-sm text-muted-foreground">
-                            Тижневий рейтинг. Поточна позиція та зміна відносно попереднього тижня.
+                            Гарячі онґоінґи. Рейтинг базується на прирості нових оцінок за вказаний період.
                         </p>
                     </div>
                 </div>

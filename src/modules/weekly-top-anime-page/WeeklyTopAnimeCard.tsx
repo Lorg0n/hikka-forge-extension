@@ -2,6 +2,10 @@ import React from 'react';
 import Link from '@/components/typography/link';
 import { WeeklyTopAnimeItem } from '@/types';
 import { cn } from '@/lib/utils';
+import { Icon } from '@iconify/react';
+import { Card } from '@/components/ui/card';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
+import Image from '@/components/ui/image';
 
 interface WeeklyTopAnimeCardProps {
     item: WeeklyTopAnimeItem;
@@ -9,83 +13,102 @@ interface WeeklyTopAnimeCardProps {
 }
 
 export const WeeklyTopAnimeCard: React.FC<WeeklyTopAnimeCardProps> = ({ item, className }) => {
-    let rankChangeEl = null;
-    if (item.rankChange > 0) {
-        rankChangeEl = <span className="text-xs text-completed-foreground font-bold ml-1">▲ {item.rankChange}</span>;
-    } else if (item.rankChange < 0) {
-        rankChangeEl = <span className="text-xs text-dropped-foreground font-bold ml-1">▼ {Math.abs(item.rankChange)}</span>;
+    let rankChangeEl;
+
+    if (item.previous_rank === null) {
+        rankChangeEl = (
+            <div className="flex items-center justify-center gap-0 text-[10px] px-1.5 py-0.5 rounded-sm bg-primary/20 text-primary font-bold leading-none backdrop-blur-sm">
+                NEW
+            </div>
+        );
+    } else if (item.rank_change && item.rank_change > 0) {
+        rankChangeEl = (
+            <div className="flex items-center justify-center gap-0 text-xs text-success-foreground font-bold leading-none drop-shadow-sm">
+                {/* <Icon icon="material-symbols:arrow-drop-up-rounded" className="size-5 -ml-1" /> */}
+                {"▲ "}
+                {item.rank_change}
+            </div>
+        );
+    } else if (item.rank_change && item.rank_change < 0) {
+        rankChangeEl = (
+            <div className="flex items-center justify-center gap-0 text-xs text-destructive-foreground font-bold leading-none drop-shadow-sm">
+                {/* <Icon icon="material-symbols:arrow-drop-down-rounded" className="size-5 -ml-1" /> */}
+                {"▼ "}
+                {Math.abs(item.rank_change)}
+            </div>
+        );
     } else {
-        rankChangeEl = <span className="text-xs text-muted-foreground ml-1">—</span>;
+        rankChangeEl = (
+            <div className="flex items-center justify-center gap-0 text-xs text-muted-foreground font-bold leading-none h-5">
+                <Icon icon="material-symbols:horizontal-rule-rounded" className="size-4" />
+            </div>
+        );
     }
 
     return (
         <Link
             href={`/anime/${item.slug}`}
             className={cn(
-                "group relative w-full h-16 rounded-lg overflow-hidden border border-border/50 transition-all duration-300 no-underline",
-                "hover:no-underline",
+                "block group no-underline hover:no-underline outline-none",
                 className
             )}
         >
-            {/* Background Image with Overlay */}
-            <div className="absolute inset-0 z-0">
-                <img
-                    src={item.poster}
-                    alt={item.title}
-                    loading="lazy"
-                    className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+            <Card className="p-0 relative overflow-hidden border-border shadow-sm rounded-lg group-hover:ring-2 group-hover:ring-primary/50 transition-all isolate">
+                <div 
+                    className="absolute inset-0 -z-20 bg-cover bg-center"
+                    style={{ backgroundImage: `url(${item.poster})` }}
                 />
-                <div
-                    className="absolute inset-0"
-                    style={{
-                        background: 'linear-gradient(to right, rgba(0,0,0,0.7) 20%, rgba(0,0,0,0) 100%)'
-                    }}
-                />
-            </div>
+                <div className="absolute inset-0 -z-10 bg-background/60 backdrop-blur-xl" />
 
-            {/* Content Container */}
-            <div className="relative flex items-center justify-between h-full px-4 gap-4 w-full">
-
-                {/* Left: Rank Badge */}
-                <div className="flex items-center gap-2 min-w-[3.5rem]">
-                    <div className={cn(
-                        "flex items-center justify-center w-8 h-8 rounded bg-white/10 backdrop-blur-md font-bold text-white shadow-sm",
-                        item.currentRank <= 3 && "bg-primary/80 text-primary-foreground" // Highlight top 3
-                    )}>
-                        {item.currentRank}
-                    </div>
-                </div>
-
-                {/* Center: Title */}
-                <div className="flex-1 min-w-0 flex flex-col justify-center">
-                    <h3 className="font-bold text-white text-base truncate leading-tight drop-shadow-md">
-                        {item.title}
-                    </h3>
-                    <div className="flex items-center text-xs text-gray-300">
+                <div className="relative z-10 flex flex-row p-3 sm:p-4 gap-3 sm:gap-4 items-center">
+                    
+                    <div className="flex flex-col items-center justify-center w-8 sm:w-8 shrink-0 gap-1">
+                        <span className={cn(
+                            "font-display text-xl sm:text-2xl font-bold leading-none drop-shadow-sm",
+                            item.current_rank <= 3 ? "text-primary" : "text-foreground"
+                        )}>
+                            {item.current_rank}
+                        </span>
                         {rankChangeEl}
                     </div>
-                </div>
 
-                {/* Right: Score Badge */}
-                <div className="bg-secondary/60 flex items-center gap-1 rounded-md border px-2 backdrop-blur">
-                    <div className="font-display text-white font-bold">
-                        {item.currentScore.toFixed(2)}
+                    <div className="w-12 sm:w-16 shrink-0 shadow-md">
+                        <AspectRatio ratio={2 / 3} className="overflow-hidden rounded-md bg-secondary/20">
+                            <Image
+                                src={item.poster}
+                                alt={item.title}
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                        </AspectRatio>
                     </div>
 
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="1em"
-                        height="1em"
-                        viewBox="0 0 24 24"
-                        className="text-lg text-primary-foreground"
-                    >
-                        <path
-                            fill="currentColor"
-                            d="m12 17.275l-4.15 2.5q-.275.175-.575.15t-.525-.2t-.35-.437t-.05-.588l1.1-4.725L3.775 10.8q-.25-.225-.312-.513t.037-.562t.3-.45t.55-.225l4.85-.425l1.875-4.45q.125-.3.388-.45t.537-.15t.537.15t.388.45l1.875 4.45l4.85.425q.35.05.55.225t.3.45t.038.563t-.313.512l-3.675 3.175l1.1 4.725q.075.325-.05.588t-.35.437t-.525.2t-.575-.15z"
-                        />
-                    </svg>
+                    <div className="flex flex-col flex-1 min-w-0 justify-center gap-1">
+                        <h3 className="font-bold text-foreground text-sm sm:text-base line-clamp-2 group-hover:text-primary transition-colors leading-snug drop-shadow-sm">
+                            {item.title}
+                        </h3>
+                        <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-muted-foreground font-medium drop-shadow-sm">
+                            <div className="flex items-center gap-1" title="Нових оцінок за період">
+                                <Icon icon="material-symbols:person-add-rounded" className="size-3.5" />
+                                <span>+{item.new_voters}</span>
+                            </div>
+                            <div className="flex items-center gap-1" title="Приріст оцінок">
+                                <Icon icon="material-symbols:trending-up-rounded" className="size-3.5" />
+                                <span>{item.voter_growth_pct.toFixed(1)}%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col items-end shrink-0 ml-1 sm:ml-2">
+                        <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-secondary/40 border border-border/50 transition-colors group-hover:bg-secondary/60 backdrop-blur-md">
+                            <span className="font-display font-bold text-foreground text-sm leading-none pt-0.5">
+                                {item.current_score ? item.current_score.toFixed(2) : "0.00"}
+                            </span>
+                            <Icon icon="material-symbols:star-rounded" className="text-primary-foreground size-4" />
+                        </div>
+                    </div>
                 </div>
-            </div>
+
+            </Card>
         </Link>
     );
 };

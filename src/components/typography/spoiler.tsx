@@ -19,11 +19,11 @@ const Spoiler: FC<Props> = ({ children, className }) => {
     return (
         <Collapsible className={cn('spoiler w-full space-y-2', className)}>
             <CollapsibleTrigger asChild>
-                <Button variant="secondary" size="default">
+                <Button variant="secondary" size="badge">
                     Спойлер <ChevronsUpDown className="size-3" />
                 </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="rounded-md border border-border bg-secondary/20 p-2">
+            <CollapsibleContent className="border-border bg-secondary/20 rounded-md border p-2">
                 {children}
             </CollapsibleContent>
         </Collapsible>

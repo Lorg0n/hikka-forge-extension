@@ -56,7 +56,8 @@ steps:
       EDGE_API_KEY:
         from_secret: EDGE_API_KEY
     commands:
-      - npm install @plasmohq/edge-addons-api
+      - npm install -g pnpm
+      - pnpm add @plasmohq/edge-addons-api
       - |
         node --input-type=module -e "
         import { EdgeAddonsAPI } from '@plasmohq/edge-addons-api';

@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { GraphEdge, GraphNode } from '@/types';
-import { RelationsNodeCard } from './RelationsNodeCard';
+import { RelationsNodeLabel } from './RelationsNodeLabel';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@iconify/react';
 
@@ -15,12 +15,26 @@ interface PositionedNode extends GraphNode {
     y: number;
 }
 
-const VIRTUAL_WIDTH = 2400;
-const VIRTUAL_HEIGHT = 1200;
-const NODE_WIDTH = 130;
-const NODE_HEIGHT = 40;
-const MIN_ZOOM = 0.2;
+interface LayoutBounds {
+    minX: number;
+    minY: number;
+    width: number;
+    height: number;
+}
+
+const NODE_RADIUS = 6;
+const CURRENT_NODE_RADIUS = 8;
+const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 4;
+const PADDING = 60;
+const COLUMN_WIDTH = 320;
+const ROW_HEIGHT = 64;
+
+const typeColors: Record<string, string> = {
+    anime: '#3b82f6',
+    manga: '#10b981',
+    novel: '#a855f7',
+};
 
 const relationTypeColors: Record<string, string> = {
     SEQUEL: '#22c55e',
@@ -36,102 +50,103 @@ const relationTypeColors: Record<string, string> = {
     ADAPTATION: '#ec4899',
 };
 
-const runForceSimulation = (
+/**
+ * Layered BFS layout: assigns each node a layer = shortest-path distance
+ * from the current node. Nodes are placed in vertical columns by layer.
+ * This produces an organized, "map-like" diagram with clear flow from
+ * the current title outward through its relations.
+ */
+const runLayeredLayout = (
     nodes: GraphNode[],
     edges: GraphEdge[],
-    width: number,
-    height: number,
-    iterations: number = 300
+    currentNodeId: string | undefined
 ): PositionedNode[] => {
     if (nodes.length === 0) return [];
 
-    interface SimNode extends GraphNode {
-        x: number;
-        y: number;
-        vx: number;
-        vy: number;
-    }
-
-    const cx = width / 2;
-    const cy = height / 2;
-    const initialRadius = Math.min(width, height) * 0.4;
-
-    const simNodes: SimNode[] = nodes.map((node, i) => {
-        const angle = (i / Math.max(nodes.length, 1)) * 2 * Math.PI;
-        return {
-            ...node,
-            x: cx + Math.cos(angle) * initialRadius,
-            y: cy + Math.sin(angle) * initialRadius,
-            vx: 0,
-            vy: 0,
-        };
+    const nodeIds = new Set(nodes.map(n => n.id));
+    const adjacency = new Map<string, Set<string>>();
+    nodes.forEach(n => adjacency.set(n.id, new Set()));
+    edges.forEach(e => {
+        if (nodeIds.has(e.source) && nodeIds.has(e.target)) {
+            adjacency.get(e.source)!.add(e.target);
+            adjacency.get(e.target)!.add(e.source);
+        }
     });
 
-    const nodeMap = new Map(simNodes.map(n => [n.id, n]));
+    const layerOf = new Map<string, number>();
+    const startId =
+        currentNodeId && nodeIds.has(currentNodeId)
+            ? currentNodeId
+            : nodes[0].id;
 
-    const idealEdgeLength = 160;
-    const repulsionStrength = 30000;
-    const springStrength = 0.015;
-    const centeringStrength = 0.008;
+    const queue: string[] = [startId];
+    layerOf.set(startId, 0);
+    const visited = new Set([startId]);
 
-    for (let iter = 0; iter < iterations; iter++) {
-        for (let i = 0; i < simNodes.length; i++) {
-            for (let j = i + 1; j < simNodes.length; j++) {
-                const a = simNodes[i];
-                const b = simNodes[j];
-                const dx = a.x - b.x;
-                const dy = a.y - b.y;
-                const distSq = dx * dx + dy * dy;
-                const dist = Math.sqrt(distSq) || 1;
-                const force = repulsionStrength / distSq;
-                const fx = (dx / dist) * force;
-                const fy = (dy / dist) * force;
-                a.vx += fx;
-                a.vy += fy;
-                b.vx -= fx;
-                b.vy -= fy;
+    while (queue.length > 0) {
+        const u = queue.shift()!;
+        const lu = layerOf.get(u)!;
+        for (const v of adjacency.get(u) || []) {
+            if (!visited.has(v)) {
+                visited.add(v);
+                layerOf.set(v, lu + 1);
+                queue.push(v);
             }
         }
-
-        edges.forEach(edge => {
-            const source = nodeMap.get(edge.source);
-            const target = nodeMap.get(edge.target);
-            if (!source || !target) return;
-            const dx = target.x - source.x;
-            const dy = target.y - source.y;
-            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-            const force = (dist - idealEdgeLength) * springStrength;
-            const fx = (dx / dist) * force;
-            const fy = (dy / dist) * force;
-            source.vx += fx;
-            source.vy += fy;
-            target.vx -= fx;
-            target.vy -= fy;
-        });
-
-        simNodes.forEach(node => {
-            node.vx += (cx - node.x) * centeringStrength;
-            node.vy += (cy - node.y) * centeringStrength;
-        });
-
-        const marginX = NODE_WIDTH / 2 + 10;
-        const marginY = NODE_HEIGHT / 2 + 10;
-        simNodes.forEach(node => {
-            if (node.x < marginX) node.vx += (marginX - node.x) * 0.05;
-            if (node.x > width - marginX) node.vx -= (node.x - (width - marginX)) * 0.05;
-            if (node.y < marginY) node.vy += (marginY - node.y) * 0.05;
-            if (node.y > height - marginY) node.vy -= (node.y - (height - marginY)) * 0.05;
-        });
-
-        simNodes.forEach(node => {
-            node.vx *= 0.8;
-            node.vy *= 0.8;
-            node.x += node.vx;
-            node.y += node.vy;
-        });
     }
 
-    return simNodes;
+    const maxAssigned = Math.max(0, ...Array.from(layerOf.values()));
+    nodes.forEach(n => {
+        if (!layerOf.has(n.id)) {
+            layerOf.set(n.id, maxAssigned + 1);
+        }
+    });
+
+    const groups = new Map<number, GraphNode[]>();
+    nodes.forEach(n => {
+        const l = layerOf.get(n.id)!;
+        if (!groups.has(l)) groups.set(l, []);
+        groups.get(l)!.push(n);
+    });
+
+    const sortedLayers = Array.from(groups.keys()).sort((a, b) => a - b);
+    const maxGroupSize = Math.max(
+        ...Array.from(groups.values()).map(g => g.length)
+    );
+
+    const totalHeight = maxGroupSize * ROW_HEIGHT;
+    const positions: PositionedNode[] = [];
+
+    sortedLayers.forEach((layerIdx, col) => {
+        const group = groups.get(layerIdx)!;
+        const x = col * COLUMN_WIDTH;
+        const groupHeight = (group.length - 1) * ROW_HEIGHT;
+        const yStart = totalHeight / 2 - groupHeight / 2;
+
+        group.forEach((node, i) => {
+            positions.push({ ...node, x, y: yStart + i * ROW_HEIGHT });
+        });
+    });
+
+    return positions;
+};
+
+const computeBounds = (positions: PositionedNode[]): LayoutBounds => {
+    if (positions.length === 0) {
+        return { minX: 0, minY: 0, width: 1000, height: 600 };
+    }
+    const xs = positions.map(n => n.x);
+    const ys = positions.map(n => n.y);
+    const minX = Math.min(...xs) - PADDING;
+    const maxX = Math.max(...xs) + PADDING + 160; // extra for label width
+    const minY = Math.min(...ys) - PADDING;
+    const maxY = Math.max(...ys) + PADDING;
+    return {
+        minX,
+        minY,
+        width: maxX - minX,
+        height: maxY - minY,
+    };
 };
 
 export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
@@ -147,9 +162,11 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
     stateRef.current = { pan, zoom };
 
     const positionedNodes = useMemo(
-        () => runForceSimulation(nodes, edges, VIRTUAL_WIDTH, VIRTUAL_HEIGHT),
-        [nodes, edges]
+        () => runLayeredLayout(nodes, edges, currentNodeId),
+        [nodes, edges, currentNodeId]
     );
+
+    const bounds = useMemo(() => computeBounds(positionedNodes), [positionedNodes]);
 
     const nodeMap = useMemo(() => {
         const map = new Map<string, PositionedNode>();
@@ -170,7 +187,27 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
         setZoom(nz);
     };
 
-    // Wheel zoom (non-passive to prevent page scroll)
+    const handleFit = useCallback(() => {
+        const vp = viewportRef.current;
+        if (!vp || positionedNodes.length === 0) return;
+        const rect = vp.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
+        const scaleX = rect.width / bounds.width;
+        const scaleY = rect.height / bounds.height;
+        const newZoom = clampZoom(Math.min(scaleX, scaleY) * 0.95);
+        setZoom(newZoom);
+        setPan({
+            x: -bounds.minX * newZoom,
+            y: -bounds.minY * newZoom,
+        });
+    }, [positionedNodes, bounds]);
+
+    // Fit on mount and when data changes
+    useLayoutEffect(() => {
+        handleFit();
+    }, [handleFit]);
+
+    // Wheel zoom
     useEffect(() => {
         const el = viewportRef.current;
         if (!el) return;
@@ -222,10 +259,6 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
         const rect = vp.getBoundingClientRect();
         zoomAt(rect.width / 2, rect.height / 2, stateRef.current.zoom * 0.8);
     };
-    const handleReset = () => {
-        setPan({ x: 0, y: 0 });
-        setZoom(1);
-    };
 
     return (
         <div ref={viewportRef} className="relative w-full h-full overflow-hidden">
@@ -239,9 +272,10 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
             >
                 <svg
                     className="absolute inset-0 w-full h-full pointer-events-none"
-                    viewBox={`0 0 ${VIRTUAL_WIDTH} ${VIRTUAL_HEIGHT}`}
+                    viewBox={`${bounds.minX} ${bounds.minY} ${bounds.width} ${bounds.height}`}
                     preserveAspectRatio="xMidYMid meet"
                 >
+                    {/* Edges */}
                     {edges.map(edge => {
                         const source = nodeMap.get(edge.source);
                         const target = nodeMap.get(edge.target);
@@ -252,29 +286,59 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
                             hoveredEdge === `${edge.source}-${edge.target}`;
 
                         return (
-                            <g key={`${edge.source}-${edge.target}`}>
-                                <line
-                                    x1={source.x}
-                                    y1={source.y}
-                                    x2={target.x}
-                                    y2={target.y}
-                                    stroke={color}
-                                    strokeWidth={isHovered ? 2.5 : 1}
-                                    strokeOpacity={isHovered ? 1 : 0.5}
-                                />
+                            <line
+                                key={`${edge.source}-${edge.target}`}
+                                x1={source.x}
+                                y1={source.y}
+                                x2={target.x}
+                                y2={target.y}
+                                stroke={color}
+                                strokeWidth={isHovered ? 2.5 : 1}
+                                strokeOpacity={isHovered ? 1 : 0.5}
+                            >
                                 <title>{edge.relationType}</title>
+                            </line>
+                        );
+                    })}
+
+                    {/* Node circles */}
+                    {positionedNodes.map(node => {
+                        const isCurrent = node.id === currentNodeId;
+                        const color = typeColors[node.type] || '#6b7280';
+                        return (
+                            <g key={`dot-${node.id}`}>
+                                <circle
+                                    cx={node.x}
+                                    cy={node.y}
+                                    r={isCurrent ? CURRENT_NODE_RADIUS : NODE_RADIUS}
+                                    fill={color}
+                                />
+                                {isCurrent && (
+                                    <circle
+                                        cx={node.x}
+                                        cy={node.y}
+                                        r={CURRENT_NODE_RADIUS + 3}
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth={2}
+                                        className="text-primary"
+                                        strokeOpacity={0.6}
+                                    />
+                                )}
                             </g>
                         );
                     })}
                 </svg>
+
+                {/* Labels */}
                 {positionedNodes.map(node => (
                     <div
-                        key={node.id}
+                        key={`label-${node.id}`}
                         className="absolute"
                         style={{
-                            left: `${(node.x / VIRTUAL_WIDTH) * 100}%`,
-                            top: `${(node.y / VIRTUAL_HEIGHT) * 100}%`,
-                            transform: 'translate(-50%, -50%)',
+                            left: `${((node.x - bounds.minX) / bounds.width) * 100}%`,
+                            top: `${((node.y - bounds.minY) / bounds.height) * 100}%`,
+                            transform: 'translate(14px, -50%)',
                         }}
                         onMouseEnter={() => {
                             const related = new Set(
@@ -292,7 +356,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
                         onMouseLeave={() => setHoveredEdge(null)}
                         onMouseDown={e => e.stopPropagation()}
                     >
-                        <RelationsNodeCard
+                        <RelationsNodeLabel
                             node={node}
                             isCurrent={node.id === currentNodeId}
                         />
@@ -300,35 +364,19 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
                 ))}
             </div>
 
-            {/* Zoom controls */}
+            {/* Controls */}
             <div className="absolute top-2 right-2 flex flex-col gap-1 z-10">
-                <Button
-                    size="icon-sm"
-                    variant="secondary"
-                    onClick={handleZoomIn}
-                    title="Збільшити"
-                >
+                <Button size="icon-sm" variant="secondary" onClick={handleZoomIn} title="Збільшити">
                     <Icon icon="material-symbols:add" />
                 </Button>
-                <Button
-                    size="icon-sm"
-                    variant="secondary"
-                    onClick={handleZoomOut}
-                    title="Зменшити"
-                >
+                <Button size="icon-sm" variant="secondary" onClick={handleZoomOut} title="Зменшити">
                     <Icon icon="material-symbols:remove" />
                 </Button>
-                <Button
-                    size="icon-sm"
-                    variant="secondary"
-                    onClick={handleReset}
-                    title="Скинути"
-                >
+                <Button size="icon-sm" variant="secondary" onClick={handleFit} title="Вмістити">
                     <Icon icon="material-symbols:fit-screen" />
                 </Button>
             </div>
 
-            {/* Zoom indicator */}
             <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-secondary/80 text-secondary-foreground text-xs font-mono z-10 pointer-events-none">
                 {Math.round(zoom * 100)}%
             </div>

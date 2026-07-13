@@ -14,17 +14,17 @@ interface RelationsGraphProps {
 }
 
 const relationTypeColors: Record<string, string> = {
-    SEQUEL: '#22c55e',
-    PREQUEL: '#3b82f6',
-    ALTERNATIVE: '#a855f7',
-    SPIN_OFF: '#f59e0b',
-    PARENT: '#ef4444',
-    CHARACTER: '#06b6d4',
-    SIDE_STORY: '#14b8a6',
-    SOURCE: '#84cc16',
-    SUMMARY: '#eab308',
-    OTHER: '#6b7280',
-    ADAPTATION: '#ec4899',
+    SEQUEL: '#4ade80',
+    PREQUEL: '#60a5fa',
+    ALTERNATIVE: '#c084fc',
+    SPIN_OFF: '#fbbf24',
+    PARENT: '#f87171',
+    CHARACTER: '#22d3ee',
+    SIDE_STORY: '#2dd4bf',
+    SOURCE: '#a3e635',
+    SUMMARY: '#facc15',
+    OTHER: '#9ca3af',
+    ADAPTATION: '#f472b6',
 };
 
 const THEME_VARS = [
@@ -58,13 +58,10 @@ export const RelationsGraph: React.FC<RelationsGraphProps> = ({
             shadow.removeChild(shadow.firstChild);
         }
 
-        // Inject compiled Tailwind CSS
         const styleEl = document.createElement('style');
         styleEl.textContent = shadowStyles;
         shadow.appendChild(styleEl);
 
-        // Sync theme variables from the page to the shadow host
-        // (inline style overrides any :root rule in the shadow CSS)
         const applyTheme = () => {
             const pageStyle = getComputedStyle(document.documentElement);
             THEME_VARS.forEach(v => {
@@ -81,7 +78,6 @@ export const RelationsGraph: React.FC<RelationsGraphProps> = ({
             attributeFilter: ['class', 'style'],
         });
 
-        // Mount point
         const mount = document.createElement('div');
         mount.style.width = '100%';
         mount.style.height = '100%';
@@ -100,7 +96,6 @@ export const RelationsGraph: React.FC<RelationsGraphProps> = ({
         return () => {
             root.unmount();
             themeObserver.disconnect();
-            // Clean up host inline vars
             THEME_VARS.forEach(v => host.style.removeProperty(v));
         };
     }, [nodes, edges, currentNodeId]);
@@ -108,6 +103,11 @@ export const RelationsGraph: React.FC<RelationsGraphProps> = ({
     const relationTypes = useMemo(
         () => Array.from(new Set(edges.map(e => e.relationType))),
         [edges]
+    );
+
+    const currentNode = useMemo(() =>
+        nodes.find(n => n.id === currentNodeId),
+        [nodes, currentNodeId]
     );
 
     if (nodes.length === 0) {
@@ -125,24 +125,39 @@ export const RelationsGraph: React.FC<RelationsGraphProps> = ({
 
     return (
         <div className={cn('flex flex-col gap-4', className)}>
-            <div className="flex flex-wrap gap-2">
-                {relationTypes.map(type => (
-                    <div
-                        key={type}
-                        className="flex items-center gap-1.5 text-xs text-muted-foreground"
-                    >
-                        <span
-                            className="inline-block size-2 rounded-full"
-                            style={{ backgroundColor: relationTypeColors[type] || '#6b7280' }}
+            <div className="flex items-center gap-4 flex-wrap">
+                {currentNode && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/5 border border-primary/20">
+                        <img
+                            src={currentNode.imageUrl}
+                            alt={currentNode.title}
+                            className="w-8 h-10 object-cover rounded"
                         />
-                        {type}
+                        <div className="flex flex-col">
+                            <span className="text-xs text-muted-foreground">Цей тайтл</span>
+                            <span className="text-sm font-medium">{currentNode.title}</span>
+                        </div>
                     </div>
-                ))}
+                )}
+                <div className="flex flex-wrap gap-x-3 gap-y-1.5">
+                    {relationTypes.map(type => (
+                        <div
+                            key={type}
+                            className="flex items-center gap-1.5 text-xs text-muted-foreground"
+                        >
+                            <span
+                                className="inline-block size-2.5 rounded-full shadow-sm"
+                                style={{ backgroundColor: relationTypeColors[type] || '#6b7280' }}
+                            />
+                            {type}
+                        </div>
+                    ))}
+                </div>
             </div>
             <div
                 ref={hostRef}
-                style={{ height: 800 }}
-                className="relative w-full border rounded-lg bg-secondary/10 overflow-hidden"
+                style={{ height: 700 }}
+                className="relative w-full rounded-xl bg-secondary/5 border border-border/30 overflow-hidden shadow-2xl shadow-black/5"
             />
         </div>
     );

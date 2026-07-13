@@ -1,4 +1,4 @@
-import { SimilarAnimeApiResponse, ApiErrorResponse, ForgeAnimeDetails, WeeklyTopAnimeApiResponse } from '@/types';
+import { SimilarAnimeApiResponse, ApiErrorResponse, ForgeAnimeDetails, WeeklyTopAnimeApiResponse, FranchiseGraphResponse, FranchiseContentType } from '@/types';
 
 import { API_BACKEND_BASE } from '@/constants';
 
@@ -112,4 +112,37 @@ export const fetchWeeklyTopAnime = async ({
     }
 
     return response.json() as Promise<WeeklyTopAnimeApiResponse>;
+};
+
+interface FetchFranchiseGraphParams {
+    contentType: FranchiseContentType;
+    slug: string;
+}
+
+export const fetchFranchiseGraph = async ({
+    contentType,
+    slug,
+}: FetchFranchiseGraphParams): Promise<FranchiseGraphResponse> => {
+    const url = new URL(`${API_BACKEND_BASE}/${contentType}/${slug}/franchise`);
+
+    const response = await fetch(url.toString(), {
+        headers: {
+            accept: 'application/json',
+        },
+    });
+
+    if (!response.ok) {
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+            const errorData: ApiErrorResponse = await response.json();
+            if (errorData && errorData.error) {
+                errorMessage = errorData.error;
+            }
+        } catch (e) {
+            console.error('Failed to parse error response:', e);
+        }
+        throw new Error(errorMessage);
+    }
+
+    return response.json() as Promise<FranchiseGraphResponse>;
 };

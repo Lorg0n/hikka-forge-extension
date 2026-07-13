@@ -124,3 +124,27 @@ export interface AuthCallbackResponse {
     expires: number;
     secret: string;
 }
+
+export type FranchiseContentType = 'anime' | 'manga';
+
+export interface GraphNode {
+    id: string;
+    type: FranchiseContentType;
+    slug: string;
+    title: string;
+    imageUrl: string;
+    year: number;
+    status: string;
+    format: string;
+}
+
+export interface GraphEdge {
+    source: string;
+    target: string;
+    relationType: string;
+}
+
+export interface FranchiseGraphResponse {
+    nodes: GraphNode[];
+    edges: GraphEdge[];
+}

@@ -330,6 +330,8 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
 
     const handleMouseDown = (e: React.MouseEvent) => {
         if (e.button !== 0 && e.button !== 1) return;
+        const target = e.target as HTMLElement;
+        if (target.closest('input, button, a, [contenteditable], [data-pan-exclude]')) return;
         e.preventDefault();
         const startX = e.clientX;
         const startY = e.clientY;

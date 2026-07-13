@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { GraphEdge, GraphNode } from '@/types';
 import { RelationsNodeLabel } from './RelationsNodeLabel';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Icon } from '@iconify/react';
+import { cn } from '@/lib/utils';
 
 interface RelationsGraphContentProps {
     nodes: GraphNode[];
@@ -22,46 +24,52 @@ interface LayoutBounds {
     height: number;
 }
 
-const NODE_RADIUS = 6;
-const CURRENT_NODE_RADIUS = 8;
+const CANVAS_SIZE = 100000;
+const CENTER = CANVAS_SIZE / 2;
 const MIN_ZOOM = 0.1;
-const MAX_ZOOM = 4;
-const PADDING = 60;
-const COLUMN_WIDTH = 320;
-const ROW_HEIGHT = 64;
+const MAX_ZOOM = 3;
+const PADDING = 100;
+const BASE_NODE_SPACING_X = 380;
+const BASE_NODE_SPACING_Y = 160;
+const NODE_RADIUS = 8;
+const CURRENT_NODE_RADIUS = 11;
 
-const typeColors: Record<string, string> = {
-    anime: '#3b82f6',
-    manga: '#10b981',
-    novel: '#a855f7',
+const typeColors: Record<string, { main: string; glow: string }> = {
+    anime: { main: '#60a5fa', glow: '#3b82f6' },
+    manga: { main: '#34d399', glow: '#10b981' },
+    novel: { main: '#c084fc', glow: '#a855f7' },
 };
 
-const relationTypeColors: Record<string, string> = {
-    SEQUEL: '#22c55e',
-    PREQUEL: '#3b82f6',
-    ALTERNATIVE: '#a855f7',
-    SPIN_OFF: '#f59e0b',
-    PARENT: '#ef4444',
-    CHARACTER: '#06b6d4',
-    SIDE_STORY: '#14b8a6',
-    SOURCE: '#84cc16',
-    SUMMARY: '#eab308',
-    OTHER: '#6b7280',
-    ADAPTATION: '#ec4899',
+const relationTypeColors: Record<string, { main: string; glow: string }> = {
+    SEQUEL: { main: '#4ade80', glow: '#22c55e' },
+    PREQUEL: { main: '#60a5fa', glow: '#3b82f6' },
+    ALTERNATIVE: { main: '#c084fc', glow: '#a855f7' },
+    SPIN_OFF: { main: '#fbbf24', glow: '#f59e0b' },
+    PARENT: { main: '#f87171', glow: '#ef4444' },
+    CHARACTER: { main: '#22d3ee', glow: '#06b6d4' },
+    SIDE_STORY: { main: '#2dd4bf', glow: '#14b8a6' },
+    SOURCE: { main: '#a3e635', glow: '#84cc16' },
+    SUMMARY: { main: '#facc15', glow: '#eab308' },
+    OTHER: { main: '#9ca3af', glow: '#6b7280' },
+    ADAPTATION: { main: '#f472b6', glow: '#ec4899' },
 };
 
-/**
- * Layered BFS layout: assigns each node a layer = shortest-path distance
- * from the current node. Nodes are placed in vertical columns by layer.
- * This produces an organized, "map-like" diagram with clear flow from
- * the current title outward through its relations.
- */
-const runLayeredLayout = (
+interface LayoutResult {
+    positions: PositionedNode[];
+    bounds: LayoutBounds;
+}
+
+const computeImprovedLayout = (
     nodes: GraphNode[],
     edges: GraphEdge[],
     currentNodeId: string | undefined
-): PositionedNode[] => {
-    if (nodes.length === 0) return [];
+): LayoutResult => {
+    if (nodes.length === 0) {
+        return {
+            positions: [],
+            bounds: { minX: 0, minY: 0, width: CANVAS_SIZE, height: CANVAS_SIZE }
+        };
+    }
 
     const nodeIds = new Set(nodes.map(n => n.id));
     const adjacency = new Map<string, Set<string>>();
@@ -74,10 +82,7 @@ const runLayeredLayout = (
     });
 
     const layerOf = new Map<string, number>();
-    const startId =
-        currentNodeId && nodeIds.has(currentNodeId)
-            ? currentNodeId
-            : nodes[0].id;
+    const startId = currentNodeId && nodeIds.has(currentNodeId) ? currentNodeId : nodes[0].id;
 
     const queue: string[] = [startId];
     layerOf.set(startId, 0);
@@ -97,9 +102,7 @@ const runLayeredLayout = (
 
     const maxAssigned = Math.max(0, ...Array.from(layerOf.values()));
     nodes.forEach(n => {
-        if (!layerOf.has(n.id)) {
-            layerOf.set(n.id, maxAssigned + 1);
-        }
+        if (!layerOf.has(n.id)) layerOf.set(n.id, maxAssigned + 1);
     });
 
     const groups = new Map<number, GraphNode[]>();
@@ -110,43 +113,74 @@ const runLayeredLayout = (
     });
 
     const sortedLayers = Array.from(groups.keys()).sort((a, b) => a - b);
-    const maxGroupSize = Math.max(
-        ...Array.from(groups.values()).map(g => g.length)
-    );
 
-    const totalHeight = maxGroupSize * ROW_HEIGHT;
     const positions: PositionedNode[] = [];
+    const nodePositionMap = new Map<string, PositionedNode>();
 
     sortedLayers.forEach((layerIdx, col) => {
         const group = groups.get(layerIdx)!;
-        const x = col * COLUMN_WIDTH;
-        const groupHeight = (group.length - 1) * ROW_HEIGHT;
-        const yStart = totalHeight / 2 - groupHeight / 2;
+        const x = col * BASE_NODE_SPACING_X;
 
         group.forEach((node, i) => {
-            positions.push({ ...node, x, y: yStart + i * ROW_HEIGHT });
+            let y = i * BASE_NODE_SPACING_Y;
+
+            if (group.length > 1) {
+                const totalHeight = (group.length - 1) * BASE_NODE_SPACING_Y;
+                y = (sortedLayers.length > 1 ? 400 : 300) + (i * BASE_NODE_SPACING_Y) - totalHeight / 2;
+            }
+
+            const pos: PositionedNode = { ...node, x, y };
+            positions.push(pos);
+            nodePositionMap.set(node.id, pos);
         });
     });
 
-    return positions;
-};
-
-const computeBounds = (positions: PositionedNode[]): LayoutBounds => {
-    if (positions.length === 0) {
-        return { minX: 0, minY: 0, width: 1000, height: 600 };
+    for (let pass = 0; pass < 3; pass++) {
+        sortedLayers.forEach(layerIdx => {
+            const layerNodes = positions.filter(p => layerOf.get(p.id) === layerIdx);
+            layerNodes.forEach(node => {
+                const neighbors = Array.from(adjacency.get(node.id) || []);
+                let dy = 0;
+                neighbors.forEach(nId => {
+                    const other = nodePositionMap.get(nId);
+                    if (other && other.id !== node.id) {
+                        const dist = other.y - node.y;
+                        if (Math.abs(dist) < BASE_NODE_SPACING_Y * 0.8) {
+                            dy += dist > 0 ? -15 : 15;
+                        }
+                    }
+                });
+                if (Math.abs(dy) > 1) {
+                    node.y = Math.max(50, Math.min(node.y + dy * 0.3, 800));
+                }
+            });
+        });
     }
+
     const xs = positions.map(n => n.x);
     const ys = positions.map(n => n.y);
     const minX = Math.min(...xs) - PADDING;
-    const maxX = Math.max(...xs) + PADDING + 160; // extra for label width
+    const maxX = Math.max(...xs) + PADDING + 200;
     const minY = Math.min(...ys) - PADDING;
     const maxY = Math.max(...ys) + PADDING;
+
     return {
-        minX,
-        minY,
-        width: maxX - minX,
-        height: maxY - minY,
+        positions,
+        bounds: { minX, minY, width: maxX - minX, height: maxY - minY }
     };
+};
+
+const getEdgePath = (
+    x1: number, y1: number,
+    x2: number, y2: number
+): string => {
+    const dx = x2 - x1;
+    const cp = Math.min(Math.abs(dx) * 0.5, 100);
+    if (dx > 0) {
+        return `M ${x1} ${y1} C ${x1 + cp} ${y1}, ${x2 - cp} ${y2}, ${x2} ${y2}`;
+    } else {
+        return `M ${x1} ${y1} C ${x1 - cp} ${y1}, ${x2 + cp} ${y2}, ${x2} ${y2}`;
+    }
 };
 
 export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
@@ -157,26 +191,117 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
     const viewportRef = useRef<HTMLDivElement>(null);
     const [pan, setPan] = useState({ x: 0, y: 0 });
     const [zoom, setZoom] = useState(1);
-    const [hoveredEdge, setHoveredEdge] = useState<string | null>(null);
+    const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+    const [selectedNode, setSelectedNode] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [showMiniPreview, setShowMiniPreview] = useState<string | null>(null);
+    const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
     const stateRef = useRef({ pan, zoom });
     stateRef.current = { pan, zoom };
 
-    const positionedNodes = useMemo(
-        () => runLayeredLayout(nodes, edges, currentNodeId),
+    const layerOf = useMemo(() => {
+        if (nodes.length === 0) return new Map<string, number>();
+        const nodeIds = new Set(nodes.map(n => n.id));
+        const adjacency = new Map<string, Set<string>>();
+        nodes.forEach(n => adjacency.set(n.id, new Set()));
+        edges.forEach(e => {
+            if (nodeIds.has(e.source) && nodeIds.has(e.target)) {
+                adjacency.get(e.source)!.add(e.target);
+                adjacency.get(e.target)!.add(e.source);
+            }
+        });
+
+        const layerMap = new Map<string, number>();
+        const startId = currentNodeId && nodeIds.has(currentNodeId) ? currentNodeId : nodes[0].id;
+        const queue = [startId];
+        layerMap.set(startId, 0);
+        const visited = new Set([startId]);
+
+        while (queue.length > 0) {
+            const u = queue.shift()!;
+            const lu = layerMap.get(u)!;
+            for (const v of adjacency.get(u) || []) {
+                if (!visited.has(v)) {
+                    visited.add(v);
+                    layerMap.set(v, lu + 1);
+                    queue.push(v);
+                }
+            }
+        }
+        return layerMap;
+    }, [nodes, edges, currentNodeId]);
+
+    const { positions, bounds } = useMemo(
+        () => computeImprovedLayout(nodes, edges, currentNodeId),
         [nodes, edges, currentNodeId]
     );
 
-    const bounds = useMemo(() => computeBounds(positionedNodes), [positionedNodes]);
-
     const nodeMap = useMemo(() => {
         const map = new Map<string, PositionedNode>();
-        positionedNodes.forEach(n => map.set(n.id, n));
+        positions.forEach(n => map.set(n.id, n));
         return map;
-    }, [positionedNodes]);
+    }, [positions]);
+
+    const filteredPositions = useMemo(() => {
+        if (!searchQuery.trim()) return positions;
+        const q = searchQuery.toLowerCase();
+        return positions.filter(n =>
+            n.title.toLowerCase().includes(q) ||
+            n.type.toLowerCase().includes(q) ||
+            String(n.year).includes(q)
+        );
+    }, [positions, searchQuery]);
+
+    const visibleEdges = useMemo(() => {
+        if (!searchQuery.trim()) return edges;
+        const visibleIds = new Set(filteredPositions.map(n => n.id));
+        return edges.filter(e => visibleIds.has(e.source) && visibleIds.has(e.target));
+    }, [edges, filteredPositions, searchQuery]);
+
+    const highlightedNodes = useMemo(() => {
+        const highlighted = new Set<string>();
+        if (hoveredNode || selectedNode) {
+            const active = hoveredNode || selectedNode;
+            highlighted.add(active!);
+            edges.forEach(e => {
+                if (e.source === active) highlighted.add(e.target);
+                if (e.target === active) highlighted.add(e.source);
+            });
+        }
+        return highlighted;
+    }, [hoveredNode, selectedNode, edges]);
+
+    useLayoutEffect(() => {
+        const updateSize = () => {
+            if (viewportRef.current) {
+                const rect = viewportRef.current.getBoundingClientRect();
+                setViewportSize({ width: rect.width, height: rect.height });
+            }
+        };
+        updateSize();
+        window.addEventListener('resize', updateSize);
+        return () => window.removeEventListener('resize', updateSize);
+    }, []);
+
+    const handleFit = useCallback(() => {
+        if (positions.length === 0 || viewportSize.width === 0) return;
+        const scaleX = viewportSize.width / (bounds.width * 1.2);
+        const scaleY = viewportSize.height / (bounds.height * 1.2);
+        const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Math.min(scaleX, scaleY)));
+        setZoom(newZoom);
+        setPan({
+            x: viewportSize.width / 2 - (bounds.minX + bounds.width / 2) * newZoom,
+            y: viewportSize.height / 2 - (bounds.minY + bounds.height / 2) * newZoom,
+        });
+    }, [positions, bounds, viewportSize]);
+
+    useLayoutEffect(() => {
+        handleFit();
+    }, [handleFit]);
 
     const clampZoom = (z: number) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z));
 
-    const zoomAt = (mx: number, my: number, newZoom: number) => {
+    const zoomAt = useCallback((mx: number, my: number, newZoom: number) => {
         const { pan, zoom } = stateRef.current;
         const nz = clampZoom(newZoom);
         const ratio = nz / zoom;
@@ -185,37 +310,14 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
             y: my - (my - pan.y) * ratio,
         });
         setZoom(nz);
-    };
+    }, []);
 
-    const handleFit = useCallback(() => {
-        const vp = viewportRef.current;
-        if (!vp || positionedNodes.length === 0) return;
-        const rect = vp.getBoundingClientRect();
-        if (rect.width === 0 || rect.height === 0) return;
-        const scaleX = rect.width / bounds.width;
-        const scaleY = rect.height / bounds.height;
-        const newZoom = clampZoom(Math.min(scaleX, scaleY) * 0.95);
-        setZoom(newZoom);
-        setPan({
-            x: -bounds.minX * newZoom,
-            y: -bounds.minY * newZoom,
-        });
-    }, [positionedNodes, bounds]);
-
-    // Fit on mount and when data changes
-    useLayoutEffect(() => {
-        handleFit();
-    }, [handleFit]);
-
-    // Wheel zoom
     useEffect(() => {
         const el = viewportRef.current;
         if (!el) return;
         const handleWheel = (e: WheelEvent) => {
             e.preventDefault();
-            const vp = viewportRef.current;
-            if (!vp) return;
-            const rect = vp.getBoundingClientRect();
+            const rect = el.getBoundingClientRect();
             const mx = e.clientX - rect.left;
             const my = e.clientY - rect.top;
             const { zoom } = stateRef.current;
@@ -224,9 +326,8 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
         };
         el.addEventListener('wheel', handleWheel, { passive: false });
         return () => el.removeEventListener('wheel', handleWheel);
-    }, []);
+    }, [zoomAt]);
 
-    // Mouse pan
     const handleMouseDown = (e: React.MouseEvent) => {
         if (e.button !== 0 && e.button !== 1) return;
         e.preventDefault();
@@ -247,139 +348,281 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
         window.addEventListener('mouseup', onUp);
     };
 
+    const handleNodeClick = (nodeId: string) => {
+        setSelectedNode(prev => prev === nodeId ? null : nodeId);
+    };
+
     const handleZoomIn = () => {
-        const vp = viewportRef.current;
-        if (!vp) return;
-        const rect = vp.getBoundingClientRect();
+        if (!viewportRef.current) return;
+        const rect = viewportRef.current.getBoundingClientRect();
         zoomAt(rect.width / 2, rect.height / 2, stateRef.current.zoom * 1.2);
     };
+
     const handleZoomOut = () => {
-        const vp = viewportRef.current;
-        if (!vp) return;
-        const rect = vp.getBoundingClientRect();
+        if (!viewportRef.current) return;
+        const rect = viewportRef.current.getBoundingClientRect();
         zoomAt(rect.width / 2, rect.height / 2, stateRef.current.zoom * 0.8);
     };
 
+    const screenToCanvas = useCallback((screenX: number, screenY: number) => {
+        const { pan, zoom } = stateRef.current;
+        return {
+            x: (screenX - pan.x) / zoom,
+            y: (screenY - pan.y) / zoom
+        };
+    }, []);
+
     return (
-        <div ref={viewportRef} className="relative w-full h-full overflow-hidden">
-            <div
-                className="absolute inset-0 cursor-grab active:cursor-grabbing select-none"
+        <div
+            ref={viewportRef}
+            className="relative w-full h-full overflow-hidden bg-gradient-to-br from-background via-background to-muted/20"
+            onMouseDown={handleMouseDown}
+        >
+            <svg
+                className="absolute inset-0 w-full h-full pointer-events-none"
                 style={{
                     transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
                     transformOrigin: '0 0',
+                    overflow: 'visible',
                 }}
-                onMouseDown={handleMouseDown}
             >
-                <svg
-                    className="absolute inset-0 w-full h-full pointer-events-none"
-                    viewBox={`${bounds.minX} ${bounds.minY} ${bounds.width} ${bounds.height}`}
-                    preserveAspectRatio="xMidYMid meet"
-                >
-                    {/* Edges */}
-                    {edges.map(edge => {
+                <defs>
+                    <filter id="glow-soft" x="-100%" y="-100%" width="300%" height="300%">
+                        <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+                        <feMerge>
+                            <feMergeNode in="coloredBlur" />
+                            <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                    </filter>
+                    {Object.entries(typeColors).map(([type, colors]) => (
+                        <filter key={`glow-${type}`} id={`glow-${type}`} x="-100%" y="-100%" width="300%" height="300%">
+                            <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+                            <feMerge>
+                                <feMergeNode in="coloredBlur" />
+                                <feMergeNode in="SourceGraphic" />
+                            </feMerge>
+                        </filter>
+                    ))}
+                </defs>
+
+                <g transform={`translate(${-bounds.minX}, ${-bounds.minY})`}>
+                    {visibleEdges.map(edge => {
                         const source = nodeMap.get(edge.source);
                         const target = nodeMap.get(edge.target);
                         if (!source || !target) return null;
 
-                        const color = relationTypeColors[edge.relationType] || '#6b7280';
-                        const isHovered =
-                            hoveredEdge === `${edge.source}-${edge.target}`;
+                        const colors = relationTypeColors[edge.relationType] || relationTypeColors.OTHER;
+                        const isHighlighted = highlightedNodes.has(edge.source) && highlightedNodes.has(edge.target);
 
                         return (
-                            <line
+                            <path
                                 key={`${edge.source}-${edge.target}`}
-                                x1={source.x}
-                                y1={source.y}
-                                x2={target.x}
-                                y2={target.y}
-                                stroke={color}
-                                strokeWidth={isHovered ? 2.5 : 1}
-                                strokeOpacity={isHovered ? 1 : 0.5}
-                            >
-                                <title>{edge.relationType}</title>
-                            </line>
+                                d={getEdgePath(source.x, source.y, target.x, target.y)}
+                                stroke={colors.main}
+                                strokeWidth={isHighlighted ? 2.5 : 1.2}
+                                strokeOpacity={isHighlighted ? 0.9 : 0.35}
+                                fill="none"
+                            />
                         );
                     })}
 
-                    {/* Node circles */}
-                    {positionedNodes.map(node => {
+                    {filteredPositions.map(node => {
                         const isCurrent = node.id === currentNodeId;
-                        const color = typeColors[node.type] || '#6b7280';
+                        const isHighlighted = highlightedNodes.has(node.id);
+                        const colors = typeColors[node.type] || typeColors.anime;
+
                         return (
-                            <g key={`dot-${node.id}`}>
-                                <circle
-                                    cx={node.x}
-                                    cy={node.y}
-                                    r={isCurrent ? CURRENT_NODE_RADIUS : NODE_RADIUS}
-                                    fill={color}
-                                />
-                                {isCurrent && (
+                            <g
+                                key={`dot-${node.id}`}
+                                className="cursor-pointer pointer-events-auto"
+                                transform={`translate(${node.x}, ${node.y})`}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleNodeClick(node.id);
+                                }}
+                                onMouseEnter={() => setHoveredNode(node.id)}
+                                onMouseLeave={() => setHoveredNode(null)}
+                            >
+                                {isHighlighted && (
                                     <circle
-                                        cx={node.x}
-                                        cy={node.y}
-                                        r={CURRENT_NODE_RADIUS + 3}
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth={2}
-                                        className="text-primary"
-                                        strokeOpacity={0.6}
+                                        r={NODE_RADIUS + 12}
+                                        fill={colors.main}
+                                        fillOpacity={0.15}
                                     />
                                 )}
+
+                                <circle
+                                    r={NODE_RADIUS + 6}
+                                    fill={colors.main}
+                                    fillOpacity={0.2}
+                                    filter="url(#glow-soft)"
+                                />
+
+                                <circle
+                                    r={isCurrent ? CURRENT_NODE_RADIUS : NODE_RADIUS}
+                                    fill={colors.main}
+                                    filter={`url(#glow-${node.type})`}
+                                />
+
+                                {isCurrent && (
+                                    <circle
+                                        r={CURRENT_NODE_RADIUS + 5}
+                                        fill="none"
+                                        stroke="#f59e0b"
+                                        strokeWidth={2.5}
+                                    />
+                                )}
+
+                                <circle
+                                    cy={-(isCurrent ? CURRENT_NODE_RADIUS : NODE_RADIUS) - 8}
+                                    r={3}
+                                    fill={colors.main}
+                                    fillOpacity={0.8}
+                                />
                             </g>
                         );
                     })}
-                </svg>
+                </g>
+            </svg>
 
-                {/* Labels */}
-                {positionedNodes.map(node => (
+            {filteredPositions.map(node => {
+                const isCurrent = node.id === currentNodeId;
+                const isHighlighted = highlightedNodes.has(node.id);
+                const colors = typeColors[node.type] || typeColors.anime;
+                const canvasX = node.x - bounds.minX;
+                const canvasY = node.y - bounds.minY;
+                const screenX = canvasX * zoom + pan.x;
+                const screenY = canvasY * zoom + pan.y;
+
+                return (
                     <div
                         key={`label-${node.id}`}
-                        className="absolute"
+                        className="absolute pointer-events-auto z-10"
                         style={{
-                            left: `${((node.x - bounds.minX) / bounds.width) * 100}%`,
-                            top: `${((node.y - bounds.minY) / bounds.height) * 100}%`,
-                            transform: 'translate(14px, -50%)',
+                            left: screenX,
+                            top: screenY,
+                            transform: 'translate(18px, -50%)',
                         }}
                         onMouseEnter={() => {
-                            const related = new Set(
-                                edges
-                                    .filter(
-                                        e =>
-                                            e.source === node.id || e.target === node.id
-                                    )
-                                    .map(e => `${e.source}-${e.target}`)
-                            );
-                            if (related.size > 0) {
-                                setHoveredEdge(Array.from(related)[0]);
-                            }
+                            setHoveredNode(node.id);
+                            setShowMiniPreview(node.id);
                         }}
-                        onMouseLeave={() => setHoveredEdge(null)}
-                        onMouseDown={e => e.stopPropagation()}
+                        onMouseLeave={() => {
+                            setHoveredNode(null);
+                            setShowMiniPreview(null);
+                        }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleNodeClick(node.id);
+                        }}
                     >
                         <RelationsNodeLabel
                             node={node}
-                            isCurrent={node.id === currentNodeId}
+                            isCurrent={isCurrent}
+                            isHighlighted={isHighlighted}
                         />
                     </div>
-                ))}
+                );
+            })}
+
+            {showMiniPreview && (() => {
+                const previewNode = nodeMap.get(showMiniPreview);
+                if (!previewNode) return null;
+                const canvasX = previewNode.x - bounds.minX;
+                const canvasY = previewNode.y - bounds.minY;
+                const screenX = canvasX * zoom + pan.x;
+                const screenY = canvasY * zoom + pan.y;
+
+                return (
+                    <div
+                        className="absolute z-50 pointer-events-none"
+                        style={{
+                            left: screenX,
+                            top: screenY,
+                            transform: 'translate(50%, -50%)',
+                        }}
+                    >
+                        <div className="bg-secondary/95 border border-border/50 rounded-xl shadow-2xl p-3 w-48">
+                            <div className="flex gap-3">
+                                <img
+                                    src={previewNode.imageUrl}
+                                    alt={previewNode.title}
+                                    className="w-16 h-20 object-cover rounded-lg"
+                                />
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium truncate">{previewNode.title}</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        {previewNode.year > 0 ? previewNode.year : '?'} • {previewNode.format || previewNode.type}
+                                    </p>
+                                    <span className={cn(
+                                        "inline-block mt-1.5 text-[10px] px-1.5 py-0.5 rounded font-medium",
+                                        previewNode.type === 'anime' ? "bg-blue-500/20 text-blue-500" :
+                                        previewNode.type === 'manga' ? "bg-emerald-500/20 text-emerald-500" :
+                                        "bg-purple-500/20 text-purple-500"
+                                    )}>
+                                        {previewNode.type}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
+            <div className="absolute top-3 left-3 z-20">
+                <div className="relative">
+                    <Icon icon="material-symbols:search" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                    <Input
+                        placeholder="Пошук..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-9 h-9 w-48 bg-secondary/90 border-border/50"
+                    />
+                    {searchQuery && (
+                        <button
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                            <Icon icon="material-symbols:close" className="w-4 h-4" />
+                        </button>
+                    )}
+                </div>
             </div>
 
-            {/* Controls */}
-            <div className="absolute top-2 right-2 flex flex-col gap-1 z-10">
-                <Button size="icon-sm" variant="secondary" onClick={handleZoomIn} title="Збільшити">
+            <div className="absolute top-3 right-3 flex flex-col gap-1 z-20">
+                <Button size="icon-sm" variant="secondary" onClick={handleZoomIn} title="Збільшити" className="bg-secondary/90 border-border/50 shadow-lg">
                     <Icon icon="material-symbols:add" />
                 </Button>
-                <Button size="icon-sm" variant="secondary" onClick={handleZoomOut} title="Зменшити">
+                <Button size="icon-sm" variant="secondary" onClick={handleZoomOut} title="Зменшити" className="bg-secondary/90 border-border/50 shadow-lg">
                     <Icon icon="material-symbols:remove" />
                 </Button>
-                <Button size="icon-sm" variant="secondary" onClick={handleFit} title="Вмістити">
+                <Button size="icon-sm" variant="secondary" onClick={handleFit} title="Вмістити" className="bg-secondary/90 border-border/50 shadow-lg">
                     <Icon icon="material-symbols:fit-screen" />
                 </Button>
+                {selectedNode && (
+                    <Button size="icon-sm" variant="secondary" onClick={() => setSelectedNode(null)} title="Скинути" className="bg-secondary/90 border-border/50 shadow-lg">
+                        <Icon icon="material-symbols:close" />
+                    </Button>
+                )}
             </div>
 
-            <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-secondary/80 text-secondary-foreground text-xs font-mono z-10 pointer-events-none">
-                {Math.round(zoom * 100)}%
+            <div className="absolute bottom-3 left-3 px-3 py-1.5 rounded-lg bg-secondary/90 border border-border/50 text-xs font-mono text-muted-foreground z-20 flex items-center gap-3">
+                <span>{Math.round(zoom * 100)}%</span>
+                <span className="text-border">|</span>
+                <span>{filteredPositions.length} вузлів</span>
+                {selectedNode && (
+                    <>
+                        <span className="text-border">|</span>
+                        <span className="text-primary">Вибрано: {nodeMap.get(selectedNode)?.title}</span>
+                    </>
+                )}
             </div>
+
+            {(hoveredNode || selectedNode) && (
+                <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-xs text-primary z-20">
+                    {hoveredNode ? nodeMap.get(hoveredNode)?.title : nodeMap.get(selectedNode)?.title}
+                </div>
+            )}
         </div>
     );
 };

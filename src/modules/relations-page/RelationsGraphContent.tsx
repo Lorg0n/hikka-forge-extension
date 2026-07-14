@@ -484,9 +484,30 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
                             </marker>
                         );
                     })}
+                    <pattern
+                        id="grid"
+                        width="100"
+                        height="100"
+                        patternUnits="userSpaceOnUse"
+                    >
+                        <path
+                            d="M 100 0 L 0 0 0 100"
+                            fill="none"
+                            stroke="#9ca3af"
+                            strokeOpacity="0.08"
+                            strokeWidth="1"
+                        />
+                    </pattern>
                 </defs>
 
                 <g transform={`translate(${-bounds.minX}, ${-bounds.minY})`}>
+                    <rect
+                        x={bounds.minX - 500}
+                        y={bounds.minY - 500}
+                        width={bounds.width + 1000}
+                        height={bounds.height + 1000}
+                        fill="url(#grid)"
+                    />
                     {visibleEdges.map((edge, idx) => {
                         const source = nodeMap.get(edge.source);
                         const target = nodeMap.get(edge.target);

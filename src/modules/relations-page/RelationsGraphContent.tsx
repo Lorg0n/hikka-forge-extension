@@ -30,7 +30,7 @@ const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 3;
 const PADDING = 100;
 const BASE_NODE_SPACING_X = 380;
-const BASE_NODE_SPACING_Y = 160;
+const BASE_NODE_SPACING_Y = 200;
 const NODE_RADIUS = 8;
 const CURRENT_NODE_RADIUS = 11;
 
@@ -135,26 +135,52 @@ const computeImprovedLayout = (
         });
     });
 
-    for (let pass = 0; pass < 3; pass++) {
+    const MIN_GAP = BASE_NODE_SPACING_Y * 0.75;
+
+    for (let pass = 0; pass < 40; pass++) {
+        let moved = false;
+
         sortedLayers.forEach(layerIdx => {
-            const layerNodes = positions.filter(p => layerOf.get(p.id) === layerIdx);
-            layerNodes.forEach(node => {
+            const layerNodes = positions
+                .filter(p => layerOf.get(p.id) === layerIdx)
+                .sort((a, b) => a.y - b.y);
+
+            for (let i = 0; i < layerNodes.length; i++) {
+                const node = layerNodes[i];
                 const neighbors = Array.from(adjacency.get(node.id) || []);
                 let dy = 0;
+
                 neighbors.forEach(nId => {
                     const other = nodePositionMap.get(nId);
                     if (other && other.id !== node.id) {
-                        const dist = other.y - node.y;
-                        if (Math.abs(dist) < BASE_NODE_SPACING_Y * 0.8) {
-                            dy += dist > 0 ? -15 : 15;
-                        }
+                        dy += (other.y - node.y) * 0.03;
                     }
                 });
-                if (Math.abs(dy) > 1) {
-                    node.y = Math.max(50, Math.min(node.y + dy * 0.3, 800));
+
+                const above = layerNodes[i - 1];
+                const below = layerNodes[i + 1];
+                if (above && node.y - above.y < MIN_GAP) {
+                    dy -= (MIN_GAP - (node.y - above.y)) * 0.6;
                 }
-            });
+                if (below && below.y - node.y < MIN_GAP) {
+                    dy += (MIN_GAP - (below.y - node.y)) * 0.6;
+                }
+
+                if (Math.abs(dy) > 0.5) {
+                    node.y += dy;
+                    moved = true;
+                }
+            }
+
+            for (let i = 1; i < layerNodes.length; i++) {
+                if (layerNodes[i].y - layerNodes[i - 1].y < MIN_GAP) {
+                    layerNodes[i].y = layerNodes[i - 1].y + MIN_GAP;
+                    moved = true;
+                }
+            }
         });
+
+        if (!moved && pass > 5) break;
     }
 
     const xs = positions.map(n => n.x);
@@ -172,15 +198,35 @@ const computeImprovedLayout = (
 
 const getEdgePath = (
     x1: number, y1: number,
-    x2: number, y2: number
+    x2: number, y2: number,
+    targetRadius: number = NODE_RADIUS,
+    curvature: number = 0
 ): string => {
     const dx = x2 - x1;
-    const cp = Math.min(Math.abs(dx) * 0.5, 100);
-    if (dx > 0) {
-        return `M ${x1} ${y1} C ${x1 + cp} ${y1}, ${x2 - cp} ${y2}, ${x2} ${y2}`;
-    } else {
-        return `M ${x1} ${y1} C ${x1 - cp} ${y1}, ${x2 + cp} ${y2}, ${x2} ${y2}`;
-    }
+    const dy = y2 - y1;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    const ux = dx / dist;
+    const uy = dy / dist;
+    const px = -uy;
+    const py = ux;
+
+    const cpLen = Math.min(dist * 0.5, 120);
+
+    const cp1x = x1 + ux * cpLen + px * curvature;
+    const cp1y = y1 + uy * cpLen + py * curvature;
+    const cp2x = x2 - ux * cpLen + px * curvature;
+    const cp2y = y2 - uy * cpLen + py * curvature;
+
+    const tx = x2 - cp2x;
+    const ty = y2 - cp2y;
+    const tlen = Math.sqrt(tx * tx + ty * ty) || 1;
+    const shorten = targetRadius + 2;
+
+    const endShift = curvature * 0.25;
+    const endX = x2 - (tx / tlen) * shorten + px * endShift;
+    const endY = y2 - (ty / tlen) * shorten + py * endShift;
+
+    return `M ${x1} ${y1} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${endX} ${endY}`;
 };
 
 export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
@@ -257,6 +303,23 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
         const visibleIds = new Set(filteredPositions.map(n => n.id));
         return edges.filter(e => visibleIds.has(e.source) && visibleIds.has(e.target));
     }, [edges, filteredPositions, searchQuery]);
+
+    const edgeCurvatures = useMemo(() => {
+        const counts = new Map<string, number>();
+        const indices = new Map<string, number>();
+        visibleEdges.forEach(edge => {
+            const key = [edge.source, edge.target].sort().join('--');
+            counts.set(key, (counts.get(key) || 0) + 1);
+        });
+        return visibleEdges.map(edge => {
+            const key = [edge.source, edge.target].sort().join('--');
+            const total = counts.get(key) || 1;
+            const idx = indices.get(key) || 0;
+            indices.set(key, idx + 1);
+            const step = 55;
+            return (idx - (total - 1) / 2) * step;
+        });
+    }, [visibleEdges]);
 
     const highlightedNodes = useMemo(() => {
         const highlighted = new Set<string>();
@@ -405,10 +468,26 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
                             </feMerge>
                         </filter>
                     ))}
+                    {Array.from(new Set(edges.map(e => e.relationType))).map(type => {
+                        const color = relationTypeColors[type]?.main || relationTypeColors.OTHER.main;
+                        return (
+                            <marker
+                                key={`arrow-${type}`}
+                                id={`arrow-${type}`}
+                                markerWidth="8"
+                                markerHeight="6"
+                                refX="7"
+                                refY="3"
+                                orient="auto"
+                            >
+                                <polygon points="0 0, 8 3, 0 6" fill={color} />
+                            </marker>
+                        );
+                    })}
                 </defs>
 
                 <g transform={`translate(${-bounds.minX}, ${-bounds.minY})`}>
-                    {visibleEdges.map(edge => {
+                    {visibleEdges.map((edge, idx) => {
                         const source = nodeMap.get(edge.source);
                         const target = nodeMap.get(edge.target);
                         if (!source || !target) return null;
@@ -416,14 +495,19 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
                         const colors = relationTypeColors[edge.relationType] || relationTypeColors.OTHER;
                         const isHighlighted = highlightedNodes.has(edge.source) && highlightedNodes.has(edge.target);
 
+                        const isTargetCurrent = target.id === currentNodeId;
+                        const targetRadius = isTargetCurrent ? CURRENT_NODE_RADIUS : NODE_RADIUS;
+                        const curvature = edgeCurvatures[idx] || 0;
+
                         return (
                             <path
-                                key={`${edge.source}-${edge.target}`}
-                                d={getEdgePath(source.x, source.y, target.x, target.y)}
+                                key={`${edge.source}-${edge.target}-${idx}`}
+                                d={getEdgePath(source.x, source.y, target.x, target.y, targetRadius, curvature)}
                                 stroke={colors.main}
                                 strokeWidth={isHighlighted ? 2.5 : 1.2}
                                 strokeOpacity={isHighlighted ? 0.9 : 0.35}
                                 fill="none"
+                                markerEnd={`url(#arrow-${edge.relationType})`}
                             />
                         );
                     })}
@@ -474,13 +558,6 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
                                         strokeWidth={2.5}
                                     />
                                 )}
-
-                                <circle
-                                    cy={-(isCurrent ? CURRENT_NODE_RADIUS : NODE_RADIUS) - 8}
-                                    r={3}
-                                    fill={colors.main}
-                                    fillOpacity={0.8}
-                                />
                             </g>
                         );
                     })}

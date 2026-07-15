@@ -101,15 +101,21 @@ export interface WeeklyTopAnimeApiResponse {
     last: boolean;
 }
 
+export type RecommendationContentType = 'anime' | 'manga';
+
 export interface RecommendationItem {
     slug: string;
     title: string;
     imageUrl: string;
     year: number;
     score: number;
+    similarityScore: number;
+
     episodesReleased: number;
     episodesTotal: number;
-    similarityScore: number;
+
+    chapters: number | null;
+    volumes: number | null;
 }
 
 export interface UserRecommendationsApiResponse {
@@ -123,4 +129,28 @@ export interface UserRecommendationsApiResponse {
 export interface AuthCallbackResponse {
     expires: number;
     secret: string;
+}
+
+export type FranchiseContentType = 'anime' | 'manga';
+
+export interface GraphNode {
+    id: string;
+    type: FranchiseContentType;
+    slug: string;
+    title: string;
+    imageUrl: string;
+    year: number;
+    status: string;
+    format: string;
+}
+
+export interface GraphEdge {
+    source: string;
+    target: string;
+    relationType: string;
+}
+
+export interface FranchiseGraphResponse {
+    nodes: GraphNode[];
+    edges: GraphEdge[];
 }

@@ -17,6 +17,8 @@ const RecommendationsPageComponent: React.FC = () => {
         loading: dataLoading,
         error,
         currentPage,
+        contentType,
+        setContentType,
         setPage,
         refresh,
     } = useUserRecommendations({
@@ -95,6 +97,8 @@ const RecommendationsPageComponent: React.FC = () => {
                 <RecommendationsPageGrid
                     items={data!.content}
                     totalElements={data!.totalElements}
+                    contentType={contentType}
+                    onContentTypeChange={setContentType}
                     onFeedbackSuccess={refresh}
                 />
 

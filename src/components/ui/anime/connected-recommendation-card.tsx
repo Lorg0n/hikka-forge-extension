@@ -1,17 +1,19 @@
 import React from 'react';
-import { RecommendationItem } from '@/types';
+import { RecommendationItem, RecommendationContentType } from '@/types';
 import { useRecommendationFeedback } from '@/hooks/useRecommendationFeedback';
 import { FeedbackContainer } from '@/components/ui/feedback/feedback-container';
 import RecommendationCard from './recommendation-card';
 
 interface ConnectedRecommendationCardProps {
     anime: RecommendationItem;
+    contentType?: RecommendationContentType;
     onFeedbackSuccess?: () => void;
     variant?: 'widget' | 'page';
 }
 
 export const ConnectedRecommendationCard: React.FC<ConnectedRecommendationCardProps> = ({
     anime,
+    contentType = 'anime',
     onFeedbackSuccess,
     variant = 'widget',
 }) => {
@@ -30,7 +32,7 @@ export const ConnectedRecommendationCard: React.FC<ConnectedRecommendationCardPr
             onRemove={onFeedbackSuccess}
             className="h-full"
         >
-            <RecommendationCard anime={anime} variant={variant} />
+            <RecommendationCard anime={anime} contentType={contentType} variant={variant} />
         </FeedbackContainer>
     );
 };

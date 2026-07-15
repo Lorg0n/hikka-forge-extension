@@ -3,14 +3,27 @@ import { useUserRecommendations } from '@/hooks/useUserRecommendations';
 import { useAuth } from '@/contexts/ModuleAuthContext';
 import { Header, HeaderContainer, HeaderTitle, HeaderNavButton } from '@/components/ui/header';
 import NotFound from '@/components/ui/not-found';
-import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { ConnectedRecommendationCard } from '@/components/ui/anime/connected-recommendation-card';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { RecommendationContentType } from '@/types';
+
+const CONTENT_TYPE_OPTIONS: { value: RecommendationContentType; label: string }[] = [
+    { value: 'anime', label: 'Аніме' },
+    { value: 'manga', label: 'Манґа' },
+];
 
 const UserRecommendationsComponent: React.FC = () => {
     const { isAuthenticated, isLoading: authLoading } = useAuth();
 
-    const { data, loading: dataLoading, error, refresh } = useUserRecommendations({
-        initialSize: 20
+    const {
+        data,
+        loading: dataLoading,
+        error,
+        contentType,
+        setContentType,
+        refresh,
+    } = useUserRecommendations({
+        initialSize: 20,
     });
 
     const [hiddenItems, setHiddenItems] = useState<Set<string>>(new Set());
@@ -39,11 +52,18 @@ const UserRecommendationsComponent: React.FC = () => {
                     <HeaderNavButton />
                 </Header>
 
+                <SegmentedControl
+                    options={CONTENT_TYPE_OPTIONS}
+                    value={contentType}
+                    onValueChange={setContentType}
+                    className="w-full mx-0"
+                />
+
                 {isLoading && (
                     <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 -mb-2 snap-x">
                         {Array.from({ length: 6 }).map((_, v) => (
                             <div key={v} className="w-[120px] shrink-0 snap-start flex">
-                                <div 
+                                <div
                                     className="flex flex-col gap-2 w-[120px] h-full"
                                     style={{ minWidth: '90px', maxWidth: '90px' }}
                                 >
@@ -69,6 +89,7 @@ const UserRecommendationsComponent: React.FC = () => {
                             <div key={item.slug} className="w-[120px] shrink-0 snap-start flex">
                                 <ConnectedRecommendationCard
                                     anime={item}
+                                    contentType={contentType}
                                     onFeedbackSuccess={() => handleFeedbackSuccess(item.slug)}
                                 />
                             </div>

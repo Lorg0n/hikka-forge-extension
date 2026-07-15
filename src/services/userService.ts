@@ -1,4 +1,4 @@
-import { UserCommentsApiResponse, ApiErrorResponse, UserRecommendationsApiResponse } from '@/types';
+import { UserCommentsApiResponse, ApiErrorResponse, UserRecommendationsApiResponse, RecommendationContentType } from '@/types';
 import { API_BACKEND_BASE } from '@/constants';
 
 interface FetchUserCommentsParams {
@@ -49,15 +49,17 @@ export const fetchUserComments = async ({
 interface FetchUserRecommendationsParams {
     page?: number;
     size?: number;
+    contentType?: RecommendationContentType;
     token: string; // Auth token is required
 }
 
 export const fetchUserRecommendations = async ({
     page,
     size,
+    contentType = 'anime',
     token,
 }: FetchUserRecommendationsParams): Promise<UserRecommendationsApiResponse> => {
-    const url = new URL(`${API_BACKEND_BASE}/users/me/recommendations`);
+    const url = new URL(`${API_BACKEND_BASE}/users/me/recommendations/${contentType}`);
 
     if (page !== undefined) {
         url.searchParams.append('page', page.toString());

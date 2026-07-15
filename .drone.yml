@@ -46,33 +46,34 @@ steps:
       - chrome-webstore-upload upload --source dist/hikka-forge-chrome-${DRONE_TAG}.zip
       - chrome-webstore-upload publish --extension-id $EXTENSION_ID
 
-  - name: publish-to-edge-store
-    image: node:20-slim
-    environment:
-      EDGE_PRODUCT_ID:
-        from_secret: EDGE_PRODUCT_ID
-      EDGE_CLIENT_ID:
-        from_secret: EDGE_CLIENT_ID
-      EDGE_API_KEY:
-        from_secret: EDGE_API_KEY
-    commands:
-      - npm install -g pnpm
-      - pnpm add @plasmohq/edge-addons-api
-      - |
-        node --input-type=module -e "
-        import { EdgeAddonsAPI } from '@plasmohq/edge-addons-api';
-        const client = new EdgeAddonsAPI({
-          productId: process.env.EDGE_PRODUCT_ID,
-          clientId: process.env.EDGE_CLIENT_ID,
-          apiKey: process.env.EDGE_API_KEY
-        });
-        client.submit({
-          filePath: 'dist/hikka-forge-chrome-' + process.env.DRONE_TAG + '.zip',
-          notes: 'Auto-deployed version ' + process.env.DRONE_TAG
-        })
-        .then(() => console.log('Successfully published to Microsoft Edge Add-ons!'))
-        .catch(err => { console.error(err); process.exit(1); });
-        "
+  # fuck u edge
+  # - name: publish-to-edge-store
+  #   image: node:20-slim
+  #   environment:
+  #     EDGE_PRODUCT_ID:
+  #       from_secret: EDGE_PRODUCT_ID
+  #     EDGE_CLIENT_ID:
+  #       from_secret: EDGE_CLIENT_ID
+  #     EDGE_API_KEY:
+  #       from_secret: EDGE_API_KEY
+  #   commands:
+  #     - npm install -g pnpm
+  #     - pnpm add @plasmohq/edge-addons-api
+  #     - |
+  #       node --input-type=module -e "
+  #       import { EdgeAddonsAPI } from '@plasmohq/edge-addons-api';
+  #       const client = new EdgeAddonsAPI({
+  #         productId: process.env.EDGE_PRODUCT_ID,
+  #         clientId: process.env.EDGE_CLIENT_ID,
+  #         apiKey: process.env.EDGE_API_KEY
+  #       });
+  #       client.submit({
+  #         filePath: 'dist/hikka-forge-chrome-' + process.env.DRONE_TAG + '.zip',
+  #         notes: 'Auto-deployed version ' + process.env.DRONE_TAG
+  #       })
+  #       .then(() => console.log('Successfully published to Microsoft Edge Add-ons!'))
+  #       .catch(err => { console.error(err); process.exit(1); });
+  #       "
 
   - name: publish-to-firefox-store
     image: node:20-slim

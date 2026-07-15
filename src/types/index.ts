@@ -101,15 +101,21 @@ export interface WeeklyTopAnimeApiResponse {
     last: boolean;
 }
 
+export type RecommendationContentType = 'anime' | 'manga';
+
 export interface RecommendationItem {
     slug: string;
     title: string;
     imageUrl: string;
     year: number;
     score: number;
+    similarityScore: number;
+
     episodesReleased: number;
     episodesTotal: number;
-    similarityScore: number;
+
+    chapters: number | null;
+    volumes: number | null;
 }
 
 export interface UserRecommendationsApiResponse {

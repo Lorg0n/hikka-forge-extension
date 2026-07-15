@@ -3,10 +3,11 @@ import Link from '@/components/typography/link';
 import Image from '@/components/ui/image';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { RecommendationItem } from '@/types';
+import { RecommendationItem, RecommendationContentType } from '@/types';
 
 interface RecommendationCardProps {
     anime: RecommendationItem;
+    contentType?: RecommendationContentType;
     className?: string;
     variant?: 'widget' | 'page';
 }
@@ -24,10 +25,16 @@ const getSimilarityVariant = (distance: number): "success" | "warning" | "second
     return "secondary";
 };
 
-const RecommendationCard: React.FC<RecommendationCardProps> = ({ anime, className, variant = 'widget' }) => {
+const RecommendationCard: React.FC<RecommendationCardProps> = ({
+    anime,
+    contentType = 'anime',
+    className,
+    variant = 'widget',
+}) => {
     const [isLoading, setIsLoading] = useState(true);
 
     const isPage = variant === 'page';
+    const contentPath = contentType;
 
     return (
         <div
@@ -38,7 +45,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({ anime, classNam
             )}
             style={isPage ? undefined : { minWidth: '90px', maxWidth: '90px' }}
         >
-            <Link href={`/anime/${anime.slug}`} className="relative block w-full mb-3">
+            <Link href={`/${contentPath}/${anime.slug}`} className="relative block w-full mb-3">
                 <div className="relative w-full" style={{ paddingBottom: '150%' }}>
                     <div className={cn(
                         "absolute inset-0 bg-secondary/20 rounded-lg overflow-hidden",
@@ -72,7 +79,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({ anime, classNam
                 </Badge>
 
                 <Link
-                    href={`/anime/${anime.slug}`}
+                    href={`/${contentPath}/${anime.slug}`}
                     className={cn(
                         "font-medium leading-snug",
                         isPage ? "text-sm line-clamp-2" : "text-sm line-clamp-1"

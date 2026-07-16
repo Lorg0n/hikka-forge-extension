@@ -19,7 +19,7 @@ const getBaseManifest = () => ({
     host_permissions: ["https://hikka.io/*", "https://hikka-forge.lorgon.dev/*"],
     content_scripts: [
         {
-            matches: ["https://hikka.io/*"],
+            matches: ["https://hikka.io/*", "https://hikka-forge.lorgon.dev/*"],
             js: ["src/content_loader.js"],
             run_at: "document_idle",
         },

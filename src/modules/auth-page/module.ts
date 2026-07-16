@@ -4,13 +4,14 @@ import AuthPageComponent from './AuthPageComponent';
 const authPageModule: ForgeModuleDef = {
   id: 'auth-page',
   name: 'Сторінка авторизації',
-  description: 'Замінює основний вміст сайту на окрему сторінку авторизації.',
-  urlPatterns: ['https://hikka.io/forge*'],
+  description: 'Керує сторінкою авторизації на бекенді через HikkaForgeAuth API.',
+  urlPatterns: ['https://hikka-forge.lorgon.dev/login*'],
   enabledByDefault: true,
   hidden: true,
   elementSelector: {
-    selector: 'div.flex.w-full.max-w-md.flex-col.text-center',
-    position: 'replace',
+    selector: 'body',
+    position: 'append',
+    visibleOnly: false,
   },
   component: AuthPageComponent
 };

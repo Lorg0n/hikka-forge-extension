@@ -7,7 +7,7 @@ import { SimilarAnimeHeader } from './SimilarAnimeHeader';
 
 const SimilarAnimeComponent: React.FC = () => {
     const slug = typeof window !== 'undefined' ? window.location.pathname.split('/anime/')[1] : '';
-    const { data, loading, error, refresh } = useSimilarAnime({ slug, initialSize: 4 });
+    const { data, loading, error, refresh } = useSimilarAnime({ slug, initialSize: 5 });
     const [hiddenItems, setHiddenItems] = useState<Set<string>>(new Set());
     
     const similarAnimeList = data?.content?.filter(item => !hiddenItems.has(item.slug)) || [];
@@ -21,8 +21,8 @@ const SimilarAnimeComponent: React.FC = () => {
         return (
             <div className="flex flex-col gap-8">
                 <SimilarAnimeHeader />
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 w-full gap-4">
-                    {Array.from({ length: 4 }).map((_, index) => (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 w-full gap-4">
+                    {Array.from({ length: 5 }).map((_, index) => (
                         <div key={index} className="flex flex-col gap-2">
                             <AspectRatio ratio={2 / 3}>
                                 <div className="w-full h-full bg-secondary/20 rounded-lg animate-pulse"></div>
@@ -53,7 +53,7 @@ const SimilarAnimeComponent: React.FC = () => {
     return (
         <div className="flex flex-col gap-8">
             <SimilarAnimeHeader />
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 w-full gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 w-full gap-4">
                 {similarAnimeList.map((anime) => (
                     <ConnectedSimilarAnimeCard 
                         key={anime.slug} 

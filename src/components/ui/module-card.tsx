@@ -1,9 +1,3 @@
-import {
-    FormItem,
-    FormLabel,
-    FormDescription,
-    FormControl,
-} from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
@@ -16,6 +10,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Icon } from "@iconify/react/dist/iconify.js";
+import { cn } from "@/lib/utils";
 
 interface ModuleCardProps {
     moduleInfo: ModuleInfo;
@@ -51,36 +46,48 @@ export function ModuleCard({
     );
 
     return (
-        <div>
-            <FormItem
-                className={`flex flex-row items-center justify-between p-3 shadow-sm hover:bg-accent/50 transition-colors 
-                    ${requiresAuth ? 'opacity-60' : ''}
-                    ${
-                        isExpanded && hasSettings
-                            ? "border-l border-r border-t rounded-t-lg rounded-bl-none rounded-br-none"
-                            : "border rounded-lg"
-                    }`}
+        <div
+            className={cn(
+                "overflow-hidden rounded-lg border bg-card shadow-sm transition-colors",
+                requiresAuth && "opacity-60"
+            )}
+        >
+            {/* Header — whole row expands the card when the module has settings */}
+            <div
+                className={cn(
+                    "flex items-center gap-3 p-3",
+                    hasSettings &&
+                        "cursor-pointer select-none transition-colors hover:bg-accent/50"
+                )}
+                onClick={
+                    hasSettings
+                        ? () => onToggleExpansion(moduleInfo.id)
+                        : undefined
+                }
             >
-                <div className="space-y-0.5 mr-4 flex-1">
-                    <div className="flex flex-row items-center gap-2">
-                        {moduleInfo.icon && (
-                            <div className="flex items-center justify-center size-6 rounded-md bg-secondary/60 shrink-0">
-                                <Icon
-                                    icon={moduleInfo.icon.name}
-                                    className="size-4"
-                                    style={
-                                        moduleInfo.icon.color
-                                            ? { color: moduleInfo.icon.color }
-                                            : undefined
-                                    }
-                                />
-                            </div>
-                        )}
-                        <FormLabel className="text-base leading-none">{moduleInfo.name}</FormLabel>
+                {moduleInfo.icon && (
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-secondary/60">
+                        <Icon
+                            icon={moduleInfo.icon.name}
+                            className="size-4.5"
+                            style={
+                                moduleInfo.icon.color
+                                    ? { color: moduleInfo.icon.color }
+                                    : undefined
+                            }
+                        />
+                    </div>
+                )}
+
+                <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-medium leading-none">
+                            {moduleInfo.name}
+                        </span>
                         {requiresAuth && (
                             <Tooltip delayDuration={200}>
                                 <TooltipTrigger asChild>
-                                    <div className="flex items-center justify-center size-4 shrink-0">
+                                    <div className="flex size-4 shrink-0 items-center justify-center">
                                         <Icon
                                             icon="material-symbols:lock-rounded"
                                             className="size-3.5 text-muted-foreground"
@@ -93,24 +100,33 @@ export function ModuleCard({
                             </Tooltip>
                         )}
                     </div>
-                    <FormDescription>{moduleInfo.description}</FormDescription>
+                    <p className="text-xs leading-snug text-muted-foreground">
+                        {moduleInfo.description}
+                    </p>
                 </div>
-                <div className="flex items-center gap-2">
+
+                <div className="flex shrink-0 items-center gap-1">
                     {hasSettings && (
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => onToggleExpansion(moduleInfo.id)}
-                            className="p-1 h-6 w-6"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleExpansion(moduleInfo.id);
+                            }}
+                            className="h-7 w-7 p-1 text-muted-foreground"
+                            aria-label={`Налаштування ${moduleInfo.name}`}
+                            aria-expanded={isExpanded}
                         >
                             <ChevronDown
-                                className={`h-4 w-4 transition-transform ${
-                                    isExpanded ? "rotate-180" : ""
-                                }`}
+                                className={cn(
+                                    "h-4 w-4 transition-transform",
+                                    isExpanded && "rotate-180"
+                                )}
                             />
                         </Button>
                     )}
-                    <FormControl>
+                    <div onClick={(e) => e.stopPropagation()}>
                         {requiresAuth ? (
                             <Tooltip delayDuration={200}>
                                 <TooltipTrigger asChild>
@@ -123,16 +139,14 @@ export function ModuleCard({
                         ) : (
                             switchComponent
                         )}
-                    </FormControl>
+                    </div>
                 </div>
-            </FormItem>
+            </div>
 
+            {/* Settings — part of the same card, separated by a divider */}
             {hasSettings && (
-                <Collapsible
-                    open={isExpanded}
-                    onOpenChange={() => onToggleExpansion(moduleInfo.id)}
-                >
-                    <CollapsibleContent className="border-l border-r border-b rounded-b-lg p-4 space-y-6 bg-muted/30">
+                <Collapsible open={isExpanded}>
+                    <CollapsibleContent className="space-y-6 border-t bg-muted/30 p-4">
                         <ModuleSettingsSection
                             moduleId={moduleInfo.id}
                             settings={moduleInfo.settings!}

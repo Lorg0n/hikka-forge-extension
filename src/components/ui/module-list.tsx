@@ -97,7 +97,7 @@ export function ModuleList({
 						<h3 className="px-1 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
 							{group.label}
 						</h3>
-						<div className="space-y-1">
+						<div className="space-y-2">
 							{group.modules.map((moduleInfo) => (
 								<ModuleCard
 									key={moduleInfo.id}

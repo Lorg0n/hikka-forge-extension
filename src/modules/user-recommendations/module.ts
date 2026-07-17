@@ -7,7 +7,8 @@ const userRecommendationsModule: ForgeModuleDef = {
     description: 'Відображає блок з рекомендаціями на основі вашого списку переглянутого.',
     urlPatterns: ['https://hikka.io/*', 'https://hikka.io'], 
     enabledByDefault: false,
-    authRequired: true, 
+    authRequired: true,
+    category: 'recommendations',
     elementSelector: {
         selector: '#feed-left', 
         position: 'append', 

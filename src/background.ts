@@ -305,6 +305,7 @@ class BackgroundManager {
 							enabledByDefault: m.enabledByDefault,
 							hidden: m.hidden,
 							authRequired: m.authRequired ?? false,
+							category: m.category,
 							icon: m.icon,
 						}));
 					} else {

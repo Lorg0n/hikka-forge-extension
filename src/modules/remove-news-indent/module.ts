@@ -7,6 +7,7 @@ const removeNewsIndentModule: ForgeModuleDef = {
     urlPatterns: ['https://hikka.io/*', 'https://hikka.io/'],
     enabledByDefault: false,
     persistentStyles: true,
+    category: 'appearance',
     styles: `
         .feed-item > .feed-item-content {
             margin-left: 0 !important;

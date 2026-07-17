@@ -21,6 +21,13 @@ export const CONTENT_TYPE = {
     "article": "Стаття"
 } as const;
 
+export const MODULE_CATEGORIES = {
+    "recommendations": "Рекомендації",
+    "content": "Контент",
+    "appearance": "Оформлення",
+    "other": "Інше"
+} as const;
+
 export const HIKKA_BASE = "https://hikka.io" as const;
 export const API_BACKEND_BASE = "https://hikka-forge.lorgon.dev" as const;
 

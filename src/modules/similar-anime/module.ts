@@ -7,6 +7,7 @@ const animeSimilarModule: ForgeModuleDef = {
   description: 'Додає модуль схожих аніме, які визначаються за допомогою спеціальної моделі.',
   urlPatterns: ['https://hikka.io/anime/*'],
   enabledByDefault: true,
+  category: 'recommendations',
   elementSelector: {
     selector: '#content-center > div.order-last',
     position: 'prepend',

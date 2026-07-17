@@ -10,6 +10,7 @@ const contentRelationsModule: ForgeModuleDef = {
         'https://hikka.io/manga/*',
     ],
     enabledByDefault: true,
+    category: 'content',
     elementSelector: {
         selector: '#content-franchise > div > div > div:first-child > div',
         position: 'append',

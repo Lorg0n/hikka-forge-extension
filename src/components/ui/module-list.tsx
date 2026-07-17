@@ -1,6 +1,7 @@
 import { Form } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { ModuleInfo } from "@/types/module";
+import type { ModuleCategory, ModuleInfo } from "@/types/module";
+import { MODULE_CATEGORIES } from "@/constants";
 import { useForm } from "react-hook-form"; 
 import { ModuleCard } from "./module-card";
 
@@ -15,6 +16,34 @@ interface ModuleListProps {
 	handleResetSettings: (moduleId: string) => Promise<void>;
 	toggleModuleExpansion: (moduleId: string) => void;
 	isAuthenticated?: boolean;
+}
+
+interface ModuleGroup {
+	id: ModuleCategory;
+	label: string;
+	modules: ModuleInfo[];
+}
+
+function groupModulesByCategory(modules: ModuleInfo[]): ModuleGroup[] {
+	const grouped = new Map<ModuleCategory, ModuleInfo[]>();
+
+	for (const moduleInfo of modules) {
+		const category: ModuleCategory =
+			moduleInfo.category && moduleInfo.category in MODULE_CATEGORIES
+				? moduleInfo.category
+				: "other";
+		const list = grouped.get(category) ?? [];
+		list.push(moduleInfo);
+		grouped.set(category, list);
+	}
+
+	return (Object.keys(MODULE_CATEGORIES) as ModuleCategory[])
+		.filter((category) => grouped.has(category))
+		.map((category) => ({
+			id: category,
+			label: MODULE_CATEGORIES[category],
+			modules: grouped.get(category)!,
+		}));
 }
 
 export function ModuleList({
@@ -58,21 +87,32 @@ export function ModuleList({
 		);
 	}
 
+	const groups = groupModulesByCategory(modules);
+
 	return (
 		<Form {...form}>
-			<div className="space-y-1">
-				{modules.map((moduleInfo) => (
-					<ModuleCard
-						key={moduleInfo.id}
-						moduleInfo={moduleInfo}
-						currentModuleSettings={moduleSettings[moduleInfo.id] || {}}
-						isExpanded={expandedModules.has(moduleInfo.id)}
-						onToggle={handleToggleChange}
-						onSettingChange={handleSettingChange}
-						onResetSettings={handleResetSettings}
-						onToggleExpansion={toggleModuleExpansion}
-						isAuthenticated={isAuthenticated}
-					/>
+			<div className="space-y-5">
+				{groups.map((group) => (
+					<section key={group.id} className="space-y-1">
+						<h3 className="px-1 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+							{group.label}
+						</h3>
+						<div className="space-y-1">
+							{group.modules.map((moduleInfo) => (
+								<ModuleCard
+									key={moduleInfo.id}
+									moduleInfo={moduleInfo}
+									currentModuleSettings={moduleSettings[moduleInfo.id] || {}}
+									isExpanded={expandedModules.has(moduleInfo.id)}
+									onToggle={handleToggleChange}
+									onSettingChange={handleSettingChange}
+									onResetSettings={handleResetSettings}
+									onToggleExpansion={toggleModuleExpansion}
+									isAuthenticated={isAuthenticated}
+								/>
+							))}
+						</div>
+					</section>
 				))}
 			</div>
 		</Form>

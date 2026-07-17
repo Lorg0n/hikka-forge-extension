@@ -1,4 +1,7 @@
 import type React from "react";
+import type { MODULE_CATEGORIES } from "@/constants";
+
+export type ModuleCategory = keyof typeof MODULE_CATEGORIES;
 
 export type InsertPosition =
 	| "before"
@@ -78,6 +81,7 @@ export interface ForgeModuleDef {
 	settings?: ModuleSetting[];
 	hidden?: boolean;
 	authRequired?: boolean;
+	category?: ModuleCategory;
 	icon?: {
         name: string; // iconify icon id, e.g. "material-symbols:translate"
         color?: string; // optional color, e.g. "#ec70bb" or "text-primary-foreground"
@@ -94,9 +98,10 @@ export interface ModuleInfo {
 	settings?: ModuleSetting[];
 	hidden?: boolean;
 	authRequired?: boolean;
+	category?: ModuleCategory;
 	icon?: {
-        name: string; 
-        color?: string; 
+        name: string;
+        color?: string;
     };
 }
 

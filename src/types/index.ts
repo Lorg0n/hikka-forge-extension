@@ -48,6 +48,25 @@ export interface SimilarAnimeApiResponse {
     last: boolean;
 }
 
+export interface SimilarMangaItem {
+    slug: string;
+    title: string;
+    imageUrl: string;
+    year: number;
+    score: number;
+    chapters: number | null;
+    volumes: number | null;
+    similarityScore: number;
+}
+
+export interface SimilarMangaApiResponse {
+    content: SimilarMangaItem[];
+    totalElements: number;
+    totalPages: number;
+    currentPage: number;
+    last: boolean;
+}
+
 export interface SortInfo {
     empty: boolean;
     sorted: boolean;
@@ -72,6 +91,26 @@ export interface ForgeAnimeDetails {
     imageUrl: string;
     synopsis: string;
     synopsisUa: string;
+    score: number;
+    scoredBy: number;
+    hikkaScore: number;
+    hikkaScoredBy: number;
+    malId: number;
+}
+
+export interface ForgeMangaDetails {
+    slug: string;
+    titleEn: string;
+    titleUa: string;
+    titleNative: string;
+    synonyms: string[];
+    imageUrl: string;
+    synopsis: string;
+    synopsisUa: string;
+    mediaType: string;
+    status: string;
+    chapters: number | null;
+    volumes: number | null;
     score: number;
     scoredBy: number;
     hikkaScore: number;

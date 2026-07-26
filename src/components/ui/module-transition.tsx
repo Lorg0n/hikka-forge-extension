@@ -1,23 +1,35 @@
-import { Children, isValidElement, type PropsWithChildren, type ReactNode } from "react";
+import { Children, isValidElement, useEffect, useRef, type PropsWithChildren, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 interface ModuleTransitionProps extends PropsWithChildren {
 	stateKey: string;
+	/** Keep the mounted wrapper stable when loading/content changes. */
+	animateStateChanges?: boolean;
 	className?: string;
 	children: ReactNode;
 }
 
 export function ModuleTransition({
 	stateKey,
+	animateStateChanges = true,
 	className,
 	children,
 }: ModuleTransitionProps) {
 	const reducedMotion = useReducedMotion();
+	const transitionKey = animateStateChanges ? stateKey : "module";
+
+	useEffect(() => {
+		console.log("[Hikka Forge][debug] ModuleTransition state", {
+			stateKey,
+			transitionKey,
+			animateStateChanges,
+		});
+	}, [stateKey, transitionKey, animateStateChanges]);
 
 	return (
 		<AnimatePresence initial={false} mode="wait">
 			<motion.div
-				key={stateKey}
+				key={transitionKey}
 				initial={{ opacity: 0, y: reducedMotion ? 0 : 6 }}
 				animate={{ opacity: 1, y: 0 }}
 				exit={{ opacity: 0, y: reducedMotion ? 0 : -4 }}
@@ -44,6 +56,27 @@ export function ModuleListTransition({
 	children,
 }: ModuleListTransitionProps) {
 	const reducedMotion = useReducedMotion();
+	const childCount = Children.count(children);
+	const childCountRef = useRef(childCount);
+
+	useEffect(() => {
+		childCountRef.current = childCount;
+	}, [childCount]);
+
+	useEffect(() => {
+		console.log("[Hikka Forge][debug] ModuleListTransition mounted", {
+			childCount: childCountRef.current,
+		});
+		return () => {
+			console.log("[Hikka Forge][debug] ModuleListTransition unmounted", {
+				childCount: childCountRef.current,
+			});
+		};
+	}, []);
+
+	useEffect(() => {
+		console.log("[Hikka Forge][debug] ModuleListTransition child count", { childCount });
+	}, [childCount]);
 
 	return (
 		<motion.div

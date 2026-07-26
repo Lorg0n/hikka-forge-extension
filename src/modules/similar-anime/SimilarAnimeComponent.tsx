@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSimilarAnime } from '@/hooks/useSimilarAnime';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import NotFound from '@/components/ui/not-found';
@@ -13,6 +13,20 @@ const SimilarAnimeComponent: React.FC = () => {
     
     const similarAnimeList = data?.content?.filter(item => !hiddenItems.has(item.slug)) || [];
 
+    useEffect(() => {
+        console.log('[Hikka Forge][debug] similar anime render', {
+            loading,
+            error,
+            itemCount: similarAnimeList.length,
+            slug,
+        });
+    }, [loading, error, similarAnimeList.length, slug]);
+
+    useEffect(() => {
+        console.log('[Hikka Forge][debug] similar anime mounted');
+        return () => console.log('[Hikka Forge][debug] similar anime unmounted');
+    }, []);
+
     const handleFeedbackSuccess = (itemSlug: string) => {
         // Optionally refresh data after feedback
         refresh();
@@ -20,7 +34,7 @@ const SimilarAnimeComponent: React.FC = () => {
 
     if (loading) {
         return (
-            <ModuleTransition stateKey="loading">
+            <ModuleTransition stateKey="loading" animateStateChanges={false}>
             <div className="flex flex-col gap-8">
                 <SimilarAnimeHeader />
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 w-full gap-4">
@@ -43,7 +57,7 @@ const SimilarAnimeComponent: React.FC = () => {
 
     if (error || similarAnimeList.length === 0) {
         return (
-            <ModuleTransition stateKey={error ? "error" : "empty"}>
+            <ModuleTransition stateKey={error ? "error" : "empty"} animateStateChanges={false}>
             <div className="flex flex-col gap-8">
                 <SimilarAnimeHeader />
                 <NotFound
@@ -56,7 +70,7 @@ const SimilarAnimeComponent: React.FC = () => {
     }
 
     return (
-        <ModuleTransition stateKey="content">
+        <ModuleTransition stateKey="content" animateStateChanges={false}>
         <div className="flex flex-col gap-8">
             <SimilarAnimeHeader />
             <ModuleListTransition className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 w-full gap-4">

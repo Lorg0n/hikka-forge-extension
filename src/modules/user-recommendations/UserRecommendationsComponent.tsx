@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useUserRecommendations } from '@/hooks/useUserRecommendations';
 import { useAuth } from '@/contexts/ModuleAuthContext';
 import { Header, HeaderContainer, HeaderTitle, HeaderNavButton } from '@/components/ui/header';
@@ -33,6 +33,22 @@ const UserRecommendationsComponent: React.FC = () => {
 
     const list = data?.content?.filter(item => !hiddenItems.has(item.slug)) || [];
 
+    useEffect(() => {
+        console.log('[Hikka Forge][debug] personal recommendations render', {
+            authLoading,
+            isAuthenticated,
+            dataLoading,
+            error,
+            itemCount: list.length,
+            contentType,
+        });
+    }, [authLoading, isAuthenticated, dataLoading, error, list.length, contentType]);
+
+    useEffect(() => {
+        console.log('[Hikka Forge][debug] personal recommendations mounted');
+        return () => console.log('[Hikka Forge][debug] personal recommendations unmounted');
+    }, []);
+
     const handleFeedbackSuccess = (_slug: string) => {
         refresh();
     };
@@ -42,7 +58,10 @@ const UserRecommendationsComponent: React.FC = () => {
     }
 
     return (
-        <ModuleTransition stateKey={isLoading ? "loading" : error ? "error" : list.length ? "content" : "empty"}>
+        <ModuleTransition
+            stateKey={isLoading ? "loading" : error ? "error" : list.length ? "content" : "empty"}
+            animateStateChanges={false}
+        >
         <div className="border-border relative flex-col gap-4 rounded-lg border bg-card p-4 isolate will-change-transform items-center backdrop-blur-xl">
             <section className="flex flex-col gap-2">
                 <Header href="#recommendations">

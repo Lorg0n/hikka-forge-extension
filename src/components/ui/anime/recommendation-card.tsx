@@ -61,8 +61,20 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
                                 "group-hover:scale-105",
                                 isLoading ? 'opacity-0' : 'opacity-100'
                             )}
-                            onLoad={() => setIsLoading(false)}
-                            onError={() => setIsLoading(false)}
+                            onLoad={() => {
+                                console.log('[Hikka Forge][debug] recommendation image loaded', {
+                                    slug: anime.slug,
+                                    imageUrl: anime.imageUrl,
+                                });
+                                setIsLoading(false);
+                            }}
+                            onError={() => {
+                                console.log('[Hikka Forge][debug] recommendation image failed', {
+                                    slug: anime.slug,
+                                    imageUrl: anime.imageUrl,
+                                });
+                                setIsLoading(false);
+                            }}
                         />
                     </div>
                 </div>

@@ -34,8 +34,20 @@ export const SimilarAnimeCard: React.FC<SimilarAnimeCardProps> = ({ anime, class
                             "group-hover:scale-105",
                             isLoading ? 'opacity-0' : 'opacity-100'
                         )}
-                        onLoad={() => setIsLoading(false)}
-                        onError={() => setIsLoading(false)}
+                        onLoad={() => {
+                            console.log('[Hikka Forge][debug] similar anime image loaded', {
+                                slug: anime.slug,
+                                imageUrl: anime.imageUrl,
+                            });
+                            setIsLoading(false);
+                        }}
+                        onError={() => {
+                            console.log('[Hikka Forge][debug] similar anime image failed', {
+                                slug: anime.slug,
+                                imageUrl: anime.imageUrl,
+                            });
+                            setIsLoading(false);
+                        }}
                     />
                 </AspectRatio>
             </Link>

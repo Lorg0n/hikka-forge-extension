@@ -21,6 +21,7 @@ const moduleImports = import.meta.glob<{ default: ForgeModuleDef }>(
 );
 
 const ANIMATION_DURATION_MS = 280;
+const DEBUG_PREFIX = "[Hikka Forge][debug]";
 const SEMANTIC_THEME_VARS = [
 	"--radius",
 	"--background",
@@ -52,6 +53,18 @@ const SEMANTIC_THEME_VARS = [
 	"--info-border",
 	"--destructive-border",
 ];
+
+function describeNode(node: Node): string {
+	if (node instanceof Element) {
+		const id = node.id ? `#${node.id}` : "";
+		const className =
+			typeof node.className === "string" && node.className
+				? `.${node.className.trim().split(/\s+/).slice(0, 2).join(".")}`
+				: "";
+		return `${node.tagName.toLowerCase()}${id}${className}`;
+	}
+	return node.nodeName;
+}
 
 interface ModuleRuntimeProps {
 	component: React.FC<any>;
@@ -229,6 +242,9 @@ class ModuleManager {
 	private reconciliationFrame: number | null = null;
 	private pendingReloadIds = new Set<string>();
 	private activeStyleTags = new Map<string, HTMLStyleElement>();
+	private mutationBatch = 0;
+	private initialReconciliationReady = false;
+	private initialReconciliationTimer: ReturnType<typeof setTimeout> | null = null;
 
 	constructor() {
 		this.loadModuleDefinitions();
@@ -236,8 +252,18 @@ class ModuleManager {
 		this.initMutationReconciliation();
 		this.initMessageListener();
 		this.registerWithBackground();
-		this.evaluateModulesForCurrentUrl();
+		this.waitForInitialPageRender();
 		console.log("[Hikka Forge] Module Manager initialized");
+	}
+
+	private waitForInitialPageRender(): void {
+		console.log(`${DEBUG_PREFIX} waiting for initial page render before mounting modules`);
+		this.initialReconciliationTimer = setTimeout(() => {
+			this.initialReconciliationTimer = null;
+			this.initialReconciliationReady = true;
+			console.log(`${DEBUG_PREFIX} initial page render wait complete`);
+			this.scheduleReconciliation();
+		}, 1000);
 	}
 
 	private loadModuleDefinitions(): void {
@@ -311,9 +337,31 @@ class ModuleManager {
 			let active = this.activeModuleRoots.get(moduleDef.id);
 			let pending = this.pendingUnmounts.get(moduleDef.id);
 			if (active && !active.host.isConnected) {
-				this.cleanupInstance(active, moduleDef, true);
-				active = undefined;
-				pending = this.pendingUnmounts.get(moduleDef.id);
+				const disconnectedTarget = shouldBeMounted ? this.findTarget(moduleDef) : undefined;
+				console.log(`${DEBUG_PREFIX} active module host disconnected`, {
+					moduleId: moduleDef.id,
+					shouldBeMounted,
+					hostId: active.host.id,
+					target: disconnectedTarget ? describeNode(disconnectedTarget) : null,
+				});
+
+				if (shouldBeMounted && !pending && disconnectedTarget) {
+					this.insertElement(
+						active.host,
+						disconnectedTarget,
+						moduleDef.elementSelector!.position
+					);
+					console.log(`${DEBUG_PREFIX} module host reattached`, {
+						moduleId: moduleDef.id,
+						hostId: active.host.id,
+						hostConnected: active.host.isConnected,
+						target: describeNode(disconnectedTarget),
+					});
+				} else {
+					this.cleanupInstance(active, moduleDef, true);
+					active = undefined;
+					pending = this.pendingUnmounts.get(moduleDef.id);
+				}
 			}
 
 			if (!shouldBeMounted) {
@@ -357,7 +405,20 @@ class ModuleManager {
 
 	private mountModule(moduleDef: ForgeModuleDef): void {
 		const targetElement = this.findTarget(moduleDef);
-		if (!targetElement || !moduleDef.component || !moduleDef.elementSelector) return;
+		if (!targetElement || !moduleDef.component || !moduleDef.elementSelector) {
+			console.log(`${DEBUG_PREFIX} mount skipped`, {
+				moduleId: moduleDef.id,
+				hasTarget: Boolean(targetElement),
+				hasComponent: Boolean(moduleDef.component),
+			});
+			return;
+		}
+
+		console.log(`${DEBUG_PREFIX} module mount start`, {
+			moduleId: moduleDef.id,
+			target: describeNode(targetElement),
+			position: moduleDef.elementSelector.position,
+		});
 
 		const existingHost = document.getElementById(`hikka-forge-module-${moduleDef.id}`);
 		if (existingHost && !this.activeModuleRoots.has(moduleDef.id)) existingHost.remove();
@@ -408,6 +469,11 @@ class ModuleManager {
 				/>
 			);
 			this.insertElement(host, targetElement, moduleDef.elementSelector.position);
+			console.log(`${DEBUG_PREFIX} module mounted`, {
+				moduleId: moduleDef.id,
+				hostId: host.id,
+				hostConnected: host.isConnected,
+			});
 		} catch (error) {
 			console.error(`[Hikka Forge] Error injecting ${moduleDef.name}:`, error);
 			this.cleanupInstance(instance, moduleDef, false);
@@ -460,6 +526,13 @@ class ModuleManager {
 		const instance = this.activeModuleRoots.get(moduleId);
 		const moduleDef = this.moduleDefinitions.get(moduleId);
 		if (!instance || !moduleDef) return;
+
+		console.log(`${DEBUG_PREFIX} module unmount start`, {
+			moduleId,
+			reload,
+			hostConnected: instance.host.isConnected,
+			pending: this.pendingUnmounts.has(moduleId),
+		});
 		const existingPending = this.pendingUnmounts.get(moduleId);
 		if (existingPending) {
 			existingPending.reload ||= reload;
@@ -514,6 +587,11 @@ class ModuleManager {
 		moduleDef: ForgeModuleDef,
 		restoreOriginal: boolean
 	): void {
+		console.log(`${DEBUG_PREFIX} module cleanup`, {
+			moduleId: instance.id,
+			restoreOriginal,
+			hostConnected: instance.host.isConnected,
+		});
 		if (this.activeModuleRoots.get(instance.id) === instance) {
 			this.activeModuleRoots.delete(instance.id);
 		}
@@ -535,9 +613,21 @@ class ModuleManager {
 	}
 
 	private initMutationReconciliation(): void {
-		this.reconciliationObserver = new MutationObserver(() =>
-			this.scheduleReconciliation()
-		);
+		this.reconciliationObserver = new MutationObserver((records) => {
+			const batch = ++this.mutationBatch;
+			console.log(`${DEBUG_PREFIX} page mutation batch`, {
+				batch,
+				recordCount: records.length,
+				records: records.slice(0, 8).map((record) => ({
+					type: record.type,
+					target: describeNode(record.target),
+					attributeName: record.attributeName,
+					added: record.addedNodes.length,
+					removed: record.removedNodes.length,
+				})),
+			});
+			this.scheduleReconciliation();
+		});
 		this.reconciliationObserver.observe(document.documentElement, {
 			childList: true,
 			subtree: true,
@@ -547,9 +637,16 @@ class ModuleManager {
 	}
 
 	private scheduleReconciliation(reloadIds = new Set<string>()): void {
+		console.log(`${DEBUG_PREFIX} reconciliation scheduled`, {
+			reloadIds: Array.from(reloadIds),
+			frameAlreadyPending: this.reconciliationFrame !== null,
+			initialReconciliationReady: this.initialReconciliationReady,
+			activeModules: Array.from(this.activeModuleRoots.keys()),
+		});
 		for (const moduleId of reloadIds) {
 			this.pendingReloadIds.add(moduleId);
 		}
+		if (!this.initialReconciliationReady) return;
 		if (this.reconciliationFrame !== null) return;
 		this.reconciliationFrame = requestAnimationFrame(() => {
 			this.reconciliationFrame = null;
@@ -647,6 +744,9 @@ class ModuleManager {
 	}
 
 	refreshAllActiveModules(): void {
+		console.log(`${DEBUG_PREFIX} refresh all active modules`, {
+			moduleIds: Array.from(this.activeModuleRoots.keys()),
+		});
 		for (const id of this.activeModuleRoots.keys()) this.beginUnmount(id, true);
 	}
 

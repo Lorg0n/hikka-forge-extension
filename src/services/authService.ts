@@ -24,7 +24,8 @@ export class AuthService {
 
     static async getToken(): Promise<string | null> {
         const result = await browser.storage.local.get(AUTH_TOKEN_KEY);
-        return result[AUTH_TOKEN_KEY] || null;
+        const token = result[AUTH_TOKEN_KEY];
+        return typeof token === 'string' ? token : null;
     }
 
     static async removeToken(): Promise<void> {

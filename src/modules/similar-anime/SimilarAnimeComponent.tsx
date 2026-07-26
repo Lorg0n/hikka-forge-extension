@@ -10,7 +10,7 @@ import { ModuleListTransition, ModuleTransition } from '@/components/ui/module-t
 const SimilarAnimeComponent: React.FC = () => {
     const slug = typeof window !== 'undefined' ? window.location.pathname.split('/anime/')[1] : '';
     const { data, loading, error, refresh } = useSimilarAnime({ slug, initialSize: 5 });
-    const [hiddenItems, setHiddenItems] = useState<Set<string>>(new Set());
+    const [hiddenItems] = useState<Set<string>>(new Set());
     
     const similarAnimeList = data?.content?.filter(item => !hiddenItems.has(item.slug)) || [];
 
@@ -28,7 +28,7 @@ const SimilarAnimeComponent: React.FC = () => {
         return () => logger.log('[Hikka Forge][debug] similar anime unmounted');
     }, []);
 
-    const handleFeedbackSuccess = (itemSlug: string) => {
+    const handleFeedbackSuccess = () => {
         // Optionally refresh data after feedback
         refresh();
     };
@@ -80,7 +80,7 @@ const SimilarAnimeComponent: React.FC = () => {
                         key={anime.slug} 
                         anime={anime}
                         contextSlug={slug}
-                        onFeedbackSuccess={() => handleFeedbackSuccess(anime.slug)}
+                        onFeedbackSuccess={handleFeedbackSuccess}
                     />
                 ))}
             </ModuleListTransition>

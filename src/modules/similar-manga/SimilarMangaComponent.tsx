@@ -10,7 +10,7 @@ import { ModuleListTransition, ModuleTransition } from '@/components/ui/module-t
 const SimilarMangaComponent: React.FC = () => {
     const slug = typeof window !== 'undefined' ? window.location.pathname.split('/manga/')[1] : '';
     const { data, loading, error, refresh } = useSimilarManga({ slug, initialSize: 5 });
-    const [hiddenItems, setHiddenItems] = useState<Set<string>>(new Set());
+    const [hiddenItems] = useState<Set<string>>(new Set());
     
     const similarMangaList = data?.content?.filter(item => !hiddenItems.has(item.slug)) || [];
 
@@ -28,7 +28,7 @@ const SimilarMangaComponent: React.FC = () => {
         return () => logger.log('[Hikka Forge][debug] similar manga unmounted');
     }, []);
 
-    const handleFeedbackSuccess = (itemSlug: string) => {
+    const handleFeedbackSuccess = () => {
         // Optionally refresh data after feedback
         refresh();
     };
@@ -80,7 +80,7 @@ const SimilarMangaComponent: React.FC = () => {
                         key={manga.slug} 
                         manga={manga}
                         contextSlug={slug}
-                        onFeedbackSuccess={() => handleFeedbackSuccess(manga.slug)}
+                        onFeedbackSuccess={handleFeedbackSuccess}
                     />
                 ))}
             </ModuleListTransition>

@@ -766,18 +766,19 @@ class ModuleManager {
 
 	private initMessageListener(): void {
 		browser.runtime.onMessage.addListener(
-			(message: ContentMessage, _sender, sendResponse) => {
+			(message, _sender, sendResponse) => {
+				const contentMessage = message as ContentMessage;
 				try {
-					switch (message.type) {
+					switch (contentMessage.type) {
 						case "SYNC_MODULES":
-							this.syncModuleStates(message.enabledStates, message.moduleSettings);
+							this.syncModuleStates(contentMessage.enabledStates, contentMessage.moduleSettings);
 							sendResponse({ success: true });
 							break;
 						case "GET_CONTENT_MODULES_INFO":
 							sendResponse({ success: true, modules: this.getModulesInfo() });
 							break;
 						case "MODULE_ACTION":
-							if (message.action === "REFRESH") {
+							if (contentMessage.action === "REFRESH") {
 								this.refreshAllActiveModules();
 								sendResponse({ success: true });
 							} else {
@@ -785,13 +786,13 @@ class ModuleManager {
 							}
 							break;
 						default:
-							return false;
+							return true;
 					}
 				} catch (error) {
 					logger.error("[Hikka Forge] Error processing content message:", error);
 					sendResponse({ success: false, error: String(error) });
 				}
-				return false;
+				return true;
 			}
 		);
 	}

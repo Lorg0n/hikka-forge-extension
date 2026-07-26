@@ -25,7 +25,6 @@ interface LayoutBounds {
 }
 
 const CANVAS_SIZE = 100000;
-const CENTER = CANVAS_SIZE / 2;
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 3;
 const PADDING = 100;
@@ -245,38 +244,6 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
     const stateRef = useRef({ pan, zoom });
     stateRef.current = { pan, zoom };
 
-    const layerOf = useMemo(() => {
-        if (nodes.length === 0) return new Map<string, number>();
-        const nodeIds = new Set(nodes.map(n => n.id));
-        const adjacency = new Map<string, Set<string>>();
-        nodes.forEach(n => adjacency.set(n.id, new Set()));
-        edges.forEach(e => {
-            if (nodeIds.has(e.source) && nodeIds.has(e.target)) {
-                adjacency.get(e.source)!.add(e.target);
-                adjacency.get(e.target)!.add(e.source);
-            }
-        });
-
-        const layerMap = new Map<string, number>();
-        const startId = currentNodeId && nodeIds.has(currentNodeId) ? currentNodeId : nodes[0].id;
-        const queue = [startId];
-        layerMap.set(startId, 0);
-        const visited = new Set([startId]);
-
-        while (queue.length > 0) {
-            const u = queue.shift()!;
-            const lu = layerMap.get(u)!;
-            for (const v of adjacency.get(u) || []) {
-                if (!visited.has(v)) {
-                    visited.add(v);
-                    layerMap.set(v, lu + 1);
-                    queue.push(v);
-                }
-            }
-        }
-        return layerMap;
-    }, [nodes, edges, currentNodeId]);
-
     const { positions, bounds } = useMemo(
         () => computeImprovedLayout(nodes, edges, currentNodeId),
         [nodes, edges, currentNodeId]
@@ -429,14 +396,6 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
         zoomAt(rect.width / 2, rect.height / 2, stateRef.current.zoom * 0.8);
     };
 
-    const screenToCanvas = useCallback((screenX: number, screenY: number) => {
-        const { pan, zoom } = stateRef.current;
-        return {
-            x: (screenX - pan.x) / zoom,
-            y: (screenY - pan.y) / zoom
-        };
-    }, []);
-
     return (
         <div
             ref={viewportRef}
@@ -459,7 +418,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
                             <feMergeNode in="SourceGraphic" />
                         </feMerge>
                     </filter>
-                    {Object.entries(typeColors).map(([type, colors]) => (
+                    {Object.entries(typeColors).map(([type]) => (
                         <filter key={`glow-${type}`} id={`glow-${type}`} x="-100%" y="-100%" width="300%" height="300%">
                             <feGaussianBlur stdDeviation="3" result="coloredBlur" />
                             <feMerge>
@@ -588,7 +547,6 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
             {filteredPositions.map(node => {
                 const isCurrent = node.id === currentNodeId;
                 const isHighlighted = highlightedNodes.has(node.id);
-                const colors = typeColors[node.type] || typeColors.anime;
                 const canvasX = node.x - bounds.minX;
                 const canvasY = node.y - bounds.minY;
                 const screenX = canvasX * zoom + pan.x;
@@ -724,7 +682,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
 
             {(hoveredNode || selectedNode) && (
                 <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-xs text-primary-foreground z-20">
-                    {hoveredNode ? nodeMap.get(hoveredNode)?.title : nodeMap.get(selectedNode)?.title}
+                    {hoveredNode ? nodeMap.get(hoveredNode)?.title : selectedNode ? nodeMap.get(selectedNode)?.title : null}
                 </div>
             )}
         </div>

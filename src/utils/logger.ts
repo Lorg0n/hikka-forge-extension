@@ -4,7 +4,7 @@ type LogMethod = "debug" | "info" | "log" | "warn" | "error" | "trace";
 
 let enabled = false;
 
-function getStorageArea(): Browser.Storage.StorageArea | undefined {
+function getStorageArea(): typeof browser.storage.sync | undefined {
 	return browser.storage?.sync;
 }
 

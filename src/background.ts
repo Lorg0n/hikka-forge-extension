@@ -77,11 +77,8 @@ class BackgroundManager {
 	private initMessageListener(): void {
 		browser.runtime.onMessage.addListener(
 			(message: BackgroundMessage | any, sender, sendResponse) => {
-				let isAsync = false;
-
 				if (message.type === "REGISTER_CONTENT_SCRIPT") {
 					logger.log(`[Hikka Forge] Content script from tab ${sender.tab?.id} registered with ${message.modules.length} modules.`);
-					isAsync = true;
 					this.handleContentScriptRegistration(message.modules, sender.tab?.id)
 						.then(() => sendResponse({ success: true }))
 						.catch(error => {
@@ -89,7 +86,6 @@ class BackgroundManager {
 							sendResponse({ success: false, error: String(error) });
 						});
 				} else if (message.type === "GET_MODULE_DEFINITIONS") {
-					isAsync = true;
 					this.getModuleDefinitionsWithState()
 						.then((result) =>
 							sendResponse({
@@ -111,7 +107,6 @@ class BackgroundManager {
 						message.moduleId &&
 						typeof message.enabled === "boolean"
 					) {
-						isAsync = true;
 						this.toggleModuleState(message.moduleId, message.enabled)
 							.then(() => sendResponse({ success: true }))
 							.catch((error) => {
@@ -126,7 +121,6 @@ class BackgroundManager {
 						message.moduleId &&
 						message.settingId
 					) {
-						isAsync = true;
 						this.updateModuleSetting(
 							message.moduleId,
 							message.settingId,
@@ -138,7 +132,6 @@ class BackgroundManager {
 								sendResponse({ success: false, error: String(error) });
 							});
 					} else if (message.action === "REFRESH") {
-						isAsync = true;
 						this.refreshContentInAllTabs()
 							.then(() => sendResponse({ success: true }))
 							.catch((error) => {
@@ -153,7 +146,9 @@ class BackgroundManager {
 						sendResponse({ success: false, error: "Invalid module action" });
 					}
 				}
-				return isAsync;
+				// The polyfill declaration requires the literal `true`; it also keeps
+				// the response channel open for each supported request.
+				return true;
 			}
 		);
 	}
@@ -265,7 +260,10 @@ class BackgroundManager {
 
 			const updatedModules = definitions.map((def) => {
 				const enabledKey = `module_enabled_${def.id}`;
-				const enabled = allStoredData[enabledKey] ?? def.enabledByDefault ?? false;
+				const storedEnabled = allStoredData[enabledKey];
+				const enabled = typeof storedEnabled === "boolean"
+					? storedEnabled
+					: (def.enabledByDefault ?? false);
 
 				const settings: Record<string, any> = {};
 				if (def.settings) {
@@ -314,7 +312,7 @@ class BackgroundManager {
 					);
 					const response = await browser.tabs.sendMessage(tab.id, {
 						type: "GET_CONTENT_MODULES_INFO",
-					} as ContentMessage);
+					} as ContentMessage) as { success?: boolean; modules?: ModuleInfo[] };
 
 					if (response?.success && Array.isArray(response.modules)) {
 						logger.log(
@@ -452,4 +450,4 @@ class BackgroundManager {
 	}
 }
 
-const backgroundManager = new BackgroundManager();
+void new BackgroundManager();

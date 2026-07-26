@@ -1,4 +1,4 @@
-import { FormItem, FormLabel, FormDescription } from "@/components/ui/form";
+import { FormItem, FormLabel } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";

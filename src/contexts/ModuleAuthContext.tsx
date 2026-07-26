@@ -37,7 +37,7 @@ export const ModuleAuthProvider: React.FC<ModuleAuthProviderProps> = ({ children
         loadUser();
 
         // Listen for auth changes from storage
-        const handleStorageChange = (changes: { [key: string]: Browser.Storage.StorageChange }) => {
+        const handleStorageChange = (changes: Record<string, { newValue?: unknown }>) => {
             if (changes.hikka_forge_auth_token) {
                 logger.log('[Hikka Forge] Auth token changed, reloading user');
                 loadUser();

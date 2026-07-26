@@ -17,7 +17,7 @@ export const WeeklyTopAnimeCard: React.FC<WeeklyTopAnimeCardProps> = ({ item, cl
 
     if (item.previous_rank === null) {
         rankChangeEl = (
-            <div className="flex items-center justify-center gap-0 text-[10px] px-1.5 py-0.5 rounded-sm bg-primary/20 text-primary font-bold leading-none backdrop-blur-sm">
+            <div className="flex items-center justify-center gap-0 text-[10px] px-1.5 py-0.5 rounded-sm bg-primary/20 text-primary-foreground font-bold leading-none backdrop-blur-sm">
                 NEW
             </div>
         );
@@ -65,7 +65,7 @@ export const WeeklyTopAnimeCard: React.FC<WeeklyTopAnimeCardProps> = ({ item, cl
                     <div className="flex flex-col items-center justify-center w-8 sm:w-8 shrink-0 gap-1">
                         <span className={cn(
                             "font-display text-xl sm:text-2xl font-bold leading-none drop-shadow-sm",
-                            item.current_rank <= 3 ? "text-primary" : "text-foreground"
+                            item.current_rank <= 3 ? "text-primary-foreground" : "text-foreground"
                         )}>
                             {item.current_rank}
                         </span>
@@ -77,13 +77,13 @@ export const WeeklyTopAnimeCard: React.FC<WeeklyTopAnimeCardProps> = ({ item, cl
                             <Image
                                 src={item.poster}
                                 alt={item.title}
-                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                className="w-full h-full object-cover"
                             />
                         </AspectRatio>
                     </div>
 
                     <div className="flex flex-col flex-1 min-w-0 justify-center gap-1">
-                        <h3 className="font-bold text-foreground text-sm sm:text-base line-clamp-2 group-hover:text-primary transition-colors leading-snug drop-shadow-sm">
+                        <h3 className="font-bold text-foreground text-sm sm:text-base line-clamp-2 group-hover:text-primary-foreground transition-colors leading-snug drop-shadow-sm">
                             {item.title}
                         </h3>
                         <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-muted-foreground font-medium drop-shadow-sm">

@@ -30,8 +30,7 @@ export const SimilarAnimeCard: React.FC<SimilarAnimeCardProps> = ({ anime, class
                         width={200}
                         height={300}
                         className={cn(
-                            "w-full h-full object-cover transition-all duration-300",
-                            "group-hover:scale-105",
+                            "w-full h-full object-cover transition-opacity duration-300",
                             isLoading ? 'opacity-0' : 'opacity-100'
                         )}
                         onLoad={() => {
@@ -55,7 +54,7 @@ export const SimilarAnimeCard: React.FC<SimilarAnimeCardProps> = ({ anime, class
                 <p className="mb-1 truncate text-xs text-muted-foreground">
                     {getSimilarityText(anime.similarityScore)}
                 </p>
-                <Link href={`/anime/${anime.slug}`} className="text-sm font-medium line-clamp-2 hover:text-primary transition-colors">
+                <Link href={`/anime/${anime.slug}`} className="text-sm font-medium line-clamp-2 text-card-foreground hover:text-card-foreground transition-colors">
                     {anime.title}
                 </Link>
             </div>

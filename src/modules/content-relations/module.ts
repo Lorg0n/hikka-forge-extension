@@ -14,6 +14,7 @@ const contentRelationsModule: ForgeModuleDef = {
     elementSelector: {
         selector: '#content-franchise > div > div > div:first-child > div',
         position: 'append',
+        hostWidth: 'auto',
     },
     component: ContentRelationsButton,
     icon: {

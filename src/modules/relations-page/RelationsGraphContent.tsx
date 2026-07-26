@@ -717,13 +717,13 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
                 {selectedNode && (
                     <>
                         <span className="text-border">|</span>
-                        <span className="text-primary">Вибрано: {nodeMap.get(selectedNode)?.title}</span>
+                        <span className="text-primary-foreground">Вибрано: {nodeMap.get(selectedNode)?.title}</span>
                     </>
                 )}
             </div>
 
             {(hoveredNode || selectedNode) && (
-                <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-xs text-primary z-20">
+                <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-xs text-primary-foreground z-20">
                     {hoveredNode ? nodeMap.get(hoveredNode)?.title : nodeMap.get(selectedNode)?.title}
                 </div>
             )}

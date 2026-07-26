@@ -30,8 +30,7 @@ export const SimilarMangaCard: React.FC<SimilarMangaCardProps> = ({ manga, class
                         width={200}
                         height={300}
                         className={cn(
-                            "w-full h-full object-cover transition-all duration-300",
-                            "group-hover:scale-105",
+                            "w-full h-full object-cover transition-opacity duration-300",
                             isLoading ? 'opacity-0' : 'opacity-100'
                         )}
                         onLoad={() => {
@@ -55,7 +54,7 @@ export const SimilarMangaCard: React.FC<SimilarMangaCardProps> = ({ manga, class
                 <p className="mb-1 truncate text-xs text-muted-foreground">
                     {getSimilarityText(manga.similarityScore)}
                 </p>
-                <Link href={`/manga/${manga.slug}`} className="text-sm font-medium line-clamp-2 hover:text-primary transition-colors">
+                <Link href={`/manga/${manga.slug}`} className="text-sm font-medium line-clamp-2 text-card-foreground hover:text-card-foreground transition-colors">
                     {manga.title}
                 </Link>
             </div>

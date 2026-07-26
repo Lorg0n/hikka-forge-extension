@@ -64,7 +64,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onLoginClick }) => {
                                 className="h-full w-full object-cover"
                             />
                         ) : (
-                            <div className="h-full w-full flex items-center justify-center bg-primary/10 text-primary font-bold text-sm">
+                            <div className="h-full w-full flex items-center justify-center bg-primary/10 text-primary-foreground font-bold text-sm">
                                 {user.username.charAt(0).toUpperCase()}
                             </div>
                         )}
@@ -82,7 +82,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onLoginClick }) => {
                                     className="h-full w-full object-cover"
                                 />
                             ) : (
-                                <div className="h-full w-full flex items-center justify-center bg-primary/10 text-primary font-bold">
+                                <div className="h-full w-full flex items-center justify-center bg-primary/10 text-primary-foreground font-bold">
                                     {user.username.charAt(0).toUpperCase()}
                                 </div>
                             )}
@@ -100,7 +100,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onLoginClick }) => {
                             {user.roles.map((role) => (
                                 <span
                                     key={role}
-                                    className="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-md font-medium"
+                                    className="px-2 py-0.5 bg-primary/10 text-primary-foreground text-xs rounded-md font-medium"
                                 >
                                     {role}
                                 </span>

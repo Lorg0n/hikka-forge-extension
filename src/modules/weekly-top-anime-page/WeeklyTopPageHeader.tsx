@@ -1,5 +1,6 @@
 import React from 'react';
 import { IconLinkButton } from '@/components/ui/icon-link-button';
+import { PageHeader } from '@/components/ui/page-header';
 
 interface WeeklyTopPageHeaderProps {
     startDate?: string;
@@ -18,34 +19,25 @@ export const WeeklyTopPageHeader: React.FC<WeeklyTopPageHeaderProps> = ({ startD
     const year = now.getFullYear();
 
     return (
-        <div className="relative flex flex-col gap-4 rounded-lg border border-border/60 p-4 bg-card/80 backdrop-blur-sm">
-            <div className="flex items-center justify-between gap-2">
-                <div className="flex flex-1 items-center gap-4">
-                    <div className="flex flex-1 flex-col gap-1">
-                        <div className="flex items-center gap-3 flex-wrap">
-                            <h4 className="font-bold text-base line-clamp-1">
-                                Популярні онґоінґи
-                            </h4>
-                            {startDate && endDate && (
-                                <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-md bg-info/10 text-info-foreground border border-info/20 whitespace-nowrap">
-                                    <span className="size-1.5 rounded-full bg-current opacity-70" />
-                                    {formatDateRange(startDate, endDate)}
-                                </span>
-                            )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                            Гарячі онґоінґи. Рейтинг базується на прирості нових оцінок за вказаний період.
-                        </p>
-                    </div>
-                </div>
-
+        <PageHeader
+            title="Популярні онґоінґи"
+            description="Гарячі онґоінґи. Рейтинг базується на прирості нових оцінок за вказаний період."
+            titleSuffix={
+                startDate && endDate ? (
+                    <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border border-info/20 bg-info/10 px-2 py-0.5 text-xs font-medium text-info-foreground">
+                        <span className="size-1.5 rounded-full bg-current opacity-70" />
+                        {formatDateRange(startDate, endDate)}
+                    </span>
+                ) : undefined
+            }
+            action={
                 <IconLinkButton
                     href={`/anime?page=1&statuses=ongoing&sort=score&order=desc&years=${year}&years=${year}`}
                     icon="material-symbols:arrow-right-alt-rounded"
                     label="Відкрити список онґоінґів"
                     newTab
                 />
-            </div>
-        </div>
+            }
+        />
     );
 };

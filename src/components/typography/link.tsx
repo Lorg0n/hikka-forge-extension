@@ -6,7 +6,7 @@ interface Props {
   className?: string;
 }
 
-const LINK_CLASSNAME = 'cursor-pointer text-primary hover:underline';
+const LINK_CLASSNAME = 'cursor-pointer text-primary-foreground hover:underline';
 
 const Link: FC<PropsWithChildren<Props>> = ({ children, href, className }) => {
   return (

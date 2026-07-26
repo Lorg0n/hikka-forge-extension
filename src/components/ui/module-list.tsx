@@ -82,7 +82,7 @@ export function ModuleList({
 	if (modules.length === 0 && !error) {
 		return (
 			<p className="text-muted-foreground text-center py-4">
-				Модулі не знайдено. Спробуй перезавантажити сторінку hikka.io
+				Модулі не знайдено. Спробуй перезавантажити сторінку dev.hikka.io
 			</p>
 		);
 	}

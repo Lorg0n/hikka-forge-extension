@@ -5,7 +5,7 @@ const weeklyTopAnimeModule: ForgeModuleDef = {
     id: 'weekly-top-anime',
     name: 'Топ аніме тижня',
     description: 'Додає блок із посиланням на список найпопулярніших онґоінґів',
-    urlPatterns: ['https://hikka.io/', 'https://hikka.io/*'],
+    urlPatterns: ['https://dev.hikka.io/', 'https://dev.hikka.io/*'],
     enabledByDefault: true,
     category: 'recommendations',
     elementSelector: {

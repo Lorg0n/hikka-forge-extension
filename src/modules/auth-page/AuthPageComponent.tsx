@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useHikkaCallback } from '@/hooks/useHikkaCallback';
 import { AuthService } from '@/services/authService';
+import { HIKKA_BASE } from '@/constants';
 
 type ButtonVariant = 'primary' | 'secondary';
 
@@ -60,7 +61,7 @@ const AuthPageComponent: React.FC = () => {
     const goHome = useCallback(() => {
         window.location.href = redirect.startsWith('http')
             ? redirect
-            : `https://hikka.io${redirect}`;
+            : `${HIKKA_BASE}${redirect}`;
     }, [redirect]);
 
     useEffect(() => {

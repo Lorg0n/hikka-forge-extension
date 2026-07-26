@@ -5,7 +5,7 @@ const userCommentModule: ForgeModuleDef = {
   id: 'user-comments',
   name: 'Модуль коментарів користувача',
   description: 'Додає коментарі користувача до профілю користувача.',
-  urlPatterns: ['https://hikka.io/u/*'],
+  urlPatterns: ['https://dev.hikka.io/u/*'],
   enabledByDefault: true,
   category: 'content',
   elementSelector: {

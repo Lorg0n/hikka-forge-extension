@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { HIKKA_BASE } from '@/constants';
 
 interface UserMenuProps {
     onLoginClick?: () => void;
@@ -16,7 +17,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onLoginClick }) => {
     const { user, isLoading, isAuthenticated, logout } = useAuth();
 
     const handleLoginClick = async () => {
-        chrome.tabs.create({ url: "https://hikka.io/oauth?reference=8dca46ce-c233-4b5f-b895-8684c82c0f1d&scope=read:watchlist,read:readlist,read:user-details" }); 
+		chrome.tabs.create({ url: `${HIKKA_BASE}/oauth?reference=8dca46ce-c233-4b5f-b895-8684c82c0f1d&scope=read:watchlist,read:readlist,read:user-details` });
     };
 
     if (isLoading) {

@@ -25,7 +25,7 @@ class BackgroundManager {
 		chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 			if (
 				changeInfo.status === "complete" &&
-				tab.url?.startsWith("https://hikka.io/")
+				tab.url?.startsWith("https://dev.hikka.io/")
 			) {
 				this.syncTabIfNeeded(tabId);
 			}
@@ -268,7 +268,7 @@ class BackgroundManager {
 
 	private async fetchModuleDefinitionsFromContentScript(): Promise<ModuleInfo[]> {
 		const tabs = await chrome.tabs.query({
-			url: "https://hikka.io/*",
+			url: "https://dev.hikka.io/*",
 			status: "complete",
 		});
 
@@ -345,7 +345,7 @@ class BackgroundManager {
 	private async syncAllTabs(): Promise<void> {
 		console.log("[Hikka Forge] Syncing states with all Hikka tabs...");
 		try {
-			const tabs = await chrome.tabs.query({ url: "https://hikka.io/*" });
+		const tabs = await chrome.tabs.query({ url: "https://dev.hikka.io/*" });
 			const syncPromises = tabs
 				.filter((tab) => tab.id !== undefined)
 				.map((tab) => this.sendSyncMessageToTab(tab.id!));
@@ -400,7 +400,7 @@ class BackgroundManager {
 	private async refreshContentInAllTabs(): Promise<void> {
 		console.log("[Hikka Forge] Sending REFRESH action to all Hikka tabs...");
 		try {
-			const tabs = await chrome.tabs.query({ url: "https://hikka.io/*" });
+			const tabs = await chrome.tabs.query({ url: "https://dev.hikka.io/*" });
 			const refreshPromises = tabs
 				.filter((tab) => tab.id !== undefined)
 				.map((tab) =>

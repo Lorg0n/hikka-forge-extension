@@ -5,7 +5,7 @@ const animeSimilarModule: ForgeModuleDef = {
   id: 'similar-anime',
   name: 'Схожі аніме',
   description: 'Додає модуль схожих аніме, які визначаються за допомогою спеціальної моделі.',
-  urlPatterns: ['https://hikka.io/anime/*'],
+  urlPatterns: ['https://dev.hikka.io/anime/*'],
   enabledByDefault: true,
   category: 'recommendations',
   elementSelector: {

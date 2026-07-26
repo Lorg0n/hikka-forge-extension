@@ -6,8 +6,8 @@ const contentRelationsModule: ForgeModuleDef = {
     name: "Зв'язки між тайтлами",
     description: 'Додає кнопку для відкриття сторінки пов\'язаного контенту (#related) поруч із блоком "Пов\'язане".',
     urlPatterns: [
-        'https://hikka.io/anime/*',
-        'https://hikka.io/manga/*',
+        'https://dev.hikka.io/anime/*',
+        'https://dev.hikka.io/manga/*',
     ],
     enabledByDefault: true,
     category: 'content',

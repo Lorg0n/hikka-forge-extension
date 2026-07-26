@@ -5,7 +5,7 @@ const userCommentPageModule: ForgeModuleDef = {
   id: 'user-comments-page',
   name: 'Сторінка коментарів користувача',
   description: 'Додає окрему сторінку для перегляду всіх коментарів користувача з можливістю сортування.',
-  urlPatterns: ['https://hikka.io/u/*#comments'],
+  urlPatterns: ['https://dev.hikka.io/u/*#comments'],
   enabledByDefault: true,
   hidden: true,
   elementSelector: {

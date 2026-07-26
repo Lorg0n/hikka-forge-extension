@@ -5,7 +5,7 @@ const mangaSimilarModule: ForgeModuleDef = {
   id: 'similar-manga',
   name: 'Схожа манґа',
   description: 'Додає модуль схожої манґи, яка визначається за допомогою спеціальної моделі.',
-  urlPatterns: ['https://hikka.io/manga/*'],
+  urlPatterns: ['https://dev.hikka.io/manga/*'],
   enabledByDefault: true,
   category: 'recommendations',
   elementSelector: {

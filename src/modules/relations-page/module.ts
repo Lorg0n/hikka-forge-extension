@@ -6,8 +6,8 @@ const relationsPageModule: ForgeModuleDef = {
     name: '[Page] Пов\'язане',
     description: 'Відображає повну сторінку пов\'язаного контенту за хешем #related.',
     urlPatterns: [
-        'https://hikka.io/anime/*#related',
-        'https://hikka.io/manga/*#related',
+        'https://dev.hikka.io/anime/*#related',
+        'https://dev.hikka.io/manga/*#related',
     ],
     enabledByDefault: true,
     hidden: true,

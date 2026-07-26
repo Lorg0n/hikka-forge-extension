@@ -64,7 +64,7 @@ const ThematicLogoModule: ForgeModuleDef = {
 	enabledByDefault: true,
 	description:
 		"Змінює основний логотип відповідно до поточного свята або пам'ятної події.",
-	urlPatterns: ["https://hikka.io/*"],
+	urlPatterns: ["https://dev.hikka.io/*"],
 	persistentStyles: true,
 	category: "appearance",
 

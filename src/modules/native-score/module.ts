@@ -7,7 +7,7 @@
 //   id: 'native-score',
 //   name: 'Зважена оцінка Hikka',
 //   description: 'Замінює стандартну (сиру) оцінку Hikka на зважену',
-//   urlPatterns: ['https://hikka.io/anime/*'],
+//   urlPatterns: ['https://dev.hikka.io/anime/*'],
 //   enabledByDefault: true,
 //   elementSelector: {
 //     selector: '#content-scores svg[width="27"] + div > div',

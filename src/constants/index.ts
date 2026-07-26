@@ -28,8 +28,8 @@ export const MODULE_CATEGORIES = {
     "other": "Інше"
 } as const;
 
-export const HIKKA_BASE = "https://hikka.io" as const;
+export const HIKKA_BASE = "https://dev.hikka.io" as const;
 export const API_BACKEND_BASE = "https://hikka-forge.lorgon.dev" as const;
 
 export const GITHUB_REPO = "https://github.com/Lorg0n/hikka-forge-extension" as const;
-export const POLICY_PAGE = "https://hikka.io/articles/privacy-policy-for-hikka-forge-7c73e8" as const;
+export const POLICY_PAGE = "https://dev.hikka.io/articles/privacy-policy-for-hikka-forge-7c73e8" as const;

@@ -4,7 +4,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Browser Support](https://img.shields.io/badge/browsers-Chrome%20%7C%20Firefox-orange.svg)
 
-Hikka Forge is a modular browser extension designed to inject custom features and styles into the hikka.io website. It is architected to be extensible, allowing new features (termed "Modules") to be developed and integrated with minimal boilerplate.
+Hikka Forge is a modular browser extension designed to inject custom features and styles into the dev.hikka.io website. It is architected to be extensible, allowing new features (termed "Modules") to be developed and integrated with minimal boilerplate.
 
 ![Features preview](docs/features.png)
 

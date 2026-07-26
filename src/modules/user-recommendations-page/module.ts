@@ -5,7 +5,7 @@ const recommendationsPageModule: ForgeModuleDef = {
     id: 'recommendations-page',
     name: 'Сторінка персональних рекомендацій',
     description: 'Повноцінна сторінка з персональними рекомендаціями на основі вашого списку.',
-    urlPatterns: ['https://hikka.io/#recommendations'],
+    urlPatterns: ['https://dev.hikka.io/#recommendations'],
     enabledByDefault: true,
     hidden: true,
     authRequired: true,

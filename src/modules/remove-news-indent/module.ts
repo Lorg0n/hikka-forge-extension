@@ -4,7 +4,7 @@ const removeNewsIndentModule: ForgeModuleDef = {
     id: 'remove-news-indent',
     name: 'Прибрати відступ елементів новин',
     description: 'Прибирає лівий відступ (margin) у елементів стрічки новин, роблячи їх на всю ширину.',
-    urlPatterns: ['https://hikka.io/*', 'https://hikka.io/'],
+    urlPatterns: ['https://dev.hikka.io/*', 'https://dev.hikka.io/'],
     enabledByDefault: false,
     persistentStyles: true,
     category: 'appearance',

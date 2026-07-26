@@ -67,7 +67,7 @@ function App() {
 
 	const checkPermissions = useCallback(async () => {
 		const has = await browser.permissions.contains({
-			origins: ["https://hikka.io/*"],
+			origins: ["https://dev.hikka.io/*"],
 		});
 		setHasPermission(has);
 		if (has) {
@@ -92,7 +92,7 @@ function App() {
 
 	const handleRequestPermission = useCallback(async () => {
 		const granted = await browser.permissions.request({
-			origins: ["https://hikka.io/*"],
+			origins: ["https://dev.hikka.io/*"],
 		});
 		if (granted) {
 			setHasPermission(true);
@@ -319,7 +319,7 @@ function App() {
 			<div className="flex flex-col min-w-[350px] p-4 gap-4 bg-background text-foreground">
 				<h1 className="font-bold text-xl">Потрібен дозвіл</h1>
 				<p className="text-sm text-muted-foreground">
-					Hikka Forge потрібен дозвіл для роботи на сайті hikka.io.
+					Hikka Forge потрібен дозвіл для роботи на сайті dev.hikka.io.
 				</p>
 				<Button variant={"default"} onClick={handleRequestPermission}>
 					Надати дозвіл

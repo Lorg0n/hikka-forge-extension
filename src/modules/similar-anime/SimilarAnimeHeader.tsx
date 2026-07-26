@@ -2,6 +2,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo.svg";
 import Link from '@/components/typography/link';
+import { HIKKA_BASE } from '@/constants';
 
 export const SimilarAnimeHeader = () => {
     return (
@@ -33,7 +34,7 @@ export const SimilarAnimeHeader = () => {
                                 </p>
                                 <p className="mt-2 text-sm">
                                     <Link
-                                        href="https://hikka.io/articles?page=1&tags=embedding&tags=forge"
+                                        href={`${HIKKA_BASE}/articles?page=1&tags=embedding&tags=forge`}
                                         className="text-muted-foreground underline hover:muted-foreground/80"
                                     >
                                         Більш детально механізм розписаний в серії статей

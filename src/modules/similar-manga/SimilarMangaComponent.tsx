@@ -4,6 +4,7 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import NotFound from '@/components/ui/not-found';
 import { ConnectedSimilarMangaCard } from '@/components/ui/manga/connected-similar-manga-card';
 import { SimilarMangaHeader } from './SimilarMangaHeader';
+import { ModuleListTransition, ModuleTransition } from '@/components/ui/module-transition';
 
 const SimilarMangaComponent: React.FC = () => {
     const slug = typeof window !== 'undefined' ? window.location.pathname.split('/manga/')[1] : '';
@@ -19,6 +20,7 @@ const SimilarMangaComponent: React.FC = () => {
 
     if (loading) {
         return (
+            <ModuleTransition stateKey="loading">
             <div className="flex flex-col gap-8">
                 <SimilarMangaHeader />
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 w-full gap-4">
@@ -35,11 +37,13 @@ const SimilarMangaComponent: React.FC = () => {
                     ))}
                 </div>
             </div>
+            </ModuleTransition>
         );
     }
 
     if (error || similarMangaList.length === 0) {
         return (
+            <ModuleTransition stateKey={error ? "error" : "empty"}>
             <div className="flex flex-col gap-8">
                 <SimilarMangaHeader />
                 <NotFound
@@ -47,13 +51,15 @@ const SimilarMangaComponent: React.FC = () => {
                     description={error ? 'Не вдалося завантажити схожу манґу.' : 'На жаль, ми не змогли підібрати схожі тайтли.'}
                 />
             </div>
+            </ModuleTransition>
         );
     }
 
     return (
+        <ModuleTransition stateKey="content">
         <div className="flex flex-col gap-8">
             <SimilarMangaHeader />
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 w-full gap-4">
+            <ModuleListTransition className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 w-full gap-4">
                 {similarMangaList.map((manga) => (
                     <ConnectedSimilarMangaCard 
                         key={manga.slug} 
@@ -62,8 +68,9 @@ const SimilarMangaComponent: React.FC = () => {
                         onFeedbackSuccess={() => handleFeedbackSuccess(manga.slug)}
                     />
                 ))}
-            </div>
+            </ModuleListTransition>
         </div>
+        </ModuleTransition>
     );
 };
 

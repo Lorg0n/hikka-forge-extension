@@ -4,6 +4,7 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import NotFound from '@/components/ui/not-found';
 import { ConnectedSimilarAnimeCard } from '@/components/ui/anime/connected-similar-anime-card';
 import { SimilarAnimeHeader } from './SimilarAnimeHeader';
+import { ModuleListTransition, ModuleTransition } from '@/components/ui/module-transition';
 
 const SimilarAnimeComponent: React.FC = () => {
     const slug = typeof window !== 'undefined' ? window.location.pathname.split('/anime/')[1] : '';
@@ -19,6 +20,7 @@ const SimilarAnimeComponent: React.FC = () => {
 
     if (loading) {
         return (
+            <ModuleTransition stateKey="loading">
             <div className="flex flex-col gap-8">
                 <SimilarAnimeHeader />
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 w-full gap-4">
@@ -35,11 +37,13 @@ const SimilarAnimeComponent: React.FC = () => {
                     ))}
                 </div>
             </div>
+            </ModuleTransition>
         );
     }
 
     if (error || similarAnimeList.length === 0) {
         return (
+            <ModuleTransition stateKey={error ? "error" : "empty"}>
             <div className="flex flex-col gap-8">
                 <SimilarAnimeHeader />
                 <NotFound
@@ -47,13 +51,15 @@ const SimilarAnimeComponent: React.FC = () => {
                     description={error ? 'Не вдалося завантажити схожі аніме.' : 'На жаль, ми не змогли підібрати схожі тайтли.'}
                 />
             </div>
+            </ModuleTransition>
         );
     }
 
     return (
+        <ModuleTransition stateKey="content">
         <div className="flex flex-col gap-8">
             <SimilarAnimeHeader />
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 w-full gap-4">
+            <ModuleListTransition className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 w-full gap-4">
                 {similarAnimeList.map((anime) => (
                     <ConnectedSimilarAnimeCard 
                         key={anime.slug} 
@@ -62,8 +68,9 @@ const SimilarAnimeComponent: React.FC = () => {
                         onFeedbackSuccess={() => handleFeedbackSuccess(anime.slug)}
                     />
                 ))}
-            </div>
+            </ModuleListTransition>
         </div>
+        </ModuleTransition>
     );
 };
 

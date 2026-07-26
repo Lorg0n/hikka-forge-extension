@@ -5,6 +5,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { XIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { useContentUI } from "@/contexts/ContentUIContext"
 
 function Dialog({
   ...props
@@ -19,9 +20,19 @@ function DialogTrigger({
 }
 
 function DialogPortal({
+  container,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Portal>) {
-  return <DialogPrimitive.Portal data-slot="dialog-portal" {...props} />
+}: React.ComponentProps<typeof DialogPrimitive.Portal> & {
+  container?: HTMLElement | null
+}) {
+  const contentUI = useContentUI()
+  return (
+    <DialogPrimitive.Portal
+      data-slot="dialog-portal"
+      container={container ?? contentUI?.portalContainer}
+      {...props}
+    />
+  )
 }
 
 function DialogClose({
@@ -49,10 +60,13 @@ function DialogOverlay({
 function DialogContent({
   className,
   children,
+  container,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content>) {
+}: React.ComponentProps<typeof DialogPrimitive.Content> & {
+  container?: HTMLElement | null
+}) {
   return (
-    <DialogPortal data-slot="dialog-portal">
+    <DialogPortal data-slot="dialog-portal" container={container}>
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"

@@ -6,6 +6,7 @@ import { SimilarPageHeader } from './SimilarPageHeader';
 import { SimilarPageGrid } from './SimilarPageGrid';
 import { SimilarPageSkeleton } from './SimilarPageSkeleton';
 import { Pagination } from '@/components/ui/pagination';
+import { ModuleTransition } from '@/components/ui/module-transition';
 
 const SimilarPageComponent: React.FC = () => {
     const slug = typeof window !== 'undefined'
@@ -30,27 +31,27 @@ const SimilarPageComponent: React.FC = () => {
 
     if (isLoading && !similarData) {
         return (
-            <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
+            <ModuleTransition stateKey="loading"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
                 <SimilarPageSkeleton />
-            </main>
+            </main></ModuleTransition>
         );
     }
 
     if ((similarError || !animeDetails || !similarData) && !isLoading) {
          return (
-             <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
+             <ModuleTransition stateKey="error"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
                  <div className="flex flex-col gap-12 mt-12">
                     <NotFound
                         title="Не вдалося завантажити схожі аніме"
                         description={similarError || 'Спробуйте оновити сторінку'}
                     />
                 </div>
-            </main>
+            </main></ModuleTransition>
         );
     }
 
     return (
-        <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
+        <ModuleTransition stateKey="content"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
             <div className="flex flex-col gap-12">
                 <SimilarPageHeader 
                     details={animeDetails!} 
@@ -71,7 +72,7 @@ const SimilarPageComponent: React.FC = () => {
                     </div>
                 )}
             </div>
-        </main>
+        </main></ModuleTransition>
     );
 };
 

@@ -41,7 +41,8 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-:root {
+:root,
+:host {
   --radius: 0.75rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
@@ -77,7 +78,8 @@
 }
 
 
-.dark {
+.dark,
+:host(.dark) {
   --background: oklch(0.141 0.005 285.823);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.21 0.006 285.885);
@@ -117,5 +119,42 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+:host {
+  display: block;
+  color: var(--foreground);
+  font-family: inherit;
+}
+
+.hikka-forge-shadow-root {
+  box-sizing: border-box;
+  min-width: 0;
+  color: var(--foreground);
+  font-family: inherit;
+}
+
+.hikka-forge-shadow-root *,
+.hikka-forge-shadow-root *::before,
+.hikka-forge-shadow-root *::after {
+  box-sizing: border-box;
+}
+
+.hikka-forge-portal-root {
+  color: var(--foreground);
+  font-family: inherit;
+  position: relative;
+  z-index: 1000;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hikka-forge-shadow-root *,
+  .hikka-forge-shadow-root *::before,
+  .hikka-forge-shadow-root *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

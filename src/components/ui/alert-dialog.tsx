@@ -3,6 +3,7 @@ import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
+import { useContentUI } from "@/contexts/ContentUIContext"
 
 function AlertDialog({
   ...props
@@ -19,10 +20,18 @@ function AlertDialogTrigger({
 }
 
 function AlertDialogPortal({
+  container,
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Portal>) {
+}: React.ComponentProps<typeof AlertDialogPrimitive.Portal> & {
+  container?: HTMLElement | null
+}) {
+  const contentUI = useContentUI()
   return (
-    <AlertDialogPrimitive.Portal data-slot="alert-dialog-portal" {...props} />
+    <AlertDialogPrimitive.Portal
+      data-slot="alert-dialog-portal"
+      container={container ?? contentUI?.portalContainer}
+      {...props}
+    />
   )
 }
 
@@ -44,10 +53,13 @@ function AlertDialogOverlay({
 
 function AlertDialogContent({
   className,
+  container,
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Content>) {
+}: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
+  container?: HTMLElement | null
+}) {
   return (
-    <AlertDialogPortal>
+    <AlertDialogPortal container={container}>
       <AlertDialogOverlay />
       <AlertDialogPrimitive.Content
         data-slot="alert-dialog-content"

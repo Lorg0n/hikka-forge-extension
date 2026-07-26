@@ -8,7 +8,7 @@ interface UserCommentsPageHeaderProps {
 
 export const UserCommentsPageHeader: React.FC<UserCommentsPageHeaderProps> = ({ username, avatarUrl }) => {
     return (
-        <div className="relative flex flex-col gap-4 rounded-lg border border-slate-200 p-4 bg-slate-100/50 backdrop-blur-sm dark:border-border dark:bg-secondary/20">
+        <div className="relative flex flex-col gap-4 rounded-lg border border-border/60 p-4 bg-card/80 backdrop-blur-sm">
             <div className="flex items-center justify-between gap-2">
                 <div className="flex flex-1 items-center gap-4">
                     <div className="group relative flex flex-col gap-2 w-12 shrink-0">

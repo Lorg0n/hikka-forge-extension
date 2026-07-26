@@ -6,7 +6,7 @@ export const RecommendationsPageSkeleton: React.FC = () => {
     return (
         <div className="flex flex-col gap-12">
             {/* Header Skeleton */}
-            <div className="relative flex items-center justify-between gap-4 rounded-lg border p-4 bg-secondary/20">
+            <div className="relative flex items-center justify-between gap-4 rounded-lg border border-border/60 bg-card/80 p-4">
                 <div className="flex flex-1 items-center gap-4">
                     <Skeleton className="h-12 w-12 shrink-0 rounded-md animate-pulse bg-secondary/20" />
                     <div className="flex flex-1 flex-col gap-2">

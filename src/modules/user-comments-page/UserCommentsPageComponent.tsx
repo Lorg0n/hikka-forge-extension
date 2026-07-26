@@ -5,6 +5,7 @@ import { UserCommentsPageHeader } from './UserCommentsPageHeader';
 import { UserCommentsPageList } from './UserCommentsPageList';
 import { UserCommentsPageSkeleton } from './UserCommentsPageSkeleton';
 import { Pagination } from '@/components/ui/pagination';
+import { ModuleTransition } from '@/components/ui/module-transition';
 
 const UserCommentsPageComponent: React.FC = () => {
     const username = typeof window !== 'undefined'
@@ -29,15 +30,15 @@ const UserCommentsPageComponent: React.FC = () => {
 
     if (commentsLoading && !commentsData) {
         return (
-            <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
+            <ModuleTransition stateKey="loading"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
                 <UserCommentsPageSkeleton />
-            </main>
+            </main></ModuleTransition>
         );
     }
     
     if (commentsError || (!commentsData && !commentsLoading)) {
         return (
-            <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
+            <ModuleTransition stateKey="error"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
                  <div className="flex flex-col gap-12 mt-12">
                     <UserCommentsPageHeader username={username} /> 
                     <NotFound
@@ -45,12 +46,12 @@ const UserCommentsPageComponent: React.FC = () => {
                         description={commentsError || 'Користувач ще не залишив жодного коментаря.'}
                     />
                 </div>
-            </main>
+            </main></ModuleTransition>
         );
     }
 
     return (
-        <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
+        <ModuleTransition stateKey="content"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
             <div className="flex flex-col gap-12">
                 <div id="comments-header">
                     <UserCommentsPageHeader 
@@ -77,7 +78,7 @@ const UserCommentsPageComponent: React.FC = () => {
                     </div>
                 )}
             </div>
-        </main>
+        </main></ModuleTransition>
     );
 };
 

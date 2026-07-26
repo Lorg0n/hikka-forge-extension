@@ -8,6 +8,7 @@ import { RecommendationsPageSkeleton } from './RecommendationsPageSkeleton';
 import { Pagination } from '@/components/ui/pagination';
 import { Button } from '@/components/ui/button';
 import { HIKKA_BASE } from '@/constants';
+import { ModuleTransition } from '@/components/ui/module-transition';
 
 const RecommendationsPageComponent: React.FC = () => {
     const { isAuthenticated, isLoading: authLoading, user } = useAuth();
@@ -31,7 +32,7 @@ const RecommendationsPageComponent: React.FC = () => {
     // Not authenticated — prompt login
     if (!authLoading && !isAuthenticated) {
         return (
-            <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
+            <ModuleTransition stateKey="unauthenticated"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
                 <div className="flex flex-col gap-12">
                     <RecommendationsPageHeader />
                     <NotFound
@@ -50,21 +51,21 @@ const RecommendationsPageComponent: React.FC = () => {
                         </Button>
                     </NotFound>
                 </div>
-            </main>
+            </main></ModuleTransition>
         );
     }
 
     if (isLoading && !data) {
         return (
-            <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
+            <ModuleTransition stateKey="loading"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
                 <RecommendationsPageSkeleton />
-            </main>
+            </main></ModuleTransition>
         );
     }
 
     if (error || (!data && !isLoading)) {
         return (
-            <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
+            <ModuleTransition stateKey="error"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
                 <div className="flex flex-col gap-12">
                     <RecommendationsPageHeader
                         avatarUrl={user?.avatar}
@@ -82,12 +83,12 @@ const RecommendationsPageComponent: React.FC = () => {
                         </Button>
                     </NotFound>
                 </div>
-            </main>
+            </main></ModuleTransition>
         );
     }
 
     return (
-        <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
+        <ModuleTransition stateKey="content"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
             <div className="flex flex-col gap-12">
                 <RecommendationsPageHeader
                     avatarUrl={user?.avatar}
@@ -112,7 +113,7 @@ const RecommendationsPageComponent: React.FC = () => {
                     </div>
                 )}
             </div>
-        </main>
+        </main></ModuleTransition>
     );
 };
 

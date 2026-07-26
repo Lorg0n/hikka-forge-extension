@@ -2,6 +2,7 @@ import * as React from "react"
 import * as TooltipPrimitive from "@radix-ui/react-tooltip"
 
 import { cn } from "@/lib/utils"
+import { useContentUI } from "@/contexts/ContentUIContext"
 
 function TooltipProvider({
   delayDuration = 0,
@@ -35,16 +36,21 @@ function TooltipTrigger({
 function TooltipContent({
   className,
   sideOffset = 2,
+  container,
   children,
   ...props
-}: React.ComponentProps<typeof TooltipPrimitive.Content>) {
+}: React.ComponentProps<typeof TooltipPrimitive.Content> & {
+  container?: HTMLElement | null
+}) {
+  const contentUI = useContentUI()
+
   return (
-    <TooltipPrimitive.Portal>
+    <TooltipPrimitive.Portal container={container ?? contentUI?.portalContainer}>
       <TooltipPrimitive.Content
         data-slot="tooltip-content"
         sideOffset={sideOffset}
         className={cn(
-          "bg-black text-foreground border border-border",
+          "bg-popover text-popover-foreground border border-border shadow-md",
           "animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
           "z-50 rounded-lg p-2",
           "text-xs leading-normal",

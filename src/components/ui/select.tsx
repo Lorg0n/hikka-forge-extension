@@ -3,6 +3,7 @@ import * as SelectPrimitive from "@radix-ui/react-select"
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { useContentUI } from "@/contexts/ContentUIContext"
 
 function Select({
   ...props
@@ -56,10 +57,15 @@ function SelectContent({
   className,
   children,
   position = "popper",
+  container,
   ...props
-}: React.ComponentProps<typeof SelectPrimitive.Content>) {
+}: React.ComponentProps<typeof SelectPrimitive.Content> & {
+  container?: HTMLElement | null
+}) {
+  const contentUI = useContentUI()
+
   return (
-    <SelectPrimitive.Portal>
+    <SelectPrimitive.Portal container={container ?? contentUI?.portalContainer}>
       <SelectPrimitive.Content
         data-slot="select-content"
         className={cn(

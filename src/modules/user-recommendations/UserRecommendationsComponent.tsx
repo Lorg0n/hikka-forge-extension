@@ -6,6 +6,7 @@ import NotFound from '@/components/ui/not-found';
 import { ConnectedRecommendationCard } from '@/components/ui/anime/connected-recommendation-card';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { RecommendationContentType } from '@/types';
+import { ModuleListTransition, ModuleTransition } from '@/components/ui/module-transition';
 
 const CONTENT_TYPE_OPTIONS: { value: RecommendationContentType; label: string }[] = [
     { value: 'anime', label: 'Аніме' },
@@ -41,7 +42,8 @@ const UserRecommendationsComponent: React.FC = () => {
     }
 
     return (
-        <div className="border-border relative flex-col gap-4 rounded-lg border p-4 isolate will-change-transform bg-secondary/20 items-center backdrop-blur-xl">
+        <ModuleTransition stateKey={isLoading ? "loading" : error ? "error" : list.length ? "content" : "empty"}>
+        <div className="border-border relative flex-col gap-4 rounded-lg border bg-card p-4 isolate will-change-transform items-center backdrop-blur-xl">
             <section className="flex flex-col gap-2">
                 <Header href="#recommendations">
                     <HeaderContainer>
@@ -84,7 +86,7 @@ const UserRecommendationsComponent: React.FC = () => {
                 )}
 
                 {!isLoading && list.length > 0 && (
-                    <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 -mb-2 snap-x">
+                    <ModuleListTransition className="flex gap-4 overflow-x-auto no-scrollbar pb-2 -mb-2 snap-x">
                         {list.map((item) => (
                             <div key={item.slug} className="w-[120px] shrink-0 snap-start flex">
                                 <ConnectedRecommendationCard
@@ -94,7 +96,7 @@ const UserRecommendationsComponent: React.FC = () => {
                                 />
                             </div>
                         ))}
-                    </div>
+                    </ModuleListTransition>
                 )}
 
                 {!isLoading && (error || list.length === 0) && (
@@ -105,6 +107,7 @@ const UserRecommendationsComponent: React.FC = () => {
                 )}
             </section>
         </div>
+        </ModuleTransition>
     );
 };
 

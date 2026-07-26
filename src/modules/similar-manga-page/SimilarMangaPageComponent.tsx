@@ -6,6 +6,7 @@ import { SimilarMangaPageHeader } from './SimilarMangaPageHeader';
 import { SimilarMangaPageGrid } from './SimilarMangaPageGrid';
 import { SimilarMangaPageSkeleton } from './SimilarMangaPageSkeleton';
 import { Pagination } from '@/components/ui/pagination';
+import { ModuleTransition } from '@/components/ui/module-transition';
 
 const SimilarMangaPageComponent: React.FC = () => {
     const slug = typeof window !== 'undefined'
@@ -30,27 +31,27 @@ const SimilarMangaPageComponent: React.FC = () => {
 
     if (isLoading && !similarData) {
         return (
-            <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
+            <ModuleTransition stateKey="loading"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
                 <SimilarMangaPageSkeleton />
-            </main>
+            </main></ModuleTransition>
         );
     }
 
     if ((similarError || !mangaDetails || !similarData) && !isLoading) {
          return (
-             <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
+             <ModuleTransition stateKey="error"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
                  <div className="flex flex-col gap-12 mt-12">
                     <NotFound
                         title="Не вдалося завантажити схожу манґу"
                         description={similarError || 'Спробуйте оновити сторінку'}
                     />
                 </div>
-            </main>
+            </main></ModuleTransition>
         );
     }
 
     return (
-        <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
+        <ModuleTransition stateKey="content"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
             <div className="flex flex-col gap-12">
                 <SimilarMangaPageHeader 
                     details={mangaDetails!} 
@@ -71,7 +72,7 @@ const SimilarMangaPageComponent: React.FC = () => {
                     </div>
                 )}
             </div>
-        </main>
+        </main></ModuleTransition>
     );
 };
 

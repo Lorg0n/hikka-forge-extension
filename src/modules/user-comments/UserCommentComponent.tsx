@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import NotFound from '@/components/ui/not-found';
 import UserCommentCard from '@/components/ui/user/user-comment-card';
 import { UserCommentHeader } from './UserCommentHeader';
+import { ModuleListTransition, ModuleTransition } from '@/components/ui/module-transition';
 
 const UserCommentComponent: React.FC = () => {
   const username = typeof window !== 'undefined' ? window.location.pathname.split('/u/')[1] : '';
@@ -18,13 +19,14 @@ const UserCommentComponent: React.FC = () => {
 
   if (loading) {
     return (
+      <ModuleTransition stateKey="loading">
       <div className="order-5 lg:order-0">
         <div className="flex flex-col gap-8">
           <UserCommentHeader />
 
           <div className="flex flex-col md:flex-row w-full gap-4">
             {Array.from({ length: 3 }).map((_, index) => (
-              <Card key={index} className="flex flex-col w-full md:w-1/3 bg-background-secondary p-4 isolate gap-6 overflow-hidden rounded-lg">
+              <Card key={index} className="flex flex-col w-full md:w-1/3 bg-card p-4 isolate gap-6 overflow-hidden rounded-lg">
                 <div className="flex flex-col gap-2 w-full">
                   <div className="w-full h-3 animate-pulse bg-secondary/20 rounded-lg"></div>
                   <div className="w-5/6 h-3 animate-pulse bg-secondary/20 rounded-lg"></div>
@@ -36,11 +38,13 @@ const UserCommentComponent: React.FC = () => {
           </div>
         </div>
       </div>
+      </ModuleTransition>
     );
   }
 
   if (error || comments.length === 0) {
     return (
+      <ModuleTransition stateKey={error ? "error" : "empty"}>
       <div className="order-5 lg:order-0">
         <div className="flex flex-col gap-8">
           <h3 className="font-display text-lg font-bold">Коментарі</h3>
@@ -50,21 +54,24 @@ const UserCommentComponent: React.FC = () => {
           />
         </div>
       </div>
+      </ModuleTransition>
     );
   }
 
   return (
+    <ModuleTransition stateKey="content">
     <div className="order-5 lg:order-0">
       <div className="flex flex-col gap-8">
         <UserCommentHeader />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+        <ModuleListTransition className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
           {comments.map((comment) => (
             <UserCommentCard key={`${comment.contentSlug}-${comment.createdAt}`} comment={comment} />
           ))}
-        </div>
+        </ModuleListTransition>
       </div>
     </div>
+    </ModuleTransition>
   );
 };
 

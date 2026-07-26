@@ -23,7 +23,7 @@ export const UserCommentsPageSkeleton: React.FC = () => {
 
                 <div className="flex flex-col gap-4">
                     {Array.from({ length: 3 }).map((_, i) => (
-                        <Card key={i} className="flex flex-col w-full md:w-full bg-background-secondary p-4 isolate gap-6 overflow-hidden rounded-lg">
+                        <Card key={i} className="flex flex-col w-full md:w-full bg-card p-4 isolate gap-6 overflow-hidden rounded-lg">
                             <div className="flex flex-col gap-2 w-full">
                                 <div className="w-full h-3 animate-pulse bg-secondary/20 rounded-lg"></div>
                                 <div className="w-5/6 h-3 animate-pulse bg-secondary/20 rounded-lg"></div>

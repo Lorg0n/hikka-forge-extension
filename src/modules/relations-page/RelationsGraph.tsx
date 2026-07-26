@@ -1,9 +1,6 @@
-import React, { useLayoutEffect, useMemo, useRef } from 'react';
-import { createRoot, Root } from 'react-dom/client';
+import React, { useMemo } from 'react';
 import { GraphEdge, GraphNode } from '@/types';
 import { cn } from '@/lib/utils';
-// @ts-ignore - Vite ?inline import
-import shadowStyles from '@/index.css?inline';
 import { RelationsGraphContent } from './RelationsGraphContent';
 
 interface RelationsGraphProps {
@@ -41,79 +38,12 @@ const relationTypeLabels: Record<string, string> = {
     ADAPTATION: 'Адаптація',
 };
 
-const THEME_VARS = [
-    '--foreground',
-    '--muted-foreground',
-    '--primary',
-    '--primary-foreground',
-    '--background',
-    '--border',
-    '--secondary',
-    '--secondary-foreground',
-    '--card',
-    '--card-foreground',
-    '--muted',
-];
-
 export const RelationsGraph: React.FC<RelationsGraphProps> = ({
     nodes,
     edges,
     currentNodeId,
     className,
 }) => {
-    const hostRef = useRef<HTMLDivElement>(null);
-
-    useLayoutEffect(() => {
-        const host = hostRef.current;
-        if (!host || nodes.length === 0) return;
-
-        const shadow = host.shadowRoot ?? host.attachShadow({ mode: 'open' });
-        while (shadow.firstChild) {
-            shadow.removeChild(shadow.firstChild);
-        }
-
-        const styleEl = document.createElement('style');
-        styleEl.textContent = shadowStyles;
-        shadow.appendChild(styleEl);
-
-        const applyTheme = () => {
-            const pageStyle = getComputedStyle(document.documentElement);
-            THEME_VARS.forEach(v => {
-                const value = pageStyle.getPropertyValue(v).trim();
-                if (value) {
-                    host.style.setProperty(v, value);
-                }
-            });
-        };
-        applyTheme();
-        const themeObserver = new MutationObserver(applyTheme);
-        themeObserver.observe(document.documentElement, {
-            attributes: true,
-            attributeFilter: ['class', 'style'],
-        });
-
-        const mount = document.createElement('div');
-        mount.style.width = '100%';
-        mount.style.height = '100%';
-        mount.style.position = 'relative';
-        shadow.appendChild(mount);
-
-        const root: Root = createRoot(mount);
-        root.render(
-            <RelationsGraphContent
-                nodes={nodes}
-                edges={edges}
-                currentNodeId={currentNodeId}
-            />
-        );
-
-        return () => {
-            root.unmount();
-            themeObserver.disconnect();
-            THEME_VARS.forEach(v => host.style.removeProperty(v));
-        };
-    }, [nodes, edges, currentNodeId]);
-
     const relationTypes = useMemo(
         () => Array.from(new Set(edges.map(e => e.relationType))),
         [edges]
@@ -164,10 +94,15 @@ export const RelationsGraph: React.FC<RelationsGraphProps> = ({
                 </div>
             )}
             <div
-                ref={hostRef}
                 style={{ height: 700 }}
                 className="relative w-full rounded-xl bg-secondary/5 border border-border/30 overflow-hidden shadow-2xl shadow-black/5"
-            />
+            >
+                <RelationsGraphContent
+                    nodes={nodes}
+                    edges={edges}
+                    currentNodeId={currentNodeId}
+                />
+            </div>
         </div>
     );
 };

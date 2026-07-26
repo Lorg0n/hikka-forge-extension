@@ -16,7 +16,7 @@ const animeSimilarModule: ForgeModuleDef = {
   component: SimilarAnimeComponent,
   icon: {
     name: 'lucide:tv-minimal-play',
-    color: '#47ff56',
+    color: '#4ade80',
   },
 };
 

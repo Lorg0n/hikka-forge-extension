@@ -15,8 +15,8 @@ const userCommentModule: ForgeModuleDef = {
   },
   component: UserCommentComponent,
   icon: {
-		name: 'mingcute:comment-fill',
-		color: '#b649e9'
+		name: 'lucide:message-square',
+		color: '#c084fc'
 	},
 };
 

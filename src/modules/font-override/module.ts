@@ -23,7 +23,7 @@ const fontOverrideModule: ForgeModuleDef = {
   category: 'appearance',
   icon: {
     name: 'lucide:a-large-small',
-    color: '#5947ff',
+    color: '#818cf8',
   },
   settings: [
     {

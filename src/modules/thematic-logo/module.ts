@@ -69,8 +69,8 @@ const ThematicLogoModule: ForgeModuleDef = {
 	category: "appearance",
 
 	icon: {
-		name: 'mdi:theme',
-		color: '#e69823'
+		name: 'lucide:palette',
+		color: '#fb923c'
 	},
 
 	styles: () => {

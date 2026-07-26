@@ -15,8 +15,8 @@ const userRecommendationsModule: ForgeModuleDef = {
     },
     component: UserRecommendationsComponent,
     icon: {
-		name: 'si:ai-fill',
-		color: '#2bb0c7'
+		name: 'lucide:sparkles',
+		color: '#22d3ee'
 	},
 };
 

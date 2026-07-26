@@ -17,8 +17,8 @@ const contentRelationsModule: ForgeModuleDef = {
     },
     component: ContentRelationsButton,
     icon: {
-        name: 'material-symbols:account-tree-outline',
-        color: '#8b5cf6',
+        name: 'lucide:workflow',
+        color: '#a78bfa',
     },
 };
 

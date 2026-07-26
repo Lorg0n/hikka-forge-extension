@@ -16,7 +16,7 @@ const mangaSimilarModule: ForgeModuleDef = {
   component: SimilarMangaComponent,
   icon: {
     name: 'lucide:book-open',
-    color: '#47ff56',
+    color: '#4ade80',
   },
 };
 

@@ -1,4 +1,5 @@
 import { logger } from "@/utils/logger";
+import browser from "@/utils/browser";
 import React, { useState, useEffect, ReactNode, createContext, useContext } from 'react';
 import { AuthService, UserProfile } from '@/services/authService';
 
@@ -36,17 +37,17 @@ export const ModuleAuthProvider: React.FC<ModuleAuthProviderProps> = ({ children
         loadUser();
 
         // Listen for auth changes from storage
-        const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
+        const handleStorageChange = (changes: { [key: string]: Browser.Storage.StorageChange }) => {
             if (changes.hikka_forge_auth_token) {
                 logger.log('[Hikka Forge] Auth token changed, reloading user');
                 loadUser();
             }
         };
 
-        chrome.storage.onChanged.addListener(handleStorageChange);
+        browser.storage.onChanged.addListener(handleStorageChange);
 
         return () => {
-            chrome.storage.onChanged.removeListener(handleStorageChange);
+            browser.storage.onChanged.removeListener(handleStorageChange);
         };
     }, []);
 

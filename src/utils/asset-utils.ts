@@ -3,9 +3,10 @@ export function getAssetUrl(assetPath: string): string {
     return assetPath;
   }
   const normalizedPath = assetPath.replace(/^(\.\/|\/)/, '');
-  return chrome.runtime.getURL(normalizedPath);
+  return browser.runtime.getURL(normalizedPath);
 }
 
 export function useAssetUrl(assetPath: string): string {
   return getAssetUrl(assetPath);
 }
+import browser from "@/utils/browser";

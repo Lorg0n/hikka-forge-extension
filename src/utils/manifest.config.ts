@@ -56,6 +56,7 @@ export const generateManifest = (browser: string) => {
             ...base,
             background: {
                 scripts: ["src/background.js"],
+                type: "module",
             },
             browser_specific_settings: {
                 gecko: {
@@ -71,6 +72,7 @@ export const generateManifest = (browser: string) => {
         ...base,
         background: {
             service_worker: "src/background.js",
+            type: "module",
         },
     };
 };

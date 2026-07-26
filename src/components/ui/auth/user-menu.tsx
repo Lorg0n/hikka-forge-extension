@@ -1,4 +1,5 @@
 import React from 'react';
+import browser from '@/utils/browser';
 import { useAuth } from '@/contexts/AuthContext';
 import {
     Popover,
@@ -17,7 +18,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onLoginClick }) => {
     const { user, isLoading, isAuthenticated, logout } = useAuth();
 
     const handleLoginClick = async () => {
-		chrome.tabs.create({ url: `${HIKKA_BASE}/oauth?reference=8dca46ce-c233-4b5f-b895-8684c82c0f1d&scope=read:watchlist,read:readlist,read:user-details` });
+		browser.tabs.create({ url: `${HIKKA_BASE}/oauth?reference=8dca46ce-c233-4b5f-b895-8684c82c0f1d&scope=read:watchlist,read:readlist,read:user-details` });
     };
 
     if (isLoading) {

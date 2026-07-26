@@ -1,4 +1,5 @@
 import { logger } from "@/utils/logger";
+import browser from "@/utils/browser";
 import React from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { createRoot, Root } from "react-dom/client";
@@ -348,7 +349,7 @@ class ModuleManager {
 	}
 
 	private registerWithBackground(): void {
-		chrome.runtime
+		browser.runtime
 			.sendMessage({
 				type: "REGISTER_CONTENT_SCRIPT",
 				modules: this.getModulesInfo(),
@@ -764,7 +765,7 @@ class ModuleManager {
 	}
 
 	private initMessageListener(): void {
-		chrome.runtime.onMessage.addListener(
+		browser.runtime.onMessage.addListener(
 			(message: ContentMessage, _sender, sendResponse) => {
 				try {
 					switch (message.type) {

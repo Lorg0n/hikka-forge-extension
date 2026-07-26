@@ -1,4 +1,5 @@
 import { logger } from "@/utils/logger";
+import browser from "@/utils/browser";
 import { API_BACKEND_BASE } from '@/constants';
 import { AuthCallbackResponse } from '@/types';
 
@@ -18,16 +19,16 @@ const AUTH_TOKEN_KEY = 'hikka_forge_auth_token';
 
 export class AuthService {
     static async setToken(token: string): Promise<void> {
-        await chrome.storage.local.set({ [AUTH_TOKEN_KEY]: token });
+        await browser.storage.local.set({ [AUTH_TOKEN_KEY]: token });
     }
 
     static async getToken(): Promise<string | null> {
-        const result = await chrome.storage.local.get(AUTH_TOKEN_KEY);
+        const result = await browser.storage.local.get(AUTH_TOKEN_KEY);
         return result[AUTH_TOKEN_KEY] || null;
     }
 
     static async removeToken(): Promise<void> {
-        await chrome.storage.local.remove(AUTH_TOKEN_KEY);
+        await browser.storage.local.remove(AUTH_TOKEN_KEY);
     }
 
     static async getCurrentUser(): Promise<UserProfile | null> {

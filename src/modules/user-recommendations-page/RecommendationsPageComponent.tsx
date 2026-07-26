@@ -42,7 +42,7 @@ const RecommendationsPageComponent: React.FC = () => {
                         <Button
                             variant="default"
                             onClick={() =>
-                                chrome.tabs.create({
+                                browser.tabs.create({
                                     url: `${HIKKA_BASE}/oauth?reference=8dca46ce-c233-4b5f-b895-8684c82c0f1d&scope=read:watchlist,read:readlist,read:user-details`,
                                 })
                             }
@@ -118,3 +118,4 @@ const RecommendationsPageComponent: React.FC = () => {
 };
 
 export default RecommendationsPageComponent;
+import browser from '@/utils/browser';

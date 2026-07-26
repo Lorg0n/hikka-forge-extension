@@ -3,16 +3,17 @@ import type {
 	ModuleInfo,
 	ContentMessage,
 } from "./types/module";
+import browser from "./utils/browser";
 
 type LogMethod = "debug" | "info" | "log" | "warn" | "error" | "trace";
 type Logger = Record<LogMethod, (...args: unknown[]) => void>;
 
 function createBackgroundLogger(): Logger {
 	let enabled = false;
-	void chrome.storage.sync.get("debug_logging_enabled").then((result) => {
+	void browser.storage.sync.get("debug_logging_enabled").then((result) => {
 		enabled = result.debug_logging_enabled === true;
 	});
-	chrome.storage.onChanged.addListener((changes, areaName) => {
+	browser.storage.onChanged.addListener((changes, areaName) => {
 		if (areaName === "sync" && changes.debug_logging_enabled) {
 			enabled = changes.debug_logging_enabled.newValue === true;
 		}
@@ -48,7 +49,7 @@ class BackgroundManager {
 	}
 
 	private initTabsListeners(): void {
-		chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+		browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 			if (
 				changeInfo.status === "complete" &&
 				tab.url?.startsWith("https://dev.hikka.io/")
@@ -58,13 +59,13 @@ class BackgroundManager {
 		}
 		);
 
-		chrome.tabs.onRemoved.addListener((tabId) => {
+		browser.tabs.onRemoved.addListener((tabId) => {
 			this.tabStates.delete(tabId);
 		});
 	}
 
 	private initInstallAndUpdateListeners(): void {
-		chrome.runtime.onInstalled.addListener((details) => {
+		browser.runtime.onInstalled.addListener((details) => {
 			if (details.reason === "install") {
 				logger.log("[Hikka Forge] Extension installed. Default states will be applied on first use.");
 			} else if (details.reason === "update") {
@@ -74,7 +75,7 @@ class BackgroundManager {
 	}
 
 	private initMessageListener(): void {
-		chrome.runtime.onMessage.addListener(
+		browser.runtime.onMessage.addListener(
 			(message: BackgroundMessage | any, sender, sendResponse) => {
 				let isAsync = false;
 
@@ -164,7 +165,7 @@ class BackgroundManager {
 		const storageKey = `module_enabled_${moduleId}`;
 		logger.log(`[Hikka Forge] Setting ${storageKey} to ${enabled}`);
 		try {
-			await chrome.storage.sync.set({ [storageKey]: enabled });
+			await browser.storage.sync.set({ [storageKey]: enabled });
 			await this.syncAllTabs();
 		} catch (error) {
 			logger.error(
@@ -196,7 +197,7 @@ class BackgroundManager {
 		const storageKey = `module_setting_${moduleId}_${settingId}`;
 		logger.log(`[Hikka Forge] Setting ${storageKey} to:`, value);
 		try {
-			await chrome.storage.sync.set({ [storageKey]: value });
+			await browser.storage.sync.set({ [storageKey]: value });
 			await this.syncAllTabs();
 		} catch (error) {
 			logger.error(
@@ -259,7 +260,7 @@ class BackgroundManager {
 		}
 
 		try {
-			const allStoredData = await chrome.storage.sync.get(null);
+			const allStoredData = await browser.storage.sync.get(null);
 			const moduleSettings: Record<string, Record<string, any>> = {};
 
 			const updatedModules = definitions.map((def) => {
@@ -293,7 +294,7 @@ class BackgroundManager {
 	}
 
 	private async fetchModuleDefinitionsFromContentScript(): Promise<ModuleInfo[]> {
-		const tabs = await chrome.tabs.query({
+		const tabs = await browser.tabs.query({
 			url: "https://dev.hikka.io/*",
 			status: "complete",
 		});
@@ -311,7 +312,7 @@ class BackgroundManager {
 					logger.log(
 						`[Hikka Forge] Requesting module info from tab ${tab.id}`
 					);
-					const response = await chrome.tabs.sendMessage(tab.id, {
+					const response = await browser.tabs.sendMessage(tab.id, {
 						type: "GET_CONTENT_MODULES_INFO",
 					} as ContentMessage);
 
@@ -371,7 +372,7 @@ class BackgroundManager {
 	private async syncAllTabs(): Promise<void> {
 		logger.log("[Hikka Forge] Syncing states with all Hikka tabs...");
 		try {
-		const tabs = await chrome.tabs.query({ url: "https://dev.hikka.io/*" });
+		const tabs = await browser.tabs.query({ url: "https://dev.hikka.io/*" });
 			const syncPromises = tabs
 				.filter((tab) => tab.id !== undefined)
 				.map((tab) => this.sendSyncMessageToTab(tab.id!));
@@ -402,7 +403,7 @@ class BackgroundManager {
 				enabledStates,
 				flatModuleSettings
 			);
-			await chrome.tabs.sendMessage(tabId, {
+			await browser.tabs.sendMessage(tabId, {
 				type: "SYNC_MODULES",
 				enabledStates: enabledStates,
 				moduleSettings: flatModuleSettings,
@@ -426,11 +427,11 @@ class BackgroundManager {
 	private async refreshContentInAllTabs(): Promise<void> {
 		logger.log("[Hikka Forge] Sending REFRESH action to all Hikka tabs...");
 		try {
-			const tabs = await chrome.tabs.query({ url: "https://dev.hikka.io/*" });
+			const tabs = await browser.tabs.query({ url: "https://dev.hikka.io/*" });
 			const refreshPromises = tabs
 				.filter((tab) => tab.id !== undefined)
 				.map((tab) =>
-					chrome.tabs
+					browser.tabs
 						.sendMessage(tab.id!, {
 							type: "MODULE_ACTION",
 							action: "REFRESH",

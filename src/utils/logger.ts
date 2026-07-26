@@ -4,8 +4,8 @@ type LogMethod = "debug" | "info" | "log" | "warn" | "error" | "trace";
 
 let enabled = false;
 
-function getStorageArea(): chrome.storage.StorageArea | undefined {
-	return globalThis.chrome?.storage?.sync;
+function getStorageArea(): Browser.Storage.StorageArea | undefined {
+	return browser.storage?.sync;
 }
 
 async function loadEnabledState(): Promise<void> {
@@ -20,7 +20,7 @@ async function loadEnabledState(): Promise<void> {
 
 void loadEnabledState();
 
-globalThis.chrome?.storage?.onChanged.addListener((changes, areaName) => {
+browser.storage?.onChanged.addListener((changes, areaName) => {
 	if (areaName === "sync" && changes[LOGGING_STORAGE_KEY]) {
 		enabled = changes[LOGGING_STORAGE_KEY].newValue === true;
 	}
@@ -56,3 +56,4 @@ export async function setConsoleLoggingEnabled(value: boolean): Promise<void> {
 		await storage.set({ [LOGGING_STORAGE_KEY]: value });
 	}
 }
+import browser from "@/utils/browser";

@@ -106,7 +106,7 @@ export const HeaderNavButton: FC = () => {
                 size="icon-sm"
                 variant="outline"
                 asChild
-                className="border-border bg-background text-foreground shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50"
+                className="text-muted-foreground"
             >
                 <a href={href} className="flex items-center gap-2 text-muted-foreground" {...linkProps}>
                     {IconArrow}
@@ -119,7 +119,7 @@ export const HeaderNavButton: FC = () => {
         <Button
             onClick={onClick}
             size="icon-sm"
-            className="flex items-center gap-2 border-border bg-background text-muted-foreground shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50"
+            className="text-muted-foreground"
             variant="outline"
         >
             {IconArrow}

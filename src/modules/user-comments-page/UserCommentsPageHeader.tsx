@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from '@/components/typography/link';
+import { IconLinkButton } from '@/components/ui/icon-link-button';
 
 interface UserCommentsPageHeaderProps {
     username: string;
@@ -39,12 +40,12 @@ export const UserCommentsPageHeader: React.FC<UserCommentsPageHeaderProps> = ({ 
                     </div>
                 </div>
 
-                <Link 
+                <IconLinkButton
                     href={`/u/${username}`}
-                    className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                >
-                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16.15 13H5q-.425 0-.712-.288T4 12t.288-.712T5 11h11.15L13.3 8.15q-.3-.3-.288-.7t.288-.7q.3-.3.713-.312t.712.287L19.3 11.3q.15.15.213.325t.062.375t-.062.375t-.213.325l-4.575 4.575q-.3.3-.712.288t-.713-.313q-.275-.3-.288-.7t.288-.7z" /></svg>
-                </Link>
+                    icon="material-symbols:arrow-right-alt-rounded"
+                    label="Відкрити профіль користувача"
+                    newTab
+                />
             </div>
         </div>
     );

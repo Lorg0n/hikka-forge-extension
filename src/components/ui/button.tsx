@@ -5,7 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  'inline-flex gap-2 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
   {
     variants: {
       variant: {
@@ -19,16 +19,17 @@ const buttonVariants = cva(
         warning:
           'bg-warning text-warning-foreground border border-warning-border hover:bg-warning-border',
         outline:
-          'bg-secondary/20 text-foreground border border-border hover:bg-secondary hover:text-secondary-foreground',
+          'border border-border bg-background text-foreground shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50',
         secondary:
           'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        ghost: 'hover:bg-secondary/60 hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0',
+        ghost: 'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50',
         link: 'text-primary-foreground underline-offset-4 hover:underline',
       },
       size: {
         default: 'h-12 px-4 py-2',
+        xs: 'h-6 px-2 py-1 text-xs',
         sm: 'h-8 px-2 py-1',
-        md: 'h-10 rounded-md px-3',
+        md: 'h-10 rounded-md px-3 py-2',
         lg: 'h-13 rounded-md px-8',
         badge: 'px-3.5 py-1 text-xs rounded-full',
         icon: 'h-12 w-12',
@@ -44,25 +45,25 @@ const buttonVariants = cva(
   },
 );
 
-function Button({
-  className,
-  variant,
-  size,
-  asChild = false,
-  ...props
-}: React.ComponentProps<"button"> &
-  VariantProps<typeof buttonVariants> & {
-    asChild?: boolean
-  }) {
+const Button = React.forwardRef<
+  HTMLButtonElement,
+  React.ComponentProps<"button"> &
+    VariantProps<typeof buttonVariants> & {
+      asChild?: boolean
+    }
+>(({ className, variant, size, asChild = false, ...props }, ref) => {
   const Comp = asChild ? Slot : "button"
 
   return (
     <Comp
+      ref={ref}
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />
   )
-}
+})
+
+Button.displayName = 'Button'
 
 export { Button, buttonVariants }

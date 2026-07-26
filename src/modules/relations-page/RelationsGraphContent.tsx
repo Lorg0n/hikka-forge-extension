@@ -679,28 +679,32 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({
                         className="pl-9 h-9 w-48 bg-secondary/90 border-border/50"
                     />
                     {searchQuery && (
-                        <button
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
                             onClick={() => setSearchQuery('')}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground"
+                            aria-label="Очистити пошук"
                         >
                             <Icon icon="material-symbols:close" className="w-4 h-4" />
-                        </button>
+                        </Button>
                     )}
                 </div>
             </div>
 
             <div className="absolute top-3 right-3 flex flex-col gap-1 z-20">
-                <Button size="icon-sm" variant="secondary" onClick={handleZoomIn} title="Збільшити" className="bg-secondary/90 border-border/50 shadow-lg">
+                <Button size="icon-sm" variant="outline" onClick={handleZoomIn} title="Збільшити" className="bg-background/90 text-muted-foreground shadow-lg">
                     <Icon icon="material-symbols:add" />
                 </Button>
-                <Button size="icon-sm" variant="secondary" onClick={handleZoomOut} title="Зменшити" className="bg-secondary/90 border-border/50 shadow-lg">
+                <Button size="icon-sm" variant="outline" onClick={handleZoomOut} title="Зменшити" className="bg-background/90 text-muted-foreground shadow-lg">
                     <Icon icon="material-symbols:remove" />
                 </Button>
-                <Button size="icon-sm" variant="secondary" onClick={handleFit} title="Вмістити" className="bg-secondary/90 border-border/50 shadow-lg">
+                <Button size="icon-sm" variant="outline" onClick={handleFit} title="Вмістити" className="bg-background/90 text-muted-foreground shadow-lg">
                     <Icon icon="material-symbols:fit-screen" />
                 </Button>
                 {selectedNode && (
-                    <Button size="icon-sm" variant="secondary" onClick={() => setSelectedNode(null)} title="Скинути" className="bg-secondary/90 border-border/50 shadow-lg">
+                    <Button size="icon-sm" variant="outline" onClick={() => setSelectedNode(null)} title="Скинути" className="bg-background/90 text-muted-foreground shadow-lg">
                         <Icon icon="material-symbols:close" />
                     </Button>
                 )}

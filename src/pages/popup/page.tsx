@@ -338,8 +338,9 @@ function App() {
 
 				<div className="flex items-center gap-2">
 					<Button
-						variant="ghost"
+						variant="outline"
 						size="icon-sm"
+						className="text-muted-foreground"
 						onClick={handleRefresh}
 						title="Оновити активні модулі"
 					>

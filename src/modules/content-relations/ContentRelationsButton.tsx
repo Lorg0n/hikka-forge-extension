@@ -21,7 +21,8 @@ const ContentRelationsButton: React.FC = () => {
     return (
         <Button
             size="icon-sm"
-            variant="ghost"
+            variant="outline"
+            className="text-muted-foreground"
             asChild
             title="Відкрити сторінку пов'язаного"
         >

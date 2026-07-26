@@ -35,6 +35,7 @@ const SEMANTIC_THEME_VARS = [
 	"--popover-foreground",
 	"--primary",
 	"--primary-foreground",
+	"--primary-border",
 	"--secondary",
 	"--secondary-foreground",
 	"--muted",
@@ -45,6 +46,14 @@ const SEMANTIC_THEME_VARS = [
 	"--border",
 	"--input",
 	"--ring",
+	"--shadow-card",
+	"--surface",
+	"--surface-inset",
+	"--surface-inset-border",
+	"--surface-glass",
+	"--surface-glass-border",
+	"--tooltip",
+	"--tooltip-foreground",
 	"--success",
 	"--success-foreground",
 	"--success-border",
@@ -165,6 +174,7 @@ function synchronizeTheme(
 	portalContainer: HTMLElement
 ): () => void {
 	let copiedVariables = new Set<string>();
+	const themeTargets = [host, appRoot, portalContainer];
 
 	const applyTheme = () => {
 		const root = document.documentElement;
@@ -173,14 +183,22 @@ function synchronizeTheme(
 		const nextVariables = cssVariableNamesFromUserStyles();
 
 		for (const name of copiedVariables) {
-			if (!nextVariables.has(name)) host.style.removeProperty(name);
+			if (!nextVariables.has(name)) {
+				for (const target of themeTargets) target.style.removeProperty(name);
+			}
 		}
 		for (const name of nextVariables) {
 			const value =
 				computed.getPropertyValue(name).trim() ||
 				bodyComputed?.getPropertyValue(name).trim() ||
 				"";
-			if (value) host.style.setProperty(name, value);
+			if (value) {
+				// Shadow DOM prevents Hikka's custom properties from being selected
+				// directly. Apply its computed tokens to the render roots as inline
+				// values so the extension's fallback `.dark` theme cannot override
+				// the active site palette.
+				for (const target of themeTargets) target.style.setProperty(name, value);
+			}
 		}
 		copiedVariables = nextVariables;
 
@@ -228,7 +246,9 @@ function synchronizeTheme(
 	return () => {
 		themeObserver.disconnect();
 		userStylesLocator?.disconnect();
-		for (const name of copiedVariables) host.style.removeProperty(name);
+		for (const name of copiedVariables) {
+			for (const target of themeTargets) target.style.removeProperty(name);
+		}
 		host.classList.remove("dark");
 	};
 }

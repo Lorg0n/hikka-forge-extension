@@ -1,3 +1,4 @@
+import { logger } from "@/utils/logger";
 import { Children, isValidElement, useEffect, useRef, type PropsWithChildren, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
@@ -19,7 +20,7 @@ export function ModuleTransition({
 	const transitionKey = animateStateChanges ? stateKey : "module";
 
 	useEffect(() => {
-		console.log("[Hikka Forge][debug] ModuleTransition state", {
+		logger.log("[Hikka Forge][debug] ModuleTransition state", {
 			stateKey,
 			transitionKey,
 			animateStateChanges,
@@ -64,18 +65,18 @@ export function ModuleListTransition({
 	}, [childCount]);
 
 	useEffect(() => {
-		console.log("[Hikka Forge][debug] ModuleListTransition mounted", {
+		logger.log("[Hikka Forge][debug] ModuleListTransition mounted", {
 			childCount: childCountRef.current,
 		});
 		return () => {
-			console.log("[Hikka Forge][debug] ModuleListTransition unmounted", {
+			logger.log("[Hikka Forge][debug] ModuleListTransition unmounted", {
 				childCount: childCountRef.current,
 			});
 		};
 	}, []);
 
 	useEffect(() => {
-		console.log("[Hikka Forge][debug] ModuleListTransition child count", { childCount });
+		logger.log("[Hikka Forge][debug] ModuleListTransition child count", { childCount });
 	}, [childCount]);
 
 	return (

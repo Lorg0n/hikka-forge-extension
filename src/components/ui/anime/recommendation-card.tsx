@@ -1,3 +1,4 @@
+import { logger } from "@/utils/logger";
 import React, { useState } from 'react';
 import Link from '@/components/typography/link';
 import Image from '@/components/ui/image';
@@ -54,14 +55,14 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
                                 isLoading ? 'opacity-0' : 'opacity-100'
                             )}
                             onLoad={() => {
-                                console.log('[Hikka Forge][debug] recommendation image loaded', {
+                                logger.log('[Hikka Forge][debug] recommendation image loaded', {
                                     slug: anime.slug,
                                     imageUrl: anime.imageUrl,
                                 });
                                 setIsLoading(false);
                             }}
                             onError={() => {
-                                console.log('[Hikka Forge][debug] recommendation image failed', {
+                                logger.log('[Hikka Forge][debug] recommendation image failed', {
                                     slug: anime.slug,
                                     imageUrl: anime.imageUrl,
                                 });

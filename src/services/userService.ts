@@ -1,3 +1,4 @@
+import { logger } from "@/utils/logger";
 import { UserCommentsApiResponse, ApiErrorResponse, UserRecommendationsApiResponse, RecommendationContentType } from '@/types';
 import { API_BACKEND_BASE } from '@/constants';
 
@@ -38,7 +39,7 @@ export const fetchUserComments = async ({
                 errorMessage = errorData.error;
             }
         } catch (e) {
-            console.error("Failed to parse error response body:", e);
+            logger.error("Failed to parse error response body:", e);
         }
         throw new Error(errorMessage);
     }
@@ -88,7 +89,7 @@ export const fetchUserRecommendations = async ({
                 errorMessage = errorData.error;
             }
         } catch (e) {
-            console.error("Failed to parse error response:", e);
+            logger.error("Failed to parse error response:", e);
         }
         throw new Error(errorMessage);
     }

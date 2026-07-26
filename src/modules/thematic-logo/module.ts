@@ -1,3 +1,4 @@
+import { logger } from "@/utils/logger";
 import type { ForgeModuleDef } from "@/types/module";
 import { getAssetUrl } from "@/utils/asset-utils";
 
@@ -108,7 +109,7 @@ const ThematicLogoModule: ForgeModuleDef = {
 		}
 
 		if (foundEvent) {
-			console.log(
+			logger.log(
 				`[Hikka Forge] Activating thematic full logo for: ${foundEvent.name} (ID: ${foundEvent.id})`
 			);
 
@@ -126,7 +127,7 @@ const ThematicLogoModule: ForgeModuleDef = {
                 }
             `;
 		} else {
-			console.log(
+			logger.log(
 				"[Hikka Forge] No active thematic full logo. Using site defaults for .logo."
 			);
 		}

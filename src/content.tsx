@@ -1,3 +1,4 @@
+import { logger } from "@/utils/logger";
 import React from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { createRoot, Root } from "react-dom/client";
@@ -278,11 +279,11 @@ class ModuleManager {
 		this.initMessageListener();
 		this.registerWithBackground();
 		this.waitForInitialPageRender();
-		console.log("[Hikka Forge] Module Manager initialized");
+		logger.log("[Hikka Forge] Module Manager initialized");
 	}
 
 	private waitForInitialPageRender(): void {
-		console.log(`${DEBUG_PREFIX} waiting for Hikka hydration before mounting modules`);
+		logger.log(`${DEBUG_PREFIX} waiting for Hikka hydration before mounting modules`);
 
 		const beginSettling = () => {
 			if (this.initialReconciliationReady || this.initialReconciliationTimer) return;
@@ -311,7 +312,7 @@ class ModuleManager {
 				requestAnimationFrame(() => {
 					requestAnimationFrame(() => {
 						this.initialReconciliationReady = true;
-						console.log(`${DEBUG_PREFIX} initial hydration wait complete`);
+						logger.log(`${DEBUG_PREFIX} initial hydration wait complete`);
 						this.scheduleReconciliation();
 					});
 				});
@@ -353,7 +354,7 @@ class ModuleManager {
 				modules: this.getModulesInfo(),
 			})
 			.catch((error) =>
-				console.error("[Hikka Forge] Failed to register with background script:", error)
+				logger.error("[Hikka Forge] Failed to register with background script:", error)
 			);
 	}
 
@@ -402,7 +403,7 @@ class ModuleManager {
 			let pending = this.pendingUnmounts.get(moduleDef.id);
 			if (active && !active.host.isConnected) {
 				const disconnectedTarget = shouldBeMounted ? this.findTarget(moduleDef) : undefined;
-				console.log(`${DEBUG_PREFIX} active module host disconnected`, {
+				logger.log(`${DEBUG_PREFIX} active module host disconnected`, {
 					moduleId: moduleDef.id,
 					shouldBeMounted,
 					hostId: active.host.id,
@@ -415,7 +416,7 @@ class ModuleManager {
 						disconnectedTarget,
 						moduleDef.elementSelector!.position
 					);
-					console.log(`${DEBUG_PREFIX} module host reattached`, {
+					logger.log(`${DEBUG_PREFIX} module host reattached`, {
 						moduleId: moduleDef.id,
 						hostId: active.host.id,
 						hostConnected: active.host.isConnected,
@@ -453,7 +454,7 @@ class ModuleManager {
 			try {
 				return new RegExp(`^${regexPattern}$`).test(url);
 			} catch (error) {
-				console.error(`[Hikka Forge] Invalid URL pattern: ${pattern}`, error);
+				logger.error(`[Hikka Forge] Invalid URL pattern: ${pattern}`, error);
 				return false;
 			}
 		});
@@ -470,7 +471,7 @@ class ModuleManager {
 	private mountModule(moduleDef: ForgeModuleDef): void {
 		const targetElement = this.findTarget(moduleDef);
 		if (!targetElement || !moduleDef.component || !moduleDef.elementSelector) {
-			console.log(`${DEBUG_PREFIX} mount skipped`, {
+			logger.log(`${DEBUG_PREFIX} mount skipped`, {
 				moduleId: moduleDef.id,
 				hasTarget: Boolean(targetElement),
 				hasComponent: Boolean(moduleDef.component),
@@ -478,7 +479,7 @@ class ModuleManager {
 			return;
 		}
 
-		console.log(`${DEBUG_PREFIX} module mount start`, {
+		logger.log(`${DEBUG_PREFIX} module mount start`, {
 			moduleId: moduleDef.id,
 			target: describeNode(targetElement),
 			position: moduleDef.elementSelector.position,
@@ -533,13 +534,13 @@ class ModuleManager {
 				/>
 			);
 			this.insertElement(host, targetElement, moduleDef.elementSelector.position);
-			console.log(`${DEBUG_PREFIX} module mounted`, {
+			logger.log(`${DEBUG_PREFIX} module mounted`, {
 				moduleId: moduleDef.id,
 				hostId: host.id,
 				hostConnected: host.isConnected,
 			});
 		} catch (error) {
-			console.error(`[Hikka Forge] Error injecting ${moduleDef.name}:`, error);
+			logger.error(`[Hikka Forge] Error injecting ${moduleDef.name}:`, error);
 			this.cleanupInstance(instance, moduleDef, false);
 		}
 	}
@@ -591,7 +592,7 @@ class ModuleManager {
 		const moduleDef = this.moduleDefinitions.get(moduleId);
 		if (!instance || !moduleDef) return;
 
-		console.log(`${DEBUG_PREFIX} module unmount start`, {
+		logger.log(`${DEBUG_PREFIX} module unmount start`, {
 			moduleId,
 			reload,
 			hostConnected: instance.host.isConnected,
@@ -651,7 +652,7 @@ class ModuleManager {
 		moduleDef: ForgeModuleDef,
 		restoreOriginal: boolean
 	): void {
-		console.log(`${DEBUG_PREFIX} module cleanup`, {
+		logger.log(`${DEBUG_PREFIX} module cleanup`, {
 			moduleId: instance.id,
 			restoreOriginal,
 			hostConnected: instance.host.isConnected,
@@ -667,7 +668,7 @@ class ModuleManager {
 		try {
 			instance.root.unmount();
 		} catch (error) {
-			console.error(`[Hikka Forge] Error unmounting ${moduleDef.name}:`, error);
+			logger.error(`[Hikka Forge] Error unmounting ${moduleDef.name}:`, error);
 		}
 		instance.stopThemeSync();
 		instance.host.remove();
@@ -682,7 +683,7 @@ class ModuleManager {
 				this.lastInitialMutationAt = performance.now();
 			}
 			const batch = ++this.mutationBatch;
-			console.log(`${DEBUG_PREFIX} page mutation batch`, {
+			logger.log(`${DEBUG_PREFIX} page mutation batch`, {
 				batch,
 				recordCount: records.length,
 				records: records.slice(0, 8).map((record) => ({
@@ -704,7 +705,7 @@ class ModuleManager {
 	}
 
 	private scheduleReconciliation(reloadIds = new Set<string>()): void {
-		console.log(`${DEBUG_PREFIX} reconciliation scheduled`, {
+		logger.log(`${DEBUG_PREFIX} reconciliation scheduled`, {
 			reloadIds: Array.from(reloadIds),
 			frameAlreadyPending: this.reconciliationFrame !== null,
 			initialReconciliationReady: this.initialReconciliationReady,
@@ -786,7 +787,7 @@ class ModuleManager {
 							return false;
 					}
 				} catch (error) {
-					console.error("[Hikka Forge] Error processing content message:", error);
+					logger.error("[Hikka Forge] Error processing content message:", error);
 					sendResponse({ success: false, error: String(error) });
 				}
 				return false;
@@ -811,7 +812,7 @@ class ModuleManager {
 	}
 
 	refreshAllActiveModules(): void {
-		console.log(`${DEBUG_PREFIX} refresh all active modules`, {
+		logger.log(`${DEBUG_PREFIX} refresh all active modules`, {
 			moduleIds: Array.from(this.activeModuleRoots.keys()),
 		});
 		for (const id of this.activeModuleRoots.keys()) this.beginUnmount(id, true);
@@ -870,4 +871,4 @@ declare global {
 	}
 }
 window.HikkaForge = { moduleManager };
-console.log("[Hikka Forge] Content script loaded and HikkaForge exposed.");
+logger.log("[Hikka Forge] Content script loaded and HikkaForge exposed.");

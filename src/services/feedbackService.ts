@@ -1,3 +1,4 @@
+import { logger } from "@/utils/logger";
 import { API_BACKEND_BASE } from '@/constants';
 import { ApiErrorResponse } from '@/types';
 
@@ -49,7 +50,7 @@ export class FeedbackService {
                         errorMessage = errorData.error;
                     }
                 } catch (e) {
-                    console.error("Failed to parse error response:", e);
+                    logger.error("Failed to parse error response:", e);
                 }
                 throw new Error(errorMessage);
             }
@@ -62,7 +63,7 @@ export class FeedbackService {
                 message: data.message || 'Feedback submitted successfully'
             };
         } catch (error) {
-            console.error(`Feedback service error (${endpoint}):`, error);
+            logger.error(`Feedback service error (${endpoint}):`, error);
             throw error;
         }
     }

@@ -1,3 +1,4 @@
+import { logger } from "@/utils/logger";
 import React, { useState, useEffect, ReactNode, createContext, useContext } from 'react';
 import { AuthService, UserProfile } from '@/services/authService';
 
@@ -24,7 +25,7 @@ export const ModuleAuthProvider: React.FC<ModuleAuthProviderProps> = ({ children
             const currentUser = await AuthService.getCurrentUser();
             setUser(currentUser);
         } catch (error) {
-            console.error('[Hikka Forge] Failed to load user in module:', error);
+            logger.error('[Hikka Forge] Failed to load user in module:', error);
             setUser(null);
         } finally {
             setIsLoading(false);
@@ -37,7 +38,7 @@ export const ModuleAuthProvider: React.FC<ModuleAuthProviderProps> = ({ children
         // Listen for auth changes from storage
         const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
             if (changes.hikka_forge_auth_token) {
-                console.log('[Hikka Forge] Auth token changed, reloading user');
+                logger.log('[Hikka Forge] Auth token changed, reloading user');
                 loadUser();
             }
         };

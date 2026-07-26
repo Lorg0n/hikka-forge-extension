@@ -1,3 +1,4 @@
+import { logger } from "@/utils/logger";
 import React, { useState } from 'react'; 
 import { SimilarAnimeItem } from '@/types';
 import Link from '@/components/typography/link';
@@ -34,14 +35,14 @@ export const SimilarAnimeCard: React.FC<SimilarAnimeCardProps> = ({ anime, class
                             isLoading ? 'opacity-0' : 'opacity-100'
                         )}
                         onLoad={() => {
-                            console.log('[Hikka Forge][debug] similar anime image loaded', {
+                            logger.log('[Hikka Forge][debug] similar anime image loaded', {
                                 slug: anime.slug,
                                 imageUrl: anime.imageUrl,
                             });
                             setIsLoading(false);
                         }}
                         onError={() => {
-                            console.log('[Hikka Forge][debug] similar anime image failed', {
+                            logger.log('[Hikka Forge][debug] similar anime image failed', {
                                 slug: anime.slug,
                                 imageUrl: anime.imageUrl,
                             });

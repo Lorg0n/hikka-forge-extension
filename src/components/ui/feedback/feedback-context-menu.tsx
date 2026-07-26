@@ -1,3 +1,4 @@
+import { logger } from "@/utils/logger";
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Icon } from '@iconify/react';
@@ -43,7 +44,7 @@ export const FeedbackContextMenu: React.FC<FeedbackContextMenuProps> = ({
                 setTimeout(() => setSubmitted(false), 300);
             }, 1000); // Shorter timeout for better UX
         } catch (error) {
-            console.error('Failed to submit feedback:', error);
+            logger.error('Failed to submit feedback:', error);
         } finally {
             setLoading(false);
         }

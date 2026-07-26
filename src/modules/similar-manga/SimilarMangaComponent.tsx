@@ -1,3 +1,4 @@
+import { logger } from "@/utils/logger";
 import React, { useEffect, useState } from 'react';
 import { useSimilarManga } from '@/hooks/useSimilarManga';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
@@ -14,7 +15,7 @@ const SimilarMangaComponent: React.FC = () => {
     const similarMangaList = data?.content?.filter(item => !hiddenItems.has(item.slug)) || [];
 
     useEffect(() => {
-        console.log('[Hikka Forge][debug] similar manga render', {
+        logger.log('[Hikka Forge][debug] similar manga render', {
             loading,
             error,
             itemCount: similarMangaList.length,
@@ -23,8 +24,8 @@ const SimilarMangaComponent: React.FC = () => {
     }, [loading, error, similarMangaList.length, slug]);
 
     useEffect(() => {
-        console.log('[Hikka Forge][debug] similar manga mounted');
-        return () => console.log('[Hikka Forge][debug] similar manga unmounted');
+        logger.log('[Hikka Forge][debug] similar manga mounted');
+        return () => logger.log('[Hikka Forge][debug] similar manga unmounted');
     }, []);
 
     const handleFeedbackSuccess = (itemSlug: string) => {

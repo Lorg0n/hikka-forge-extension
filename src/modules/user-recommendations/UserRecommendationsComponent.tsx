@@ -1,3 +1,4 @@
+import { logger } from "@/utils/logger";
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { useUserRecommendations } from '@/hooks/useUserRecommendations';
 import { useAuth } from '@/contexts/ModuleAuthContext';
@@ -64,7 +65,7 @@ const UserRecommendationsComponent: React.FC = () => {
     }, [contentType, isLoading, list.length]);
 
     useEffect(() => {
-        console.log('[Hikka Forge][debug] personal recommendations render', {
+        logger.log('[Hikka Forge][debug] personal recommendations render', {
             authLoading,
             isAuthenticated,
             dataLoading,
@@ -75,8 +76,8 @@ const UserRecommendationsComponent: React.FC = () => {
     }, [authLoading, isAuthenticated, dataLoading, error, list.length, contentType]);
 
     useEffect(() => {
-        console.log('[Hikka Forge][debug] personal recommendations mounted');
-        return () => console.log('[Hikka Forge][debug] personal recommendations unmounted');
+        logger.log('[Hikka Forge][debug] personal recommendations mounted');
+        return () => logger.log('[Hikka Forge][debug] personal recommendations unmounted');
     }, []);
 
     const handleFeedbackSuccess = () => {

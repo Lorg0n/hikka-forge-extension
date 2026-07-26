@@ -1,3 +1,4 @@
+import { logger } from "@/utils/logger";
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { AuthService, UserProfile } from '@/services/authService';
 
@@ -26,7 +27,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const currentUser = await AuthService.getCurrentUser();
             setUser(currentUser);
         } catch (error) {
-            console.error('Failed to load user:', error);
+            logger.error('Failed to load user:', error);
             setUser(null);
         } finally {
             setIsLoading(false);
@@ -51,7 +52,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 return false;
             }
         } catch (error) {
-            console.error('Login failed:', error);
+            logger.error('Login failed:', error);
             await AuthService.removeToken();
             setUser(null);
             return false;

@@ -1,3 +1,4 @@
+import { logger } from "@/utils/logger";
 import { SimilarAnimeApiResponse, ApiErrorResponse, ForgeAnimeDetails, WeeklyTopAnimeApiResponse, FranchiseGraphResponse, FranchiseContentType } from '@/types';
 
 import { API_BACKEND_BASE } from '@/constants';
@@ -32,7 +33,7 @@ export const fetchSimilarAnime = async ({
                 errorMessage = errorData.error;
             }
         } catch (e) {
-            console.error("Failed to parse error response:", e);
+            logger.error("Failed to parse error response:", e);
         }
         throw new Error(errorMessage);
     }
@@ -59,7 +60,7 @@ export const fetchForgeAnimeDetails = async ({
                 errorMessage = errorData.error;
             }
         } catch (e) {
-            console.error("Failed to parse error response:", e);
+            logger.error("Failed to parse error response:", e);
         }
         throw new Error(errorMessage);
     }
@@ -106,7 +107,7 @@ export const fetchWeeklyTopAnime = async ({
                 errorMessage = errorData.error;
             }
         } catch (e) {
-            console.error("Failed to parse error response:", e);
+            logger.error("Failed to parse error response:", e);
         }
         throw new Error(errorMessage);
     }
@@ -139,7 +140,7 @@ export const fetchFranchiseGraph = async ({
                 errorMessage = errorData.error;
             }
         } catch (e) {
-            console.error('Failed to parse error response:', e);
+            logger.error('Failed to parse error response:', e);
         }
         throw new Error(errorMessage);
     }

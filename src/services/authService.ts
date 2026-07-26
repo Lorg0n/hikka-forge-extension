@@ -1,3 +1,4 @@
+import { logger } from "@/utils/logger";
 import { API_BACKEND_BASE } from '@/constants';
 import { AuthCallbackResponse } from '@/types';
 
@@ -54,7 +55,7 @@ export class AuthService {
 
             return await response.json();
         } catch (error) {
-            console.error('Failed to fetch user profile:', error);
+            logger.error('Failed to fetch user profile:', error);
             return null;
         }
     }
@@ -86,14 +87,14 @@ export class AuthService {
                         errorMessage = errorData.message;
                     }
                 } catch (e) {
-                    console.error("Failed to parse error response:", e);
+                    logger.error("Failed to parse error response:", e);
                 }
                 throw new Error(errorMessage);
             }
 
             return await response.json() as AuthCallbackResponse;
         } catch (error) {
-            console.error('Hikka callback failed:', error);
+            logger.error('Hikka callback failed:', error);
             throw error;
         }
     }

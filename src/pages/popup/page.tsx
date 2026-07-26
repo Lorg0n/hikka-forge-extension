@@ -1,3 +1,4 @@
+import { getConsoleLoggingEnabled, logger, setConsoleLoggingEnabled } from "@/utils/logger";
 import { useEffect, useState, useCallback, useRef } from "react";
 import browser from "webextension-polyfill";
 import logo from "@/assets/logo.svg";
@@ -28,6 +29,7 @@ function App() {
 	);
 	const [hasPermission, setHasPermission] = useState(true);
 	const [loginDialogOpen, setLoginDialogOpen] = useState(false);
+	const [consoleLoggingEnabled, setConsoleLoggingEnabledState] = useState(false);
 
 	const [version, setVersion] = useState('');
 
@@ -38,13 +40,13 @@ function App() {
 	const loadModules = useCallback(async () => {
 		setIsLoading(true);
 		setError(null);
-		console.log("Popup: Requesting module definitions...");
+		logger.log("Popup: Requesting module definitions...");
 		try {
 			const message: PopupMessage = { type: "GET_MODULE_DEFINITIONS" };
 			const response = (await browser.runtime.sendMessage(
 				message
 			)) as GetModulesResponse;
-			console.log("Popup: Received response:", response);
+			logger.log("Popup: Received response:", response);
 			if (response?.success && Array.isArray(response.modules)) {
 				const visibleModules = response.modules.filter(module => !module.hidden);
 				setModules(visibleModules);
@@ -55,11 +57,11 @@ function App() {
 				const errorMessage =
 					response?.error || "Unknown error loading modules.";
 				setError("Failed to load module settings. " + errorMessage);
-				console.error("Popup: Error loading modules -", errorMessage);
+				logger.error("Popup: Error loading modules -", errorMessage);
 			}
 		} catch (err: any) {
 			setError(`Error communicating with background script: ${err.message}`);
-			console.error("Popup: Error sending message -", err);
+			logger.error("Popup: Error sending message -", err);
 		} finally {
 			setIsLoading(false);
 		}
@@ -79,6 +81,7 @@ function App() {
 
 	useEffect(() => {
 		checkPermissions();
+		void getConsoleLoggingEnabled().then(setConsoleLoggingEnabledState);
 
 		const manifest = browser.runtime.getManifest();
 		setVersion(manifest.version);
@@ -89,6 +92,16 @@ function App() {
 			}
 		};
 	}, [checkPermissions]);
+
+	const handleConsoleLoggingChange = useCallback(async (value: boolean) => {
+		setConsoleLoggingEnabledState(value);
+		try {
+			await setConsoleLoggingEnabled(value);
+		} catch (err: any) {
+			setConsoleLoggingEnabledState(!value);
+			setError(`Failed to update debug logging: ${err.message}`);
+		}
+	}, []);
 
 	const handleRequestPermission = useCallback(async () => {
 		const granted = await browser.permissions.request({
@@ -106,11 +119,11 @@ function App() {
 
 			// Check if module requires auth and user is not authenticated
 			if (module?.authRequired && !isAuthenticated) {
-				console.log(`Popup: Module ${moduleId} requires authentication`);
+				logger.log(`Popup: Module ${moduleId} requires authentication`);
 				return;
 			}
 
-			console.log(`Popup: Toggling ${moduleId} to ${enabled}`);
+			logger.log(`Popup: Toggling ${moduleId} to ${enabled}`);
 			setModules((prevModules) =>
 				prevModules.map((mod) =>
 					mod.id === moduleId ? { ...mod, enabled } : mod
@@ -128,18 +141,18 @@ function App() {
 				)) as SimpleActionResponse;
 				if (!response?.success) {
 					const errorMessage = response?.error || "Unknown toggle error.";
-					console.error(
+					logger.error(
 						`Popup: Failed to toggle module ${moduleId} -`,
 						errorMessage
 					);
 					setError(`Failed to save setting for ${moduleId}. ${errorMessage}`);
 					loadModules();
 				} else {
-					console.log(`Popup: Module ${moduleId} toggled successfully.`);
+					logger.log(`Popup: Module ${moduleId} toggled successfully.`);
 					setError(null);
 				}
 			} catch (err: any) {
-				console.error("Popup: Error sending toggle message -", err);
+				logger.error("Popup: Error sending toggle message -", err);
 				setError(`Error saving setting: ${err.message}`);
 				loadModules();
 			}
@@ -164,7 +177,7 @@ function App() {
 			}
 
 			settingUpdateTimers.current[timerKey] = setTimeout(async () => {
-				console.log(
+				logger.log(
 					`Popup: Sending debounced update for setting ${settingId} of module ${moduleId} to:`,
 					value
 				);
@@ -182,20 +195,20 @@ function App() {
 					if (!response?.success) {
 						const errorMessage =
 							response?.error || "Unknown setting update error.";
-						console.error(
+						logger.error(
 							`Popup: Failed to update setting ${settingId} for module ${moduleId} -`,
 							errorMessage
 						);
 						setError(`Failed to save setting. ${errorMessage}`);
 						loadModules();
 					} else {
-						console.log(
+						logger.log(
 							`Popup: Setting ${settingId} for module ${moduleId} updated successfully.`
 						);
 						setError(null);
 					}
 				} catch (err: any) {
-					console.error("Popup: Error sending setting update message -", err);
+					logger.error("Popup: Error sending setting update message -", err);
 					setError(`Error saving setting: ${err.message}`);
 					loadModules();
 				} finally {
@@ -207,7 +220,7 @@ function App() {
 	);
 
 	const handleRefresh = useCallback(async () => {
-		console.log("Popup: Requesting content refresh...");
+		logger.log("Popup: Requesting content refresh...");
 		try {
 			const message: PopupMessage = {
 				type: "MODULE_ACTION",
@@ -218,26 +231,26 @@ function App() {
 			)) as SimpleActionResponse;
 			if (!response?.success) {
 				const errorMessage = response?.error || "Unknown refresh error.";
-				console.error("Popup: Failed to trigger refresh -", errorMessage);
+				logger.error("Popup: Failed to trigger refresh -", errorMessage);
 				setError("Failed to refresh content. " + errorMessage);
 			} else {
-				console.log("Popup: Refresh triggered successfully.");
+				logger.log("Popup: Refresh triggered successfully.");
 				setError(null);
 
 				loadModules();
 			}
 		} catch (err: any) {
-			console.error("Popup: Error sending refresh message -", err);
+			logger.error("Popup: Error sending refresh message -", err);
 			setError(`Error triggering refresh: ${err.message}`);
 		}
 	}, [loadModules]);
 
 	const handleResetSettings = useCallback(
 		async (moduleId: string) => {
-			console.log(`Popup: Resetting settings for module ${moduleId}`);
+			logger.log(`Popup: Resetting settings for module ${moduleId}`);
 			const moduleDef = modules.find((m) => m.id === moduleId);
 			if (!moduleDef || !moduleDef.settings) {
-				console.warn(
+				logger.warn(
 					`Popup: Module ${moduleId} not found or has no settings to reset.`
 				);
 				return;
@@ -274,15 +287,15 @@ function App() {
 
 			try {
 				await Promise.all(promises);
-				console.log(`Popup: All settings for ${moduleId} reset in storage.`);
+				logger.log(`Popup: All settings for ${moduleId} reset in storage.`);
 				setError(null);
 
 				await handleRefresh();
-				console.log(
+				logger.log(
 					`Popup: Refresh triggered after settings reset for ${moduleId}.`
 				);
 			} catch (err: any) {
-				console.error(`Popup: Error resetting settings for ${moduleId}:`, err);
+				logger.error(`Popup: Error resetting settings for ${moduleId}:`, err);
 				setError(
 					`Failed to reset settings for ${moduleDef.name}. ${err.message}`
 				);
@@ -337,6 +350,31 @@ function App() {
 				</div>
 
 				<div className="flex items-center gap-2">
+					<Button
+						variant={consoleLoggingEnabled ? "default" : "outline"}
+						size="icon-sm"
+						className={consoleLoggingEnabled ? "text-primary-foreground hover:text-primary-foreground" : "text-muted-foreground"}
+						onClick={() => handleConsoleLoggingChange(!consoleLoggingEnabled)}
+						aria-pressed={consoleLoggingEnabled}
+						aria-label="Увімкнути або вимкнути debug у консолі"
+						title="Увімкнути або вимкнути вивід debug у консолі"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="2"
+							strokeLinecap="round"
+							strokeLinejoin="round"
+						>
+							<path d="m8 9 3 3-3 3M13 15h3" />
+							<rect width="20" height="14" x="2" y="5" rx="2" />
+						</svg>
+					</Button>
+
 					<Button
 						variant="outline"
 						size="icon-sm"

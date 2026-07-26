@@ -1,3 +1,4 @@
+import { logger } from "@/utils/logger";
 import { SimilarMangaApiResponse, ApiErrorResponse, ForgeMangaDetails } from '@/types';
 
 import { API_BACKEND_BASE } from '@/constants';
@@ -32,7 +33,7 @@ export const fetchSimilarManga = async ({
                 errorMessage = errorData.error;
             }
         } catch (e) {
-            console.error("Failed to parse error response:", e);
+            logger.error("Failed to parse error response:", e);
         }
         throw new Error(errorMessage);
     }
@@ -59,7 +60,7 @@ export const fetchForgeMangaDetails = async ({
                 errorMessage = errorData.error;
             }
         } catch (e) {
-            console.error("Failed to parse error response:", e);
+            logger.error("Failed to parse error response:", e);
         }
         throw new Error(errorMessage);
     }

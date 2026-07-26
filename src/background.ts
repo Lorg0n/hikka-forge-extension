@@ -4,6 +4,32 @@ import type {
 	ContentMessage,
 } from "./types/module";
 
+type LogMethod = "debug" | "info" | "log" | "warn" | "error" | "trace";
+type Logger = Record<LogMethod, (...args: unknown[]) => void>;
+
+function createBackgroundLogger(): Logger {
+	let enabled = false;
+	void chrome.storage.sync.get("debug_logging_enabled").then((result) => {
+		enabled = result.debug_logging_enabled === true;
+	});
+	chrome.storage.onChanged.addListener((changes, areaName) => {
+		if (areaName === "sync" && changes.debug_logging_enabled) {
+			enabled = changes.debug_logging_enabled.newValue === true;
+		}
+	});
+
+	return Object.fromEntries(
+		(["debug", "info", "log", "warn", "error", "trace"] as const).map((method) => [
+			method,
+			(...args: unknown[]) => {
+				if (enabled) console[method]("[Hikka Forge]", ...args);
+			},
+		])
+	) as Logger;
+}
+
+const logger = createBackgroundLogger();
+
 let moduleDefinitionsCache: ModuleInfo[] | null = null;
 let cacheTimestamp: number = 0;
 const CACHE_DURATION = 5 * 60 * 1000;
@@ -16,7 +42,7 @@ class BackgroundManager {
 		this.initTabsListeners();
 		this.initMessageListener();
 		this.initInstallAndUpdateListeners();
-		console.log("[Hikka Forge] Background script initialized");
+		logger.log("[Hikka Forge] Background script initialized");
 
 		this.primeModuleDefinitionsCache();
 	}
@@ -40,7 +66,7 @@ class BackgroundManager {
 	private initInstallAndUpdateListeners(): void {
 		chrome.runtime.onInstalled.addListener((details) => {
 			if (details.reason === "install") {
-				console.log("[Hikka Forge] Extension installed. Default states will be applied on first use.");
+				logger.log("[Hikka Forge] Extension installed. Default states will be applied on first use.");
 			} else if (details.reason === "update") {
 			}
 			moduleDefinitionsCache = null;
@@ -53,12 +79,12 @@ class BackgroundManager {
 				let isAsync = false;
 
 				if (message.type === "REGISTER_CONTENT_SCRIPT") {
-					console.log(`[Hikka Forge] Content script from tab ${sender.tab?.id} registered with ${message.modules.length} modules.`);
+					logger.log(`[Hikka Forge] Content script from tab ${sender.tab?.id} registered with ${message.modules.length} modules.`);
 					isAsync = true;
 					this.handleContentScriptRegistration(message.modules, sender.tab?.id)
 						.then(() => sendResponse({ success: true }))
 						.catch(error => {
-							console.error("[Hikka Forge] Error handling content script registration:", error);
+							logger.error("[Hikka Forge] Error handling content script registration:", error);
 							sendResponse({ success: false, error: String(error) });
 						});
 				} else if (message.type === "GET_MODULE_DEFINITIONS") {
@@ -72,7 +98,7 @@ class BackgroundManager {
 							})
 						)
 						.catch((error) => {
-							console.error(
+							logger.error(
 								"[Hikka Forge] Error getting module definitions:",
 								error
 							);
@@ -88,7 +114,7 @@ class BackgroundManager {
 						this.toggleModuleState(message.moduleId, message.enabled)
 							.then(() => sendResponse({ success: true }))
 							.catch((error) => {
-								console.error(
+								logger.error(
 									`[Hikka Forge] Error toggling module ${message.moduleId}:`,
 									error
 								);
@@ -107,7 +133,7 @@ class BackgroundManager {
 						)
 							.then(() => sendResponse({ success: true }))
 							.catch((error) => {
-								console.error(`[Hikka Forge] Error updating setting:`, error);
+								logger.error(`[Hikka Forge] Error updating setting:`, error);
 								sendResponse({ success: false, error: String(error) });
 							});
 					} else if (message.action === "REFRESH") {
@@ -115,11 +141,11 @@ class BackgroundManager {
 						this.refreshContentInAllTabs()
 							.then(() => sendResponse({ success: true }))
 							.catch((error) => {
-								console.error("[Hikka Forge] Error refreshing content:", error);
+								logger.error("[Hikka Forge] Error refreshing content:", error);
 								sendResponse({ success: false, error: String(error) });
 							});
 					} else {
-						console.warn(
+						logger.warn(
 							"[Hikka Forge] Unknown MODULE_ACTION received:",
 							message
 						);
@@ -136,12 +162,12 @@ class BackgroundManager {
 		enabled: boolean
 	): Promise<void> {
 		const storageKey = `module_enabled_${moduleId}`;
-		console.log(`[Hikka Forge] Setting ${storageKey} to ${enabled}`);
+		logger.log(`[Hikka Forge] Setting ${storageKey} to ${enabled}`);
 		try {
 			await chrome.storage.sync.set({ [storageKey]: enabled });
 			await this.syncAllTabs();
 		} catch (error) {
-			console.error(
+			logger.error(
 				`[Hikka Forge] Failed to save state for ${moduleId}:`,
 				error
 			);
@@ -151,13 +177,13 @@ class BackgroundManager {
 
 	private async handleContentScriptRegistration(modules: ModuleInfo[], tabId?: number): Promise<void> {
 		if (!moduleDefinitionsCache || moduleDefinitionsCache.length === 0) {
-			console.log("[Hikka Forge] Populating module definition cache from registration.");
+			logger.log("[Hikka Forge] Populating module definition cache from registration.");
 			moduleDefinitionsCache = modules.map(m => ({ ...m, enabled: false }));
 			cacheTimestamp = Date.now();
 		}
 
 		if (tabId) {
-			console.log(`[Hikka Forge] Immediately syncing tab ${tabId} after registration.`);
+			logger.log(`[Hikka Forge] Immediately syncing tab ${tabId} after registration.`);
 			await this.sendSyncMessageToTab(tabId);
 		}
 	}
@@ -168,12 +194,12 @@ class BackgroundManager {
 		value: any
 	): Promise<void> {
 		const storageKey = `module_setting_${moduleId}_${settingId}`;
-		console.log(`[Hikka Forge] Setting ${storageKey} to:`, value);
+		logger.log(`[Hikka Forge] Setting ${storageKey} to:`, value);
 		try {
 			await chrome.storage.sync.set({ [storageKey]: value });
 			await this.syncAllTabs();
 		} catch (error) {
-			console.error(
+			logger.error(
 				`[Hikka Forge] Failed to save setting for ${moduleId}.${settingId}:`,
 				error
 			);
@@ -182,12 +208,12 @@ class BackgroundManager {
 	}
 
 	private async primeModuleDefinitionsCache(): Promise<void> {
-		console.log("[Hikka Forge] Priming module definitions cache...");
+		logger.log("[Hikka Forge] Priming module definitions cache...");
 		try {
 			await this.fetchModuleDefinitionsFromContentScript();
-			console.log("[Hikka Forge] Cache primed successfully.");
+			logger.log("[Hikka Forge] Cache primed successfully.");
 		} catch (error) {
-			console.warn(
+			logger.warn(
 				"[Hikka Forge] Could not prime cache on startup (no active Hikka tabs?):",
 				error
 			);
@@ -200,11 +226,11 @@ class BackgroundManager {
 	}> {
 		const now = Date.now();
 		if (moduleDefinitionsCache && now - cacheTimestamp < CACHE_DURATION) {
-			console.log("[Hikka Forge] Returning cached module definitions.");
+			logger.log("[Hikka Forge] Returning cached module definitions.");
 			return this.updateCachedStatesFromStorage(moduleDefinitionsCache);
 		}
 
-		console.log(
+		logger.log(
 			"[Hikka Forge] Cache expired or empty, fetching fresh module definitions..."
 		);
 		try {
@@ -214,7 +240,7 @@ class BackgroundManager {
 
 			return this.updateCachedStatesFromStorage(definitions);
 		} catch (error) {
-			console.error(
+			logger.error(
 				"[Hikka Forge] Failed to fetch fresh definitions, returning empty/stale cache:",
 				error
 			);
@@ -261,7 +287,7 @@ class BackgroundManager {
 
 			return { modules: updatedModules, moduleSettings };
 		} catch (error) {
-			console.error("[Hikka Forge] Failed to get states from storage:", error);
+			logger.error("[Hikka Forge] Failed to get states from storage:", error);
 			return { modules: definitions, moduleSettings: {} };
 		}
 	}
@@ -273,7 +299,7 @@ class BackgroundManager {
 		});
 
 		if (tabs.length === 0) {
-			console.warn(
+			logger.warn(
 				"[Hikka Forge] Could not find active Hikka tabs to request module definitions. Waiting for a tab to register itself."
 			);
 			return [];
@@ -282,7 +308,7 @@ class BackgroundManager {
 		for (const tab of tabs) {
 			if (tab.id) {
 				try {
-					console.log(
+					logger.log(
 						`[Hikka Forge] Requesting module info from tab ${tab.id}`
 					);
 					const response = await chrome.tabs.sendMessage(tab.id, {
@@ -290,7 +316,7 @@ class BackgroundManager {
 					} as ContentMessage);
 
 					if (response?.success && Array.isArray(response.modules)) {
-						console.log(
+						logger.log(
 							`[Hikka Forge] Received module info from tab ${tab.id}:`,
 							response.modules.length
 						);
@@ -309,7 +335,7 @@ class BackgroundManager {
 							icon: m.icon,
 						}));
 					} else {
-						console.warn(
+						logger.warn(
 							`[Hikka Forge] Invalid response from tab ${tab.id}:`,
 							response
 						);
@@ -319,7 +345,7 @@ class BackgroundManager {
 						!error.message.includes("Could not establish connection") &&
 						!error.message.includes("Receiving end does not exist")
 					) {
-						console.warn(
+						logger.warn(
 							`[Hikka Forge] Error fetching module info from tab ${tab.id}:`,
 							error
 						);
@@ -328,7 +354,7 @@ class BackgroundManager {
 			}
 		}
 
-		console.error(
+		logger.error(
 			"[Hikka Forge] Failed to get module definitions from any active tab. They may still be loading. Waiting for registration."
 		);
 		return [];
@@ -343,7 +369,7 @@ class BackgroundManager {
 	}
 
 	private async syncAllTabs(): Promise<void> {
-		console.log("[Hikka Forge] Syncing states with all Hikka tabs...");
+		logger.log("[Hikka Forge] Syncing states with all Hikka tabs...");
 		try {
 		const tabs = await chrome.tabs.query({ url: "https://dev.hikka.io/*" });
 			const syncPromises = tabs
@@ -351,9 +377,9 @@ class BackgroundManager {
 				.map((tab) => this.sendSyncMessageToTab(tab.id!));
 
 			await Promise.allSettled(syncPromises);
-			console.log("[Hikka Forge] Sync attempt completed for all tabs.");
+			logger.log("[Hikka Forge] Sync attempt completed for all tabs.");
 		} catch (error) {
-			console.error("[Hikka Forge] Error querying tabs for sync:", error);
+			logger.error("[Hikka Forge] Error querying tabs for sync:", error);
 		}
 	}
 
@@ -371,7 +397,7 @@ class BackgroundManager {
 				}
 			});
 
-			console.log(
+			logger.log(
 				`[Hikka Forge] Sending SYNC_MODULES to tab ${tabId}`,
 				enabledStates,
 				flatModuleSettings
@@ -381,7 +407,7 @@ class BackgroundManager {
 				enabledStates: enabledStates,
 				moduleSettings: flatModuleSettings,
 			} as ContentMessage);
-			console.log(
+			logger.log(
 				`[Hikka Forge] SYNC_MODULES sent successfully to tab ${tabId}`
 			);
 		} catch (error: any) {
@@ -389,7 +415,7 @@ class BackgroundManager {
 				!error.message.includes("Could not establish connection") &&
 				!error.message.includes("Receiving end does not exist")
 			) {
-				console.error(
+				logger.error(
 					`[Hikka Forge] Error sending SYNC_MODULES to tab ${tabId}:`,
 					error
 				);
@@ -398,7 +424,7 @@ class BackgroundManager {
 	}
 
 	private async refreshContentInAllTabs(): Promise<void> {
-		console.log("[Hikka Forge] Sending REFRESH action to all Hikka tabs...");
+		logger.log("[Hikka Forge] Sending REFRESH action to all Hikka tabs...");
 		try {
 			const tabs = await chrome.tabs.query({ url: "https://dev.hikka.io/*" });
 			const refreshPromises = tabs
@@ -410,16 +436,16 @@ class BackgroundManager {
 							action: "REFRESH",
 						} as ContentMessage)
 						.catch((err) => {
-							console.warn(
+							logger.warn(
 								`[Hikka Forge] Error sending REFRESH to tab ${tab.id}:`,
 								err
 							);
 						})
 				);
 			await Promise.allSettled(refreshPromises);
-			console.log("[Hikka Forge] REFRESH action sent to all tabs.");
+			logger.log("[Hikka Forge] REFRESH action sent to all tabs.");
 		} catch (error) {
-			console.error("[Hikka Forge] Error sending REFRESH action:", error);
+			logger.error("[Hikka Forge] Error sending REFRESH action:", error);
 			throw error;
 		}
 	}

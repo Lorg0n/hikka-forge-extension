@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import Link from '@/components/typography/link';
 import Image from '@/components/ui/image';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { RecommendationItem, RecommendationContentType } from '@/types';
 
@@ -19,12 +18,6 @@ const getSimilarityText = (distance: number): string => {
     return "Спробуй";
 };
 
-const getSimilarityVariant = (distance: number): "success" | "warning" | "secondary" => {
-    if (distance >= 0.9) return "success";
-    if (distance >= 0.65) return "warning";
-    return "secondary";
-};
-
 const RecommendationCard: React.FC<RecommendationCardProps> = ({
     anime,
     contentType = 'anime',
@@ -39,26 +32,25 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
     return (
         <div
             className={cn(
-                "flex flex-col gap-2",
-                isPage ? "w-full" : "w-[120px]",
+                "group relative flex w-full flex-col gap-2",
                 className
             )}
-            style={isPage ? undefined : { minWidth: '90px', maxWidth: '90px' }}
         >
-            <Link href={`/${contentPath}/${anime.slug}`} className="relative block w-full mb-3">
-                <div className="relative w-full" style={{ paddingBottom: '150%' }}>
-                    <div className={cn(
-                        "absolute inset-0 bg-secondary/20 rounded-lg overflow-hidden",
-                        isLoading && 'animate-pulse'
-                    )}>
+            <div className="relative w-full overflow-hidden rounded-md bg-muted" style={{ paddingBottom: '142.85714285714286%' }}>
+                <Link
+                    href={`/${contentPath}/${anime.slug}`}
+                    className={cn(
+                        '@container absolute inset-0 flex size-full items-center justify-center bg-secondary/20',
+                        isLoading && 'animate-pulse',
+                    )}
+                >
                         <Image
                             src={anime.imageUrl}
                             alt={anime.title}
-                            width={isPage ? 200 : 120}
-                            height={isPage ? 300 : 180}
+                            width={400}
+                            height={572}
                             className={cn(
-                                "absolute inset-0 w-full h-full object-cover rounded-lg transition-all duration-300",
-                                "group-hover:scale-105",
+                                "h-full w-full object-cover",
                                 isLoading ? 'opacity-0' : 'opacity-100'
                             )}
                             onLoad={() => {
@@ -76,25 +68,19 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
                                 setIsLoading(false);
                             }}
                         />
-                    </div>
-                </div>
-            </Link>
+                </Link>
+            </div>
 
-            <div className="flex flex-col gap-1">
-                <Badge
-                    variant={getSimilarityVariant(anime.similarityScore)}
-                    className={cn(
-                        "px-2 py-0 whitespace-nowrap w-fit text-[10px]",
-                    )}
-                >
+            <div>
+                <p className="mb-1 truncate text-muted-foreground text-xs">
                     {getSimilarityText(anime.similarityScore)}
-                </Badge>
+                </p>
 
                 <Link
                     href={`/${contentPath}/${anime.slug}`}
                     className={cn(
-                        "font-medium leading-snug",
-                        isPage ? "text-sm line-clamp-2" : "text-sm line-clamp-1"
+                        "font-medium leading-5 text-card-foreground hover:text-card-foreground",
+                        isPage ? "text-sm line-clamp-2" : "text-sm line-clamp-2"
                     )}
                 >
                     {anime.title} <span className="text-xs text-muted-foreground">({anime.year})</span>

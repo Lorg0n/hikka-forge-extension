@@ -6,13 +6,11 @@ import { ModuleTransition } from '@/components/ui/module-transition';
 const WeeklyTopAnimeComponent: React.FC = () => {
     return (
         <ModuleTransition stateKey="content">
-        <div>
-            <a href="#weekly-top-anime">
-                <Button size={"icon-sm"} variant={"outline"}>
-                    <Icon icon={"material-symbols:bar-chart-4-bars-rounded"} />
-                </Button>
-            </a>
-        </div>
+            <Button size="icon-sm" variant="outline" asChild>
+                <a href="#weekly-top-anime" aria-label="Топ аніме тижня">
+                    <Icon icon="material-symbols:bar-chart-4-bars-rounded" />
+                </a>
+            </Button>
         </ModuleTransition>
     );
 };

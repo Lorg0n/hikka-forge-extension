@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { useUserRecommendations } from '@/hooks/useUserRecommendations';
 import { useAuth } from '@/contexts/ModuleAuthContext';
 import { Header, HeaderContainer, HeaderTitle, HeaderNavButton } from '@/components/ui/header';
@@ -6,12 +6,31 @@ import NotFound from '@/components/ui/not-found';
 import { ConnectedRecommendationCard } from '@/components/ui/anime/connected-recommendation-card';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { RecommendationContentType } from '@/types';
-import { ModuleListTransition, ModuleTransition } from '@/components/ui/module-transition';
+import { ModuleTransition } from '@/components/ui/module-transition';
 
 const CONTENT_TYPE_OPTIONS: { value: RecommendationContentType; label: string }[] = [
     { value: 'anime', label: 'Аніме' },
     { value: 'manga', label: 'Манґа' },
 ];
+
+const CAROUSEL_CLASS =
+    'relative -mx-4 -my-4 flex gap-4 overflow-x-auto px-4 py-4 no-scrollbar';
+
+const CAROUSEL_ITEM_CLASS =
+    'w-[calc((100%-2rem)/3)] min-w-24 shrink-0 sm:w-[calc((100%-3rem)/4)] md:w-[calc((100%-4rem)/5)]';
+
+const RecommendationCardSkeleton: React.FC = () => (
+    <div className="group relative flex w-full flex-col gap-2">
+        <div className="relative w-full overflow-hidden rounded-md bg-muted" style={{ paddingBottom: '142.85714285714286%' }}>
+            <div className="absolute inset-0 animate-pulse bg-secondary/30" />
+        </div>
+        <div className="flex min-w-0 flex-col gap-1">
+            <div className="h-3 w-16 animate-pulse rounded bg-secondary/30" />
+            <div className="h-4 w-full animate-pulse rounded bg-secondary/30" />
+            <div className="h-4 w-2/3 animate-pulse rounded bg-secondary/30" />
+        </div>
+    </div>
+);
 
 const UserRecommendationsComponent: React.FC = () => {
     const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -27,11 +46,22 @@ const UserRecommendationsComponent: React.FC = () => {
         initialSize: 20,
     });
 
-    const [hiddenItems, setHiddenItems] = useState<Set<string>>(new Set());
-
     const isLoading = authLoading || (isAuthenticated && dataLoading);
 
-    const list = data?.content?.filter(item => !hiddenItems.has(item.slug)) || [];
+    const list = data?.content || [];
+    const carouselRef = useRef<HTMLDivElement>(null);
+
+    useLayoutEffect(() => {
+        const carousel = carouselRef.current;
+        if (!carousel) return;
+
+        carousel.scrollLeft = 0;
+        const frame = requestAnimationFrame(() => {
+            carousel.scrollLeft = 0;
+        });
+
+        return () => cancelAnimationFrame(frame);
+    }, [contentType, isLoading, list.length]);
 
     useEffect(() => {
         console.log('[Hikka Forge][debug] personal recommendations render', {
@@ -49,7 +79,7 @@ const UserRecommendationsComponent: React.FC = () => {
         return () => console.log('[Hikka Forge][debug] personal recommendations unmounted');
     }, []);
 
-    const handleFeedbackSuccess = (_slug: string) => {
+    const handleFeedbackSuccess = () => {
         refresh();
     };
 
@@ -62,12 +92,15 @@ const UserRecommendationsComponent: React.FC = () => {
             stateKey={isLoading ? "loading" : error ? "error" : list.length ? "content" : "empty"}
             animateStateChanges={false}
         >
-        <div className="border-border relative flex-col gap-4 rounded-lg border bg-card p-4 isolate will-change-transform items-center backdrop-blur-xl">
-            <section className="flex flex-col gap-2">
+        <div
+            id="recommendations"
+            className="relative isolate flex flex-col gap-4 rounded-lg border border-border p-4 will-change-transform surface"
+        >
+            <section className="flex min-w-0 flex-col gap-5">
                 <Header href="#recommendations">
                     <HeaderContainer>
-                        <HeaderTitle>
-                            <h4>Персональні рекомендації</h4>
+                        <HeaderTitle variant="h4">
+                            Персональні рекомендації
                         </HeaderTitle>
                     </HeaderContainer>
                     <HeaderNavButton />
@@ -77,45 +110,30 @@ const UserRecommendationsComponent: React.FC = () => {
                     options={CONTENT_TYPE_OPTIONS}
                     value={contentType}
                     onValueChange={setContentType}
-                    className="w-full mx-0"
                 />
 
                 {isLoading && (
-                    <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 -mb-2 snap-x">
+                    <div ref={carouselRef} className={CAROUSEL_CLASS}>
                         {Array.from({ length: 6 }).map((_, v) => (
-                            <div key={v} className="w-[120px] shrink-0 snap-start flex">
-                                <div
-                                    className="flex flex-col gap-2 w-[120px] h-full"
-                                    style={{ minWidth: '90px', maxWidth: '90px' }}
-                                >
-                                    <div className="relative block w-full mb-3">
-                                        <div className="relative w-full" style={{ paddingBottom: '150%' }}>
-                                            <div className="absolute inset-0 bg-secondary/20 rounded-lg animate-pulse" />
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-col gap-1">
-                                        <div className="h-[18px] w-[50px] bg-secondary/20 rounded-full animate-pulse" />
-                                        <div className="h-4 w-full bg-secondary/20 rounded animate-pulse mt-0.5" />
-                                    </div>
-                                </div>
+                            <div key={v} className={CAROUSEL_ITEM_CLASS}>
+                                <RecommendationCardSkeleton />
                             </div>
                         ))}
                     </div>
                 )}
 
                 {!isLoading && list.length > 0 && (
-                    <ModuleListTransition className="flex gap-4 overflow-x-auto no-scrollbar pb-2 -mb-2 snap-x">
+                    <div ref={carouselRef} className={CAROUSEL_CLASS}>
                         {list.map((item) => (
-                            <div key={item.slug} className="w-[120px] shrink-0 snap-start flex">
+                            <div key={item.slug} className={CAROUSEL_ITEM_CLASS}>
                                 <ConnectedRecommendationCard
                                     anime={item}
                                     contentType={contentType}
-                                    onFeedbackSuccess={() => handleFeedbackSuccess(item.slug)}
+                                    onFeedbackSuccess={handleFeedbackSuccess}
                                 />
                             </div>
                         ))}
-                    </ModuleListTransition>
+                    </div>
                 )}
 
                 {!isLoading && (error || list.length === 0) && (

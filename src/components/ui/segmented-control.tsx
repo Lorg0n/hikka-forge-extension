@@ -23,38 +23,43 @@ function SegmentedControl<T extends string>({
 }: SegmentedControlProps<T>) {
     return (
         <div
-            role="group"
+            data-slot="tabs"
+            data-orientation="horizontal"
             className={cn(
-                'flex items-center no-scrollbar overflow-y-scroll rounded-md p-0.75 bg-muted',
+                'group/tabs flex gap-2 data-[orientation=horizontal]:flex-col',
                 className
             )}
         >
-            {options.map((option) => {
-                const isActive = option.value === value;
-                return (
-                    <button
-                        key={option.value}
-                        type="button"
-                        data-state={isActive ? 'on' : 'off'}
-                        role="radio"
-                        aria-checked={isActive}
-                        aria-label={option.label}
-                        onClick={() => onValueChange(option.value)}
-                        className={cn(
-                            'inline-flex items-center justify-center gap-2 rounded-sm font-medium ring-offset-background transition-colors',
-                            'hover:bg-muted hover:text-muted-foreground',
-                            'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                            'disabled:pointer-events-none disabled:opacity-50',
-                            'data-[state=on]:bg-background/40 data-[state=on]:text-secondary-foreground dark:text-muted-foreground',
-                            '[&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
-                            'bg-transparent flex-1',
-                            size === 'sm' ? 'px-3 py-0.5 text-xs' : 'px-4 py-1.5 text-sm',
-                        )}
-                    >
-                        {option.label}
-                    </button>
-                );
-            })}
+            <div
+                data-slot="tabs-list"
+                data-size={size}
+                role="tablist"
+                aria-orientation="horizontal"
+                className="group/tabs-list inline-flex w-full items-center justify-center rounded-md bg-muted p-0.75 text-muted-foreground"
+            >
+                {options.map((option) => {
+                    const isActive = option.value === value;
+                    return (
+                        <button
+                            key={option.value}
+                            type="button"
+                            data-slot="tabs-trigger"
+                            data-state={isActive ? 'active' : 'inactive'}
+                            role="tab"
+                            aria-selected={isActive}
+                            aria-label={option.label}
+                            onClick={() => onValueChange(option.value)}
+                            className={cn(
+                                'relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-transparent px-2 py-1 font-medium text-foreground/60 text-sm transition-all hover:text-foreground focus-visible:border-ring focus-visible:outline-1 focus-visible:outline-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50',
+                                'data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:border-transparent dark:data-[state=active]:bg-card dark:data-[state=active]:text-foreground',
+                                size === 'sm' && 'h-auto px-3 py-0.5 text-xs',
+                            )}
+                        >
+                            {option.label}
+                        </button>
+                    );
+                })}
+            </div>
         </div>
     );
 }

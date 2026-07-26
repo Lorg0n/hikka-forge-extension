@@ -9,9 +9,10 @@ const weeklyTopAnimeModule: ForgeModuleDef = {
     enabledByDefault: true,
     category: 'recommendations',
     elementSelector: {
-        selector: '#ongoings div.flex.items-center.gap-4:has(> a > h4)',
+        selector: '#ongoings section > div.flex.items-center.justify-between.gap-2',
         position: 'append',
         visibleOnly: true,
+        hostWidth: 'auto',
     },
     component: WeeklyTopAnimeComponent,
     icon: {

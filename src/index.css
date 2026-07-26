@@ -41,6 +41,20 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+@utility surface {
+  background-color: var(--surface, color-mix(in oklab, var(--card) 88%, transparent));
+  color: var(--card-foreground);
+  box-shadow: var(--shadow-card, 0 1px 3px rgb(0 0 0 / 0.08), 0 1px 2px rgb(0 0 0 / 0.05));
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 :root,
 :host {
   --radius: 0.75rem;
@@ -50,6 +64,8 @@
   --card-foreground: oklch(0.141 0.005 285.823);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.141 0.005 285.823);
+  --shadow-card: 0 1px 3px oklch(0.3 0.03 286 / 0.08), 0 1px 2px oklch(0.3 0.03 286 / 0.05);
+  --surface: oklch(from var(--card) l c h / 0.88);
   --primary: oklch(0.21 0.006 285.885);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.967 0.001 286.375);
@@ -86,6 +102,8 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.21 0.006 285.885);
   --popover-foreground: oklch(0.985 0 0);
+  --shadow-card: 0 0 #0000;
+  --surface: oklch(from var(--card) calc(l * 1.1) c h / 0.45);
   --primary: oklch(0.92 0.004 286.32);
   --primary-foreground: oklch(0.21 0.006 285.885);
   --secondary: oklch(0.274 0.006 286.033);

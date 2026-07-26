@@ -22,6 +22,9 @@ const moduleImports = import.meta.glob<{ default: ForgeModuleDef }>(
 
 const ANIMATION_DURATION_MS = 280;
 const DEBUG_PREFIX = "[Hikka Forge][debug]";
+const INITIAL_HYDRATION_MIN_DELAY_MS = 750;
+const INITIAL_HYDRATION_QUIET_MS = 400;
+const INITIAL_HYDRATION_MAX_DELAY_MS = 3000;
 const SEMANTIC_THEME_VARS = [
 	"--radius",
 	"--background",
@@ -245,6 +248,8 @@ class ModuleManager {
 	private mutationBatch = 0;
 	private initialReconciliationReady = false;
 	private initialReconciliationTimer: ReturnType<typeof setTimeout> | null = null;
+	private initialRenderStartedAt = 0;
+	private lastInitialMutationAt = 0;
 
 	constructor() {
 		this.loadModuleDefinitions();
@@ -257,13 +262,52 @@ class ModuleManager {
 	}
 
 	private waitForInitialPageRender(): void {
-		console.log(`${DEBUG_PREFIX} waiting for initial page render before mounting modules`);
-		this.initialReconciliationTimer = setTimeout(() => {
-			this.initialReconciliationTimer = null;
-			this.initialReconciliationReady = true;
-			console.log(`${DEBUG_PREFIX} initial page render wait complete`);
-			this.scheduleReconciliation();
-		}, 1000);
+		console.log(`${DEBUG_PREFIX} waiting for Hikka hydration before mounting modules`);
+
+		const beginSettling = () => {
+			if (this.initialReconciliationReady || this.initialReconciliationTimer) return;
+
+			this.initialRenderStartedAt = performance.now();
+			this.lastInitialMutationAt = this.initialRenderStartedAt;
+
+			const finishWhenStable = () => {
+				const now = performance.now();
+				const elapsed = now - this.initialRenderStartedAt;
+				const quietFor = now - this.lastInitialMutationAt;
+				const isQuiet = quietFor >= INITIAL_HYDRATION_QUIET_MS;
+				const reachedMaximumDelay = elapsed >= INITIAL_HYDRATION_MAX_DELAY_MS;
+
+				if (elapsed < INITIAL_HYDRATION_MIN_DELAY_MS || (!isQuiet && !reachedMaximumDelay)) {
+					const untilMinimumDelay = Math.max(0, INITIAL_HYDRATION_MIN_DELAY_MS - elapsed);
+					const untilQuiet = Math.max(0, INITIAL_HYDRATION_QUIET_MS - quietFor);
+					this.initialReconciliationTimer = setTimeout(
+						finishWhenStable,
+						Math.max(16, untilMinimumDelay, untilQuiet),
+					);
+					return;
+				}
+
+				this.initialReconciliationTimer = null;
+				requestAnimationFrame(() => {
+					requestAnimationFrame(() => {
+						this.initialReconciliationReady = true;
+						console.log(`${DEBUG_PREFIX} initial hydration wait complete`);
+						this.scheduleReconciliation();
+					});
+				});
+			};
+
+			this.initialReconciliationTimer = setTimeout(
+				finishWhenStable,
+				INITIAL_HYDRATION_MIN_DELAY_MS,
+			);
+		};
+
+		if (document.readyState === "complete") {
+			beginSettling();
+		} else {
+			window.addEventListener("load", beginSettling, { once: true });
+		}
 	}
 
 	private loadModuleDefinitions(): void {
@@ -430,7 +474,7 @@ class ModuleManager {
 		host.dataset.moduleId = moduleDef.id;
 		host.dataset.hikkaForge = "content-module";
 		host.style.display = "block";
-		host.style.width = "100%";
+		host.style.width = moduleDef.elementSelector.hostWidth ?? "100%";
 
 		const shadowRoot = host.attachShadow({ mode: "open" });
 		const styleElement = document.createElement("style");
@@ -614,6 +658,9 @@ class ModuleManager {
 
 	private initMutationReconciliation(): void {
 		this.reconciliationObserver = new MutationObserver((records) => {
+			if (!this.initialReconciliationReady) {
+				this.lastInitialMutationAt = performance.now();
+			}
 			const batch = ++this.mutationBatch;
 			console.log(`${DEBUG_PREFIX} page mutation batch`, {
 				batch,

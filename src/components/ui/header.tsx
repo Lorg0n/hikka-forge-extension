@@ -1,4 +1,4 @@
-import React, { FC, PropsWithChildren, useCallback } from 'react';
+import React, { FC, PropsWithChildren } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@iconify/react';
@@ -54,23 +54,40 @@ interface HeaderTitleProps {
     href?: string;
 }
 
-export const HeaderTitle: FC<PropsWithChildren<HeaderTitleProps>> = ({ className, children, href: hrefProp }) => {
+const HEADING_CLASSES: Record<NonNullable<HeaderTitleProps['variant']>, string> = {
+    h1: 'font-display scroll-m-20 text-4xl font-bold tracking-normal lg:text-5xl',
+    h2: 'font-display scroll-m-20 text-2xl font-bold tracking-normal',
+    h3: 'font-display scroll-m-20 text-lg font-bold tracking-normal',
+    h4: 'font-display scroll-m-20 text-base font-bold tracking-normal',
+    h5: 'font-display scroll-m-20 text-base font-bold tracking-normal',
+};
+
+export const HeaderTitle: FC<PropsWithChildren<HeaderTitleProps>> = ({
+    className,
+    children,
+    href: hrefProp,
+    variant = 'h3',
+}) => {
     const { href, onClick, linkProps } = useHeader();
-    // Simplified typography for extension context - usually Hikka uses specific fonts
-    const Component = 'h2'; 
+    const Component = variant;
+    const heading = <Component className={HEADING_CLASSES[variant]}>{children}</Component>;
 
     return (
         <div className={cn('flex items-center gap-4', className)}>
             {hrefProp || href ? (
-                <a href={hrefProp || href || ''} {...linkProps} className="hover:underline text-left font-display text-xl font-bold">
-                    <Component>{children}</Component>
+                <a
+                    href={hrefProp || href || ''}
+                    {...linkProps}
+                    className="text-left hover:underline"
+                >
+                    {heading}
                 </a>
             ) : onClick ? (
-                <button onClick={onClick} className="hover:underline text-left font-display text-xl font-bold">
-                    <Component>{children}</Component>
+                <button type="button" onClick={onClick} className="text-left hover:underline">
+                    {heading}
                 </button>
             ) : (
-                <Component className="font-display text-xl font-bold">{children}</Component>
+                heading
             )}
         </div>
     );
@@ -81,11 +98,16 @@ export const HeaderNavButton: FC = () => {
 
     if (!href && !onClick) return null;
 
-    const IconArrow = <Icon icon="material-symbols:arrow-right-alt-rounded" className="text-2xl" />;
+    const IconArrow = <Icon icon="material-symbols:arrow-right-alt-rounded" className="text-lg" />;
 
     if (href) {
         return (
-            <Button size="icon-sm" variant="ghost" asChild>
+            <Button
+                size="icon-sm"
+                variant="outline"
+                asChild
+                className="border-border bg-background text-foreground shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50"
+            >
                 <a href={href} className="flex items-center gap-2 text-muted-foreground" {...linkProps}>
                     {IconArrow}
                 </a>
@@ -94,7 +116,12 @@ export const HeaderNavButton: FC = () => {
     }
 
     return (
-        <Button onClick={onClick} size="icon-sm" className="flex items-center gap-2 text-muted-foreground" variant="ghost">
+        <Button
+            onClick={onClick}
+            size="icon-sm"
+            className="flex items-center gap-2 border-border bg-background text-muted-foreground shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50"
+            variant="outline"
+        >
             {IconArrow}
         </Button>
     );

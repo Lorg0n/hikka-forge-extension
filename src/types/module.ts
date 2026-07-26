@@ -15,6 +15,7 @@ export interface ModuleSelector {
   position: InsertPosition;
   index?: number;
   visibleOnly?: boolean;
+  hostWidth?: string;
 }
 
 export type ModuleSettingType =

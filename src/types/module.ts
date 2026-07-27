@@ -3,6 +3,13 @@ import type { MODULE_CATEGORIES } from "@/constants";
 
 export type ModuleCategory = keyof typeof MODULE_CATEGORIES;
 
+export type ModuleSettingValue = string | number | boolean;
+export type ModuleSettings = Record<string, ModuleSettingValue>;
+
+export interface ModuleComponentProps {
+	settings: ModuleSettings;
+}
+
 export type InsertPosition =
 	| "before"
 	| "after"
@@ -73,11 +80,13 @@ export interface ForgeModuleDef {
 	id: string;
 	name: string;
 	description: string;
+	/** Mount this module only while the named module is enabled. */
+	dependsOn?: string;
 	urlPatterns: string[];
 	elementSelector?: ModuleSelector;
 	enabledByDefault?: boolean;
-	component?: React.FC<any>;
-	styles?: string | ((settings: Record<string, any>) => string);
+	component?: React.FC<ModuleComponentProps>;
+	styles?: string | ((settings: ModuleSettings) => string);
 	persistentStyles?: boolean;
 	settings?: ModuleSetting[];
 	hidden?: boolean;
@@ -118,7 +127,7 @@ interface ModuleUpdateSettingAction {
 	action: "UPDATE_SETTING";
 	moduleId: string;
 	settingId: string;
-	value: any;
+	value: ModuleSettingValue;
 }
 
 interface ModuleRefreshAction {
@@ -142,7 +151,7 @@ interface UrlChangedMessage {
 interface SyncModulesMessage {
 	type: "SYNC_MODULES";
 	enabledStates: Record<string, boolean>;
-	moduleSettings: Record<string, Record<string, any>>;
+	moduleSettings: Record<string, ModuleSettings>;
 }
 
 interface RegisterContentScriptMessage {
@@ -178,7 +187,7 @@ interface BaseResponse {
 interface GetModulesSuccessResponse extends BaseResponse {
 	success: true;
 	modules: ModuleInfo[];
-	moduleSettings: Record<string, Record<string, any>>;
+	moduleSettings: Record<string, ModuleSettings>;
 }
 
 interface GetModulesErrorResponse extends BaseResponse {

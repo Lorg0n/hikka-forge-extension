@@ -33,7 +33,7 @@ const RecommendationCardSkeleton: React.FC = () => (
     </div>
 );
 
-const UserRecommendationsComponent: React.FC = () => {
+export const UserRecommendationsView: React.FC = () => {
     const { isAuthenticated, isLoading: authLoading } = useAuth();
 
     const {
@@ -148,5 +148,9 @@ const UserRecommendationsComponent: React.FC = () => {
         </ModuleTransition>
     );
 };
+
+const UserRecommendationsComponent: React.FC = () => (
+    <UserRecommendationsView />
+);
 
 export default UserRecommendationsComponent;

@@ -2,6 +2,7 @@ import type {
 	BackgroundMessage,
 	ModuleInfo,
 	ContentMessage,
+	ModuleSettingValue,
 } from "./types/module";
 import browser from "./utils/browser";
 
@@ -38,6 +39,8 @@ const CACHE_DURATION = 5 * 60 * 1000;
 class BackgroundManager {
 	private tabStates: Map<number, { url: string; lastChecked: number }> =
 		new Map();
+	private moduleEnabledOverrides = new Map<string, boolean>();
+	private moduleSettingOverrides = new Map<string, ModuleSettingValue>();
 
 	constructor() {
 		this.initTabsListeners();
@@ -161,6 +164,7 @@ class BackgroundManager {
 		logger.log(`[Hikka Forge] Setting ${storageKey} to ${enabled}`);
 		try {
 			await browser.storage.sync.set({ [storageKey]: enabled });
+			this.moduleEnabledOverrides.set(moduleId, enabled);
 			await this.syncAllTabs();
 		} catch (error) {
 			logger.error(
@@ -187,12 +191,13 @@ class BackgroundManager {
 	private async updateModuleSetting(
 		moduleId: string,
 		settingId: string,
-		value: any
+		value: ModuleSettingValue
 	): Promise<void> {
 		const storageKey = `module_setting_${moduleId}_${settingId}`;
 		logger.log(`[Hikka Forge] Setting ${storageKey} to:`, value);
 		try {
 			await browser.storage.sync.set({ [storageKey]: value });
+			this.moduleSettingOverrides.set(`${moduleId}.${settingId}`, value);
 			await this.syncAllTabs();
 		} catch (error) {
 			logger.error(
@@ -260,7 +265,9 @@ class BackgroundManager {
 
 			const updatedModules = definitions.map((def) => {
 				const enabledKey = `module_enabled_${def.id}`;
-				const storedEnabled = allStoredData[enabledKey];
+				const storedEnabled = this.moduleEnabledOverrides.has(def.id)
+					? this.moduleEnabledOverrides.get(def.id)
+					: allStoredData[enabledKey];
 				const enabled = typeof storedEnabled === "boolean"
 					? storedEnabled
 					: (def.enabledByDefault ?? false);
@@ -269,8 +276,10 @@ class BackgroundManager {
 				if (def.settings) {
 					def.settings.forEach((setting) => {
 						const settingKey = `module_setting_${def.id}_${setting.id}`;
-						settings[setting.id] =
-							allStoredData[settingKey] ?? setting.defaultValue;
+						const overrideKey = `${def.id}.${setting.id}`;
+						settings[setting.id] = this.moduleSettingOverrides.has(overrideKey)
+							? this.moduleSettingOverrides.get(overrideKey)
+							: allStoredData[settingKey] ?? setting.defaultValue;
 					});
 				}
 				moduleSettings[def.id] = settings;

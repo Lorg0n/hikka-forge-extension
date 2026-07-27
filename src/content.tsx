@@ -5,9 +5,11 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { createRoot, Root } from "react-dom/client";
 import type {
 	ForgeModuleDef,
+	ModuleComponentProps,
 	ModuleInfo,
 	ContentMessage,
 	InsertPosition,
+	ModuleSettings,
 } from "@/types/module";
 import { ModuleAuthProvider } from "@/contexts/ModuleAuthContext";
 import {
@@ -81,13 +83,13 @@ function describeNode(node: Node): string {
 }
 
 interface ModuleRuntimeProps {
-	component: React.FC<any>;
-	settings: Record<string, any>;
+	component: React.FC<ModuleComponentProps>;
+	settings: ModuleSettings;
 	ui: ContentUIContextValue;
 	exiting: boolean;
 }
 
-function ModuleRuntime({
+export function ModuleRuntime({
 	component: Component,
 	settings,
 	ui,
@@ -105,7 +107,7 @@ function ModuleRuntime({
 					{!exiting && (
 						<motion.div
 							key="module"
-							initial={{ opacity: 0, y: reducedMotion ? 0 : 10 }}
+							initial={false}
 							animate={{ opacity: 1, y: 0 }}
 							exit={{ opacity: 0, y: reducedMotion ? 0 : -8 }}
 							transition={transition}
@@ -258,7 +260,7 @@ function synchronizeTheme(
 class ModuleManager {
 	private moduleDefinitions = new Map<string, ForgeModuleDef>();
 	private moduleEnabledStates = new Map<string, boolean>();
-	private moduleSettings: Record<string, Record<string, any>> = {};
+	private moduleSettings: Record<string, ModuleSettings> = {};
 	private activeModuleRoots = new Map<string, ModuleInstance>();
 	private pendingUnmounts = new Map<string, PendingUnmount>();
 	private moduleTokens = new Map<string, number>();
@@ -361,7 +363,7 @@ class ModuleManager {
 
 	private syncModuleStates(
 		enabledStates: Record<string, boolean>,
-		moduleSettings: Record<string, Record<string, any>>
+		moduleSettings: Record<string, ModuleSettings>
 	): void {
 		const reloadIds = new Set<string>();
 		for (const moduleDef of this.moduleDefinitions.values()) {
@@ -389,6 +391,7 @@ class ModuleManager {
 			}
 		}
 
+		logger.log(`${DEBUG_PREFIX} module states synchronized`, enabledStates);
 		this.scheduleReconciliation(reloadIds);
 	}
 
@@ -398,7 +401,7 @@ class ModuleManager {
 			if (!moduleDef.component || !moduleDef.elementSelector) continue;
 
 			const shouldBeMounted =
-				(this.moduleEnabledStates.get(moduleDef.id) ?? false) &&
+				this.isModuleEnabled(moduleDef) &&
 				this.matchesUrlPatterns(this.currentUrl, moduleDef.urlPatterns);
 			let active = this.activeModuleRoots.get(moduleDef.id);
 			let pending = this.pendingUnmounts.get(moduleDef.id);
@@ -445,6 +448,41 @@ class ModuleManager {
 			}
 			this.mountModule(moduleDef);
 		}
+	}
+
+	private isModuleEnabled(moduleDef: ForgeModuleDef): boolean {
+		// Dependent modules are implementation details of their parent. Their
+		// hidden storage state must not prevent them from following the parent.
+		if (moduleDef.dependsOn) return this.areModuleDependenciesEnabled(moduleDef);
+		return (
+			this.moduleEnabledStates.get(moduleDef.id) ??
+			(moduleDef.enabledByDefault ?? false)
+		);
+	}
+
+	private areModuleDependenciesEnabled(moduleDef: ForgeModuleDef): boolean {
+		const dependency = moduleDef.dependsOn;
+		if (!dependency) return true;
+		if (dependency === moduleDef.id) {
+			logger.error(`${DEBUG_PREFIX} module cannot depend on itself`, {
+				moduleId: moduleDef.id,
+			});
+			return false;
+		}
+
+		const dependencyDefinition = this.moduleDefinitions.get(dependency);
+		if (!dependencyDefinition) {
+			logger.error(`${DEBUG_PREFIX} module dependency is missing`, {
+				moduleId: moduleDef.id,
+				dependsOn: dependency,
+			});
+			return false;
+		}
+
+		return (
+			this.moduleEnabledStates.get(dependency) ??
+			(dependencyDefinition.enabledByDefault ?? false)
+		);
 	}
 
 	private matchesUrlPatterns(url: string, patterns: string[]): boolean {

@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 
 import MDViewer from "@/components/ui/markdown/MD-viewer";
+import { uploadArticleImage } from "@/services/articleImageUploadService";
 
 type MarkdownAction =
 	| "paragraph"
@@ -247,6 +248,8 @@ export default function ArticleMarkdownEditorComponent() {
 	const [emojiOpen, setEmojiOpen] = useState(false);
 	const [history, setHistory] = useState<string[]>([]);
 	const [future, setFuture] = useState<string[]>([]);
+	const [uploadingImages, setUploadingImages] = useState(0);
+	const [uploadError, setUploadError] = useState<string | null>(null);
 
 	const updateMarkdown = (nextValue: string, start?: number, end?: number) => {
 		if (nextValue === markdown) return;
@@ -307,29 +310,64 @@ export default function ArticleMarkdownEditorComponent() {
 	};
 
 	const insertImage = () => {
+		setUploadError(null);
 		imageInputRef.current?.click();
 	};
 
-	const insertImages = async (files: FileList | null) => {
+	const insertUploadedImages = (images: Array<{ alt: string; url: string }>) => {
+		if (images.length === 0 || !textareaRef.current) return;
+		const { selectionStart, selectionEnd, value } = textareaRef.current;
+		const markdownImages = images
+			.map(({ alt, url }) => `![${alt.replace(/\]|\[/g, "")}](${url})`)
+			.join("\n\n");
+		const nextValue = `${value.slice(0, selectionStart)}${markdownImages}${value.slice(selectionEnd)}`;
+		updateMarkdown(
+			nextValue,
+			selectionStart + markdownImages.length,
+			selectionStart + markdownImages.length,
+		);
+	};
+
+	const insertImages = async (files: FileList | File[]) => {
 		const imageFiles = Array.from(files ?? []).filter((file) =>
 			file.type.startsWith("image/"),
 		);
 		if (imageFiles.length === 0) return;
 
-		const images = await Promise.all(
-			imageFiles.map(
-				(file) =>
-					new Promise<string>((resolve, reject) => {
-						const reader = new FileReader();
-						reader.onload = () =>
-							resolve(`![${file.name}](${String(reader.result)})`);
-						reader.onerror = () => reject(reader.error);
-						reader.readAsDataURL(file);
-					}),
-			),
+		setUploadError(null);
+		setUploadingImages(imageFiles.length);
+		const results = await Promise.allSettled(
+			imageFiles.map(async (file) => ({
+				alt: file.name.replace(/\.[^.]+$/, "") || "Зображення",
+				...(await uploadArticleImage(file)),
+			})),
 		);
-		insertTextAtCursor(images.join("\n\n"));
+		const uploaded = results.flatMap((result) =>
+			result.status === "fulfilled" ? [result.value] : [],
+		);
+		const failed = results.find((result) => result.status === "rejected");
+		if (failed?.status === "rejected") {
+			setUploadError(
+				failed.reason instanceof Error
+					? failed.reason.message
+					: "Не вдалося завантажити зображення.",
+			);
+		}
+		insertUploadedImages(uploaded);
+		setUploadingImages(0);
 		if (imageInputRef.current) imageInputRef.current.value = "";
+	};
+
+	const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+		const clipboardItems = Array.from(event.clipboardData?.items ?? []);
+		const files = clipboardItems
+			.filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+			.map((item) => item.getAsFile())
+			.filter((file): file is File => file !== null);
+		if (files.length === 0) return;
+
+		event.preventDefault();
+		void insertImages(files);
 	};
 
 	function insertTextAtCursor(text: string) {
@@ -462,6 +500,7 @@ export default function ArticleMarkdownEditorComponent() {
 							ref={textareaRef}
 							value={markdown}
 							onChange={(event) => updateMarkdown(event.target.value)}
+							onPaste={handlePaste}
 							className="min-h-64 flex-1 resize-y bg-transparent p-4 font-mono text-sm leading-6 text-foreground outline-none placeholder:text-muted-foreground"
 							placeholder="Напишіть Markdown..."
 							aria-label="Markdown текст статті"
@@ -489,9 +528,17 @@ export default function ArticleMarkdownEditorComponent() {
 					</MDViewer>
 				)}
 			</div>
+			{(uploadingImages > 0 || uploadError) && (
+				<p
+					className={`border-t border-border px-4 py-2 text-xs ${uploadError ? "text-destructive" : "text-muted-foreground"}`}
+					role={uploadError ? "alert" : undefined}
+				>
+					{uploadError ?? `Завантаження зображень: ${uploadingImages}...`}
+				</p>
+			)}
 
 			<p className="border-t border-border px-4 py-2 text-xs text-muted-foreground">
-				Цей редактор працює окремо від поля «Зміст» і не змінює його автоматично.
+				Вставте зображення через Ctrl+V або кнопку «Зображення» — воно завантажиться як вкладення Hikka та вставиться у Markdown.
 			</p>
 		</section>
 	);

@@ -82,6 +82,7 @@ export const MODULE_CATEGORIES = {
 } as const;
 
 export const HIKKA_BASE = "https://dev.hikka.io" as const;
+export const HIKKA_API_BASE = "https://api.hikka.io" as const;
 export const API_BACKEND_BASE = "https://hikka-forge.lorgon.dev" as const;
 
 export const GITHUB_REPO = "https://github.com/Lorg0n/hikka-forge-extension" as const;

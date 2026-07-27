@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Icon } from '@iconify/react';
 import { cn } from '@/lib/utils';
+import { getContentTypeLabel, getMediaTypeLabel, getReleaseStatusLabel } from '@/constants';
 
 interface RelationsGraphContentProps {
     nodes: GraphNode[];
@@ -487,7 +488,12 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
     );
 };
 
-const RelationCard: React.FC<{ node: LayoutNode; isCurrent: boolean }> = ({ node, isCurrent }) => (
+const RelationCard: React.FC<{ node: LayoutNode; isCurrent: boolean }> = ({ node, isCurrent }) => {
+    const status = getReleaseStatusLabel(node.status);
+    const mediaType = getMediaTypeLabel(node.format);
+    const contentType = getContentTypeLabel(node.type);
+
+    return (
     <article className={cn('surface bg-card/80 absolute flex h-[148px] w-[280px] gap-4 overflow-hidden rounded-xl border p-3 shadow-xl shadow-black/15 transition-shadow', isCurrent ? 'border-amber-400/80 ring-2 ring-amber-400/25' : 'border-border/70')} style={{ left: node.x, top: node.y }} data-pan-exclude>
         <img src={node.imageUrl} alt="" className="h-[124px] w-[84px] shrink-0 rounded-lg bg-muted object-cover" />
         <div className="flex min-w-0 flex-1 flex-col py-0.5">
@@ -502,8 +508,9 @@ const RelationCard: React.FC<{ node: LayoutNode; isCurrent: boolean }> = ({ node
             >
                 {node.title}
             </Link>
-            <span className="mt-1.5 line-clamp-1 text-xs text-muted-foreground">{node.status || 'Статус не вказано'}</span>
-            <span className="mt-auto text-xs text-muted-foreground">{[node.year > 0 ? node.year : null, node.format].filter(Boolean).join(' • ') || node.type}</span>
+            <span className="mt-1.5 line-clamp-1 text-xs text-muted-foreground">{status || 'Статус не вказано'}</span>
+            <span className="mt-auto text-xs text-muted-foreground">{[node.year > 0 ? node.year : null, mediaType].filter(Boolean).join(' • ') || contentType}</span>
         </div>
     </article>
-);
+    );
+};

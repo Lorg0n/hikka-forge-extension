@@ -2,6 +2,7 @@ import React from 'react';
 import { GraphNode } from '@/types';
 import Link from '@/components/typography/link';
 import { cn } from '@/lib/utils';
+import { getMediaTypeLabel } from '@/constants';
 
 interface RelationsNodeLabelProps {
     node: GraphNode;
@@ -15,6 +16,7 @@ export const RelationsNodeLabel: React.FC<RelationsNodeLabelProps> = ({
     isHighlighted = false,
 }) => {
     const href = `/${node.type}/${node.slug}`;
+    const mediaType = getMediaTypeLabel(node.format);
 
     return (
         <div
@@ -36,12 +38,12 @@ export const RelationsNodeLabel: React.FC<RelationsNodeLabelProps> = ({
             >
                 {node.title}
             </Link>
-            {(node.year > 0 || node.format) && (
+            {(node.year > 0 || mediaType) && (
                 <span className={cn(
                     "text-[9px] whitespace-nowrap",
                     isCurrent ? "text-amber-400/80" : "text-muted-foreground"
                 )}>
-                    {[node.year > 0 ? String(node.year) : null, node.format]
+                    {[node.year > 0 ? String(node.year) : null, mediaType]
                         .filter(Boolean)
                         .join(' • ')}
                 </span>

@@ -149,6 +149,7 @@ const MobileUserRecommendationsComponent: React.FC = () => {
         };
 
         const setActive = (active: boolean, tabList: HTMLElement | null): void => {
+            const becameActive = active && !activeRef.current;
             activeRef.current = active;
             host.style.display = active ? 'block' : 'none';
             if (!tabList) return;
@@ -159,7 +160,7 @@ const MobileUserRecommendationsComponent: React.FC = () => {
                 restoreNativeContent();
             }
             if (recommendationTab) setTabState(recommendationTab, active);
-            if (active) {
+            if (becameActive) {
                 requestAnimationFrame(() => {
                     if (activeRef.current && host.isConnected) {
                         host.scrollIntoView({ behavior: 'smooth', block: 'nearest' });

@@ -39,9 +39,30 @@ const CARD_HEIGHT = 116;
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 3;
 const GRAPH_PADDING = 72;
-// Keep ELK's GWT runtime in a real worker. The bundled fallback executes against
-// the host page's global object, where sites are free to patch globals such as Math.
-const elk = new ELK({ workerUrl: elkWorkerUrl });
+let elkPromise: Promise<ELK> | null = null;
+
+// Content scripts have the page origin, so Chrome rejects a Worker pointed
+// directly at chrome-extension://… . Fetching the web-accessible worker and
+// starting it from a Blob keeps it isolated from the page's patched globals
+// while satisfying the content-script worker origin requirement.
+const getElk = () => {
+    if (!elkPromise) {
+        elkPromise = fetch(elkWorkerUrl)
+            .then(response => {
+                if (!response.ok) throw new Error(`Could not load ELK worker (${response.status}).`);
+                return response.text();
+            })
+            .then(workerSource => new ELK({
+                workerFactory: () => {
+                    const url = URL.createObjectURL(new Blob([workerSource], { type: 'text/javascript' }));
+                    const worker = new Worker(url);
+                    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+                    return worker;
+                },
+            }));
+    }
+    return elkPromise;
+};
 
 const relationTypeColors: Record<string, string> = {
     SEQUEL: '#4ade80', PREQUEL: '#60a5fa', ALTERNATIVE: '#c084fc', SPIN_OFF: '#fbbf24',
@@ -92,16 +113,26 @@ const createLayout = async (nodes: GraphNode[], edges: GraphEdge[]): Promise<Gra
         outgoing.set(edge.source, (outgoing.get(edge.source) || 0) + 1);
     });
 
-    const graph = await elk.layout({
+    const graph = await (await getElk()).layout({
         id: 'relations',
         layoutOptions: {
             'elk.algorithm': 'layered',
             'elk.direction': 'RIGHT',
             'elk.edgeRouting': 'ORTHOGONAL',
-            'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
-            'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
-            'elk.spacing.nodeNode': '48',
-            'elk.layered.spacing.nodeNodeBetweenLayers': '112',
+            'elk.layered.cycleBreaking.strategy': 'GREEDY',
+            'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
+            'elk.layered.nodePlacement.favorStraightEdges': 'true',
+            'elk.layered.nodePlacement.bk.edgeStraightening': 'IMPROVE_STRAIGHTNESS',
+            // Let ELK reorder nodes inside every layer. Preserving API order here
+            // was pinning unrelated cards into crossing routes.
+            'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
+            'elk.layered.crossingMinimization.forceNodeModelOrder': 'false',
+            'elk.layered.mergeEdges': 'false',
+            'elk.layered.unnecessaryBendpoints': 'false',
+            'elk.spacing.nodeNode': '88',
+            'elk.layered.spacing.nodeNodeBetweenLayers': '176',
+            'elk.layered.spacing.edgeNodeBetweenLayers': '36',
+            'elk.layered.spacing.edgeEdgeBetweenLayers': '28',
             'elk.padding': `[top=${GRAPH_PADDING},left=${GRAPH_PADDING},bottom=${GRAPH_PADDING},right=${GRAPH_PADDING}]`,
         },
         children: nodes.map(node => ({

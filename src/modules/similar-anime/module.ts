@@ -10,7 +10,7 @@ const animeSimilarModule: ForgeModuleDef = {
   category: 'recommendations',
   elementSelector: {
     selector: '#content-center > div.order-last',
-    position: 'prepend',
+    position: 'before',
     index: 0
   },
   component: SimilarAnimeComponent,

@@ -10,13 +10,13 @@ const mangaSimilarModule: ForgeModuleDef = {
   category: 'recommendations',
   elementSelector: {
     selector: '#content-center > div.order-last',
-    position: 'prepend',
+    position: 'before',
     index: 0
   },
   component: SimilarMangaComponent,
   icon: {
     name: 'lucide:book-open',
-    color: '#4ade80',
+    color: '#4a4cde',
   },
 };
 

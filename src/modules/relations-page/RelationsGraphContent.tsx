@@ -12,6 +12,7 @@ interface RelationsGraphContentProps {
     nodes: GraphNode[];
     edges: GraphEdge[];
     currentNodeId?: string;
+    relationTypes: string[];
 }
 
 interface LayoutNode extends GraphNode {
@@ -68,6 +69,12 @@ const relationTypeColors: Record<string, string> = {
     SEQUEL: '#4ade80', PREQUEL: '#60a5fa', ALTERNATIVE: '#c084fc', SPIN_OFF: '#fbbf24',
     PARENT: '#f87171', CHARACTER: '#22d3ee', SIDE_STORY: '#2dd4bf', SOURCE: '#a3e635',
     SUMMARY: '#facc15', OTHER: '#9ca3af', ADAPTATION: '#f472b6',
+};
+
+const relationTypeLabels: Record<string, string> = {
+    SEQUEL: 'Продовження', PREQUEL: 'Приквел', ALTERNATIVE: 'Альтернатива', SPIN_OFF: 'Спін-оф',
+    PARENT: 'Основний', CHARACTER: 'Персонаж', SIDE_STORY: 'Побічна історія', SOURCE: 'Джерело',
+    SUMMARY: 'Підсумок', OTHER: 'Інше', ADAPTATION: 'Адаптація',
 };
 
 const edgePath = (section: RoutedEdge['sections'][number]) => {
@@ -181,7 +188,7 @@ const createLayout = async (nodes: GraphNode[], edges: GraphEdge[]): Promise<Gra
     };
 };
 
-export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ nodes, edges, currentNodeId }) => {
+export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ nodes, edges, currentNodeId, relationTypes }) => {
     const viewportRef = useRef<HTMLDivElement>(null);
     const [layout, setLayout] = useState<GraphLayout | null>(null);
     const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -287,7 +294,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
     };
 
     return (
-        <div ref={viewportRef} className="relative size-full overflow-hidden bg-card/70" onMouseDown={handleMouseDown}>
+        <div ref={viewportRef} className="relative size-full overflow-hidden bg-background/95" onMouseDown={handleMouseDown}>
             {layout && <div className="absolute left-0 top-0" style={{ width: layout.width, height: layout.height, transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: '0 0' }}>
                 <div
                     className="pointer-events-none absolute opacity-60 [background-image:radial-gradient(var(--border)_1px,transparent_1px)] [background-size:24px_24px]"
@@ -302,18 +309,74 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
 
             {!layout && <div className="absolute inset-0 z-10 flex items-center justify-center text-sm text-muted-foreground">Підготовка графа…</div>}
 
-            <div className="absolute left-4 top-4 z-20 relative w-[min(18rem,calc(100%-7rem))]">
-                <Icon icon="material-symbols:search" className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input placeholder="Пошук у графі..." value={searchQuery} onChange={event => setSearchQuery(event.target.value)} className="relative z-0 h-10 border-border/70 bg-background/75 pl-9 shadow-lg backdrop-blur-md" />
-                {searchQuery && <Button type="button" variant="ghost" size="icon-xs" onClick={() => setSearchQuery('')} className="absolute right-1 top-1/2 z-10 -translate-y-1/2" aria-label="Очистити пошук"><Icon icon="material-symbols:close" className="size-4" /></Button>}
+            <div className="absolute inset-x-3 top-3 z-20 flex items-center justify-between gap-2 sm:inset-x-4 sm:top-4">
+                <div className="relative flex shrink-0 items-center overflow-hidden rounded-lg border border-border/70 bg-background/70 shadow-lg backdrop-blur-md">
+
+                    <Icon
+                        icon="material-symbols:search"
+                        className="pointer-events-none absolute left-2.5 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
+                    />
+
+                    <Input
+                        placeholder="Пошук у графі..."
+                        value={searchQuery}
+                        onChange={event => setSearchQuery(event.target.value)}
+                        /* Removed w-full, kept a fixed height (h-9), and forced border/ring removal */
+                        className="h-9 border-0 bg-transparent pl-8 pr-8 shadow-none outline-none ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 !border-none !ring-0"
+                    />
+
+                    {searchQuery && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-1 top-1/2 z-10 -translate-y-1/2 hover:bg-transparent"
+                            aria-label="Очистити пошук"
+                        >
+                            <Icon icon="material-symbols:close" className="size-4" />
+                        </Button>
+                    )}
+
+                </div>
+                <div className="flex shrink-0 gap-1 rounded-lg border border-border/70 bg-background/70 p-1 shadow-lg backdrop-blur-md">
+                    <Button size="icon-sm" variant="ghost" onClick={() => zoomAt(viewportSize.width / 2, viewportSize.height / 2, zoom * 1.2)} title="Збільшити"><Icon icon="material-symbols:add" /></Button>
+                    <Button size="icon-sm" variant="ghost" onClick={() => zoomAt(viewportSize.width / 2, viewportSize.height / 2, zoom * 0.8)} title="Зменшити"><Icon icon="material-symbols:remove" /></Button>
+                    <Button size="icon-sm" variant="ghost" onClick={handleFit} title="Вмістити"><Icon icon="material-symbols:fit-screen" /></Button>
+                </div>
             </div>
-            <div className="absolute right-4 top-4 z-20 flex gap-1 rounded-lg border border-border/70 bg-background/95 p-1 shadow-lg">
-                <Button size="icon-sm" variant="ghost" onClick={() => zoomAt(viewportSize.width / 2, viewportSize.height / 2, zoom * 1.2)} title="Збільшити"><Icon icon="material-symbols:add" /></Button>
-                <Button size="icon-sm" variant="ghost" onClick={() => zoomAt(viewportSize.width / 2, viewportSize.height / 2, zoom * 0.8)} title="Зменшити"><Icon icon="material-symbols:remove" /></Button>
-                <Button size="icon-sm" variant="ghost" onClick={handleFit} title="Вмістити"><Icon icon="material-symbols:fit-screen" /></Button>
+            <div className="absolute inset-x-3 bottom-3 z-20 flex flex-wrap items-end gap-2 sm:inset-x-4 sm:bottom-4">
+
+                {/* 1. Блок: Масштаб та кількість вузлів */}
+                <div className="flex shrink-0 items-center rounded-lg border border-border/70 bg-background/90 px-2 py-1.5 text-[11px] text-muted-foreground shadow-lg backdrop-blur-md sm:px-3 sm:text-xs">
+                    <span className="whitespace-nowrap font-mono">
+                        {Math.round(zoom * 100)}% · {visibleNodes.length} вузлів
+                    </span>
+                </div>
+
+                {/* 2. Блок: Усі типи зв'язків в ОДНОМУ контейнері */}
+                {relationTypes.length > 0 && (
+                    <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border/70 bg-background/90 px-2 py-1.5 text-[11px] text-muted-foreground shadow-lg backdrop-blur-md sm:gap-x-4 sm:px-3 sm:text-xs">
+                        {relationTypes.map(type => (
+                            <span key={type} className="flex items-center gap-1.5 whitespace-nowrap">
+                                <span
+                                    className="inline-block size-2.5 shrink-0 rounded-full shadow-sm sm:size-3"
+                                    style={{ backgroundColor: relationTypeColors[type] || '#6b7280' }}
+                                />
+                                {relationTypeLabels[type] || type}
+                            </span>
+                        ))}
+                    </div>
+                )}
+
+                {/* 3. Блок: Інструкція (притиснута вправо завдяки ml-auto) */}
+                <div className="ml-auto hidden shrink-0 items-center rounded-lg border border-border/70 bg-background/90 px-3 py-1.5 text-[11px] text-muted-foreground shadow-lg backdrop-blur-md sm:flex sm:text-xs">
+                    <span className="whitespace-nowrap">
+                        Перетягуйте, щоб оглянути · колесо — масштаб
+                    </span>
+                </div>
+
             </div>
-            <div className="absolute bottom-4 left-4 z-20 rounded-lg border border-border/70 bg-background/95 px-3 py-1.5 text-xs font-mono text-muted-foreground shadow-lg">{Math.round(zoom * 100)}% · {visibleNodes.length} вузлів</div>
-            <div className="absolute bottom-4 right-4 z-20 hidden rounded-lg border border-border/70 bg-background/90 px-3 py-1.5 text-xs text-muted-foreground shadow-lg sm:block">Перетягуйте, щоб оглянути · колесо — масштаб</div>
         </div>
     );
 };

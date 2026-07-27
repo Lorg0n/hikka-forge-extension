@@ -2,8 +2,6 @@
 
 import { PropsWithChildren, ReactNode } from 'react';
 
-import P from '@/components/typography/p';
-
 import { Icon } from '@iconify/react';
 
 interface Props extends PropsWithChildren {
@@ -13,19 +11,25 @@ interface Props extends PropsWithChildren {
 
 const Component = ({ title, description, children }: Props) => {
     return (
-        <div className="flex flex-col items-center justify-between gap-4 rounded-lg border border-border bg-secondary/20 p-6 lg:flex-row">
-            <div className="flex items-center gap-4">
-                <Icon icon="material-symbols:feature-search" className="text-4xl text-muted-foreground" />
-                <div className="flex flex-1 flex-col gap-1">
-                    <h3 className="text-xl font-bold">{title}</h3>
-                    {description && (
-                        <P className="text-sm text-muted-foreground">
-                            {description}
-                        </P>
-                    )}
+        <div data-slot="empty" className="flex min-w-0 flex-1 flex-col items-center justify-center text-balance rounded-lg border-dashed text-center gap-4 p-6 md:p-8 border bg-secondary/20">
+            <div data-slot="empty-header" className="flex max-w-sm flex-col items-center text-center gap-2">
+                <div data-slot="empty-icon" data-variant="icon" className="mb-2 flex shrink-0 items-center justify-center rounded-lg bg-muted text-foreground size-10 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-6">
+                    <Icon icon="material-symbols:feature-search" />
                 </div>
+                <div data-slot="empty-title" className="font-medium tracking-tight text-base">
+                    {title}
+                </div>
+                {description && (
+                    <div data-slot="empty-description" className="text-muted-foreground [&>a:hover]:text-primary [&>a]:underline [&>a]:underline-offset-4 text-sm">
+                        {description}
+                    </div>
+                )}
             </div>
-            {children}
+            {children && (
+                <div data-slot="empty-content" className="flex w-full min-w-0 max-w-sm flex-col items-center gap-4 text-balance text-sm">
+                    {children}
+                </div>
+            )}
         </div>
     );
 };

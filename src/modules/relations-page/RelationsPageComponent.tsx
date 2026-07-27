@@ -56,6 +56,7 @@ const RelationsPageComponent: React.FC = () => {
                         currentNode={currentNode}
                         slug={parsed.slug}
                         contentType={parsed.contentType}
+                        nodeCount={nodes.length}
                     />
                     <NotFound title="Помилка завантаження" description={error} />
                 </div>
@@ -70,6 +71,7 @@ const RelationsPageComponent: React.FC = () => {
                     currentNode={currentNode}
                     slug={parsed.slug}
                     contentType={parsed.contentType}
+                    nodeCount={nodes.length}
                 />
 
                 <RelationsGraph nodes={nodes} edges={edges} currentNodeId={currentNodeId} />

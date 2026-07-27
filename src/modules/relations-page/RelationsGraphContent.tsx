@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import ELK from 'elkjs/lib/elk-api.js';
+import ELK, { type ELK as ElkInstance, type ElkNode } from 'elkjs/lib/elk-api.js';
 import elkWorkerUrl from 'elkjs/lib/elk-worker.min.js?url';
 import { GraphEdge, GraphNode } from '@/types';
 import Link from '@/components/typography/link';
@@ -40,7 +40,7 @@ const CARD_HEIGHT = 148;
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 3;
 const GRAPH_PADDING = 72;
-let elkPromise: Promise<ELK> | null = null;
+let elkPromise: Promise<ElkInstance> | null = null;
 
 // Content scripts have the page origin, so Chrome rejects a Worker pointed
 // directly at chrome-extension://… . Fetching the web-accessible worker and
@@ -120,7 +120,7 @@ const createLayout = async (nodes: GraphNode[], edges: GraphEdge[]): Promise<Gra
         outgoing.set(edge.source, (outgoing.get(edge.source) || 0) + 1);
     });
 
-    const graph = await (await getElk()).layout({
+    const graph = await (await getElk()).layout<ElkNode>({
         id: 'relations',
         layoutOptions: {
             'elk.algorithm': 'layered',

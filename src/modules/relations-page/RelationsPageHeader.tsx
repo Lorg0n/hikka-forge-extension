@@ -6,7 +6,6 @@ interface RelationsPageHeaderProps {
     currentNode?: GraphNode | null;
     slug: string;
     contentType: FranchiseContentType;
-    nodeCount: number;
 }
 
 const contentTypeLabel: Record<FranchiseContentType, string> = {
@@ -18,7 +17,6 @@ export const RelationsPageHeader: React.FC<RelationsPageHeaderProps> = ({
     currentNode,
     slug,
     contentType,
-    nodeCount,
 }) => {
     const title = currentNode?.title || 'Тайтл';
     const imageUrl = currentNode?.imageUrl;

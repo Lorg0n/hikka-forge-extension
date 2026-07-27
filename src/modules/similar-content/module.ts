@@ -18,8 +18,8 @@ const similarContentModule: ForgeModuleDef = {
     },
     component: SimilarContentComponent,
     icon: {
-        name: 'lucide:sparkles',
-        color: '#4a4cde',
+        name: 'material-symbols:content-copy',
+        color: '#6466bc',
     },
 };
 

@@ -41,7 +41,7 @@ const AuthPageLegacyComponent: React.FC = () => {
 
     return (
         <div className="flex min-h-[80vh] w-full items-center justify-center">
-            <div className="flex w-64 flex-col gap-8 animate-in fade-in zoom-in-95 duration-300">
+            <div className="flex w-64 flex-col gap-8">
                 <div className="flex min-h-[13rem] flex-col justify-between gap-4">
                     <div>
                         <p className="break-words text-center text-lg mt-4 leading-snug text-muted-foreground">

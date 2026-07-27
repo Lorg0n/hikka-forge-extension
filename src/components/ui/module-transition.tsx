@@ -1,6 +1,11 @@
 import { logger } from "@/utils/logger";
 import { Children, isValidElement, useEffect, useRef, type PropsWithChildren, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import {
+	getModuleAnimationTransition,
+	getModuleEnterInitial,
+	getModuleExitAnimation,
+} from "@/components/ui/module-animation";
 
 interface ModuleTransitionProps extends PropsWithChildren {
 	stateKey: string;
@@ -18,6 +23,7 @@ export function ModuleTransition({
 }: ModuleTransitionProps) {
 	const reducedMotion = useReducedMotion();
 	const transitionKey = animateStateChanges ? stateKey : "module";
+	const motionTransition = getModuleAnimationTransition(Boolean(reducedMotion));
 
 	useEffect(() => {
 		logger.log("[Hikka Forge][debug] ModuleTransition state", {
@@ -31,14 +37,10 @@ export function ModuleTransition({
 		<AnimatePresence initial={false} mode="wait">
 			<motion.div
 				key={transitionKey}
-				initial={{ opacity: 0, y: reducedMotion ? 0 : 6 }}
+				initial={getModuleEnterInitial(Boolean(reducedMotion))}
 				animate={{ opacity: 1, y: 0 }}
-				exit={{ opacity: 0, y: reducedMotion ? 0 : -4 }}
-				transition={
-					reducedMotion
-						? { duration: 0 }
-						: { duration: 0.2, ease: [0.22, 1, 0.36, 1] as const }
-				}
+				exit={getModuleExitAnimation(Boolean(reducedMotion))}
+				transition={motionTransition}
 				className={className}
 			>
 				{children}

@@ -196,7 +196,6 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
     const [searchQuery, setSearchQuery] = useState('');
     const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
     const stateRef = useRef({ pan, zoom });
-    const centredLayoutRef = useRef<GraphLayout | null>(null);
     stateRef.current = { pan, zoom };
 
     useEffect(() => {
@@ -221,19 +220,32 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
     useLayoutEffect(() => {
         const updateSize = () => {
             const rect = viewportRef.current?.getBoundingClientRect();
-            if (rect) setViewportSize({ width: rect.width, height: rect.height });
+            if (!rect) return;
+            setViewportSize(previous => (
+                previous.width === rect.width && previous.height === rect.height
+                    ? previous
+                    : { width: rect.width, height: rect.height }
+            ));
         };
         updateSize();
+
+        const viewport = viewportRef.current;
+        const observer = typeof ResizeObserver === 'undefined'
+            ? null
+            : new ResizeObserver(updateSize);
+        if (observer && viewport) observer.observe(viewport);
         window.addEventListener('resize', updateSize);
-        return () => window.removeEventListener('resize', updateSize);
+
+        return () => {
+            observer?.disconnect();
+            window.removeEventListener('resize', updateSize);
+        };
     }, []);
 
     // Open on a complete overview so the page is useful immediately. The user
     // can still zoom into the current title with the regular map controls.
     useEffect(() => {
         if (!layout || !viewportSize.width || !viewportSize.height) return;
-        if (centredLayoutRef.current === layout) return;
-        centredLayoutRef.current = layout;
         const nextZoom = clampZoom(Math.min(
             viewportSize.width / (layout.width * 1.12),
             viewportSize.height / (layout.height * 1.12),
@@ -282,19 +294,117 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
         return () => viewport.removeEventListener('wheel', onWheel);
     }, [zoomAt]);
 
-    const handleMouseDown = (event: React.MouseEvent) => {
-        if (event.button !== 0 && event.button !== 1) return;
+    const pointersRef = useRef(new Map<number, Point>());
+    const gestureRef = useRef<{
+        type: 'pan' | 'pinch';
+        startPoint?: Point;
+        startDistance?: number;
+        startCenter?: Point;
+        startPan: Point;
+        startZoom: number;
+    } | null>(null);
+
+    const getViewportPoint = (event: React.PointerEvent<HTMLDivElement>): Point => {
+        const rect = viewportRef.current?.getBoundingClientRect();
+        return {
+            x: event.clientX - (rect?.left || 0),
+            y: event.clientY - (rect?.top || 0),
+        };
+    };
+
+    const getPinchData = () => {
+        const points = Array.from(pointersRef.current.values()).slice(0, 2);
+        if (points.length < 2) return null;
+        const [first, second] = points;
+        return {
+            distance: Math.hypot(second.x - first.x, second.y - first.y),
+            center: { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 },
+        };
+    };
+
+    const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+        if (event.pointerType === 'mouse' && event.button !== 0 && event.button !== 1) return;
         if ((event.target as HTMLElement).closest('input, button, a, [data-pan-exclude]')) return;
         event.preventDefault();
-        const start = { x: event.clientX, y: event.clientY, pan: stateRef.current.pan };
-        const onMove = (move: MouseEvent) => setPan({ x: start.pan.x + move.clientX - start.x, y: start.pan.y + move.clientY - start.y });
-        const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
-        window.addEventListener('mousemove', onMove);
-        window.addEventListener('mouseup', onUp);
+        const point = getViewportPoint(event);
+        pointersRef.current.set(event.pointerId, point);
+        event.currentTarget.setPointerCapture(event.pointerId);
+
+        const pinch = getPinchData();
+        if (pinch) {
+            gestureRef.current = {
+                type: 'pinch',
+                startDistance: Math.max(pinch.distance, 1),
+                startCenter: pinch.center,
+                startPan: stateRef.current.pan,
+                startZoom: stateRef.current.zoom,
+            };
+            return;
+        }
+
+        gestureRef.current = {
+            type: 'pan',
+            startPoint: point,
+            startPan: stateRef.current.pan,
+            startZoom: stateRef.current.zoom,
+        };
+    };
+
+    const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+        if (!pointersRef.current.has(event.pointerId)) return;
+        event.preventDefault();
+        pointersRef.current.set(event.pointerId, getViewportPoint(event));
+
+        const pinch = getPinchData();
+        const gesture = gestureRef.current;
+        if (pinch && gesture?.type === 'pinch' && gesture.startCenter && gesture.startDistance) {
+            const nextZoom = clampZoom(gesture.startZoom * (pinch.distance / gesture.startDistance));
+            const ratio = nextZoom / gesture.startZoom;
+            setPan({
+                x: pinch.center.x - (gesture.startCenter.x - gesture.startPan.x) * ratio,
+                y: pinch.center.y - (gesture.startCenter.y - gesture.startPan.y) * ratio,
+            });
+            setZoom(nextZoom);
+            return;
+        }
+
+        if (pointersRef.current.size === 1 && gesture?.type === 'pan' && gesture.startPoint) {
+            const point = pointersRef.current.get(event.pointerId) || gesture.startPoint;
+            setPan({
+                x: gesture.startPan.x + point.x - gesture.startPoint.x,
+                y: gesture.startPan.y + point.y - gesture.startPoint.y,
+            });
+        }
+    };
+
+    const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+        pointersRef.current.delete(event.pointerId);
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+
+        const remainingPoint = pointersRef.current.values().next().value as Point | undefined;
+        if (remainingPoint) {
+            gestureRef.current = {
+                type: 'pan',
+                startPoint: remainingPoint,
+                startPan: stateRef.current.pan,
+                startZoom: stateRef.current.zoom,
+            };
+        } else {
+            gestureRef.current = null;
+        }
     };
 
     return (
-        <div ref={viewportRef} className="relative size-full overflow-hidden bg-background/95" onMouseDown={handleMouseDown}>
+        <div
+            ref={viewportRef}
+            className="relative size-full touch-none overflow-hidden bg-background/95"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+        >
             {layout && <div className="absolute left-0 top-0" style={{ width: layout.width, height: layout.height, transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: '0 0' }}>
                 <div
                     className="pointer-events-none absolute opacity-60 [background-image:radial-gradient(var(--border)_1px,transparent_1px)] [background-size:24px_24px]"
@@ -309,8 +419,8 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
 
             {!layout && <div className="absolute inset-0 z-10 flex items-center justify-center text-sm text-muted-foreground">Підготовка графа…</div>}
 
-            <div className="absolute inset-x-3 top-3 z-20 flex items-center justify-between gap-2 sm:inset-x-4 sm:top-4">
-                <div className="relative flex shrink-0 items-center overflow-hidden rounded-lg border border-border/70 bg-background/70 shadow-lg backdrop-blur-md">
+            <div className="absolute inset-x-2 top-2 z-20 flex flex-col items-stretch gap-2 sm:inset-x-4 sm:top-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="relative flex min-w-0 w-full items-center overflow-hidden rounded-lg border border-border/70 bg-background/70 shadow-lg backdrop-blur-md sm:w-auto sm:max-w-[min(24rem,calc(100%-7rem))]">
 
                     <Icon
                         icon="material-symbols:search"
@@ -321,8 +431,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
                         placeholder="Пошук у графі..."
                         value={searchQuery}
                         onChange={event => setSearchQuery(event.target.value)}
-                        /* Removed w-full, kept a fixed height (h-9), and forced border/ring removal */
-                        className="h-9 border-0 bg-transparent pl-8 pr-8 shadow-none outline-none ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 !border-none !ring-0"
+                        className="h-9 w-full border-0 bg-transparent pl-8 pr-8 shadow-none outline-none ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 !border-none !ring-0"
                     />
 
                     {searchQuery && (
@@ -339,24 +448,22 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
                     )}
 
                 </div>
-                <div className="flex shrink-0 gap-1 rounded-lg border border-border/70 bg-background/70 p-1 shadow-lg backdrop-blur-md">
-                    <Button size="icon-sm" variant="ghost" onClick={() => zoomAt(viewportSize.width / 2, viewportSize.height / 2, zoom * 1.2)} title="Збільшити"><Icon icon="material-symbols:add" /></Button>
-                    <Button size="icon-sm" variant="ghost" onClick={() => zoomAt(viewportSize.width / 2, viewportSize.height / 2, zoom * 0.8)} title="Зменшити"><Icon icon="material-symbols:remove" /></Button>
-                    <Button size="icon-sm" variant="ghost" onClick={handleFit} title="Вмістити"><Icon icon="material-symbols:fit-screen" /></Button>
+                <div className="flex shrink-0 self-end gap-1 rounded-lg border border-border/70 bg-background/70 p-1 shadow-lg backdrop-blur-md sm:self-auto">
+                    <Button size="icon-sm" variant="ghost" onClick={() => zoomAt(viewportSize.width / 2, viewportSize.height / 2, zoom * 1.2)} title="Збільшити" aria-label="Збільшити"><Icon icon="material-symbols:add" /></Button>
+                    <Button size="icon-sm" variant="ghost" onClick={() => zoomAt(viewportSize.width / 2, viewportSize.height / 2, zoom * 0.8)} title="Зменшити" aria-label="Зменшити"><Icon icon="material-symbols:remove" /></Button>
+                    <Button size="icon-sm" variant="ghost" onClick={handleFit} title="Вмістити" aria-label="Вмістити"><Icon icon="material-symbols:fit-screen" /></Button>
                 </div>
             </div>
-            <div className="absolute inset-x-3 bottom-3 z-20 flex flex-wrap items-end gap-2 sm:inset-x-4 sm:bottom-4">
+            <div className="absolute inset-x-2 bottom-2 z-20 flex max-h-[35%] flex-col items-stretch gap-2 overflow-hidden sm:inset-x-4 sm:bottom-4 sm:max-h-none sm:flex-row sm:items-end sm:overflow-visible">
 
-                {/* 1. Блок: Масштаб та кількість вузлів */}
-                <div className="flex shrink-0 items-center rounded-lg border border-border/70 bg-background/90 px-2 py-1.5 text-[11px] text-muted-foreground shadow-lg backdrop-blur-md sm:px-3 sm:text-xs">
+                <div className="flex w-fit max-w-full shrink-0 items-center rounded-lg border border-border/70 bg-background/90 px-2 py-1.5 text-[11px] text-muted-foreground shadow-lg backdrop-blur-md sm:px-3 sm:text-xs">
                     <span className="whitespace-nowrap font-mono">
                         {Math.round(zoom * 100)}% · {visibleNodes.length} вузлів
                     </span>
                 </div>
 
-                {/* 2. Блок: Усі типи зв'язків в ОДНОМУ контейнері */}
                 {relationTypes.length > 0 && (
-                    <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border/70 bg-background/90 px-2 py-1.5 text-[11px] text-muted-foreground shadow-lg backdrop-blur-md sm:gap-x-4 sm:px-3 sm:text-xs">
+                    <div className="flex max-h-[8rem] max-w-full shrink-0 flex-wrap items-center gap-x-3 gap-y-1 overflow-y-auto rounded-lg border border-border/70 bg-background/90 px-2 py-1.5 text-[11px] text-muted-foreground shadow-lg backdrop-blur-md sm:max-h-none sm:max-w-[calc(100%-13rem)] sm:gap-x-4 sm:overflow-visible sm:px-3 sm:text-xs">
                         {relationTypes.map(type => (
                             <span key={type} className="flex items-center gap-1.5 whitespace-nowrap">
                                 <span
@@ -369,7 +476,6 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
                     </div>
                 )}
 
-                {/* 3. Блок: Інструкція (притиснута вправо завдяки ml-auto) */}
                 <div className="ml-auto hidden shrink-0 items-center rounded-lg border border-border/70 bg-background/90 px-3 py-1.5 text-[11px] text-muted-foreground shadow-lg backdrop-blur-md sm:flex sm:text-xs">
                     <span className="whitespace-nowrap">
                         Перетягуйте, щоб оглянути · колесо — масштаб

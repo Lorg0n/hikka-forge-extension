@@ -41,7 +41,7 @@ export const RelationsGraph: React.FC<RelationsGraphProps> = ({
             >
                 <div
                     className="relative w-full overflow-hidden rounded-lg border border-border/50"
-                    style={{ height: 'min(78vh, 900px)', minHeight: 620 }}
+                    style={{ height: 'clamp(420px, 78svh, 900px)' }}
                 >
                     <RelationsGraphContent
                         nodes={nodes}

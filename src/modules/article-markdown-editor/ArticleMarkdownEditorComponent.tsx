@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { type ClipboardEvent as ReactClipboardEvent, useRef, useState } from "react";
 import {
 	Bold,
 	ChevronDown,
@@ -52,7 +52,7 @@ function getYouTubeVideoId(value: string): string | null {
 			return url.pathname.slice(1) || null;
 		}
 		if (!url.hostname.includes("youtube.com")) return null;
-		return url.searchParams.get("v") || url.pathname.split("/").at(-1) || null;
+		return url.searchParams.get("v") || url.pathname.split("/").pop() || null;
 	} catch {
 		return null;
 	}
@@ -264,7 +264,7 @@ export default function ArticleMarkdownEditorComponent() {
 	};
 
 	const undo = () => {
-		const previous = history.at(-1);
+		const previous = history[history.length - 1];
 		if (previous === undefined) return;
 		setHistory((current) => current.slice(0, -1));
 		setFuture((current) => [markdown, ...current]);
@@ -328,7 +328,7 @@ export default function ArticleMarkdownEditorComponent() {
 		);
 	};
 
-	const insertImages = async (files: FileList | File[]) => {
+	const insertImages = async (files: FileList | File[] | null) => {
 		const imageFiles = Array.from(files ?? []).filter((file) =>
 			file.type.startsWith("image/"),
 		);
@@ -358,7 +358,7 @@ export default function ArticleMarkdownEditorComponent() {
 		if (imageInputRef.current) imageInputRef.current.value = "";
 	};
 
-	const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+	const handlePaste = (event: ReactClipboardEvent<HTMLTextAreaElement>) => {
 		const clipboardItems = Array.from(event.clipboardData?.items ?? []);
 		const files = clipboardItems
 			.filter((item) => item.kind === "file" && item.type.startsWith("image/"))

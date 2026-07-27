@@ -1,7 +1,7 @@
 'use client';
 
 import { withProps } from '@udecode/cn';
-import Markdown, { Components, Options } from 'react-markdown';
+import Markdown, { type Components, type Options } from 'react-markdown';
 import remarkDirective from 'remark-directive';
 import remarkDirectiveRehype from 'remark-directive-rehype';
 
@@ -19,14 +19,20 @@ import NoSpoiler from './components/no-spoiler';
 import remarkDisableTokenizer from './plugins/remark-disable-tokenizer';
 import remarkSoftBreaks from './plugins/remark-soft-breaks';
 
-interface Props extends Options {
+type ExtendedComponents = Components & Record<string, unknown>;
+
+interface Props extends Omit<Options, 'components'> {
     preview?: boolean;
     className?: string;
     preserveLineBreaks?: boolean;
+    components?: ExtendedComponents;
 }
 
 type CustomComponents = Components & {
-    spoiler: React.ComponentType<any>;
+    spoiler: React.ComponentType<{
+        children?: React.ReactNode;
+        className?: string;
+    }>;
 };
 
 const previewComponents: CustomComponents = {
@@ -70,7 +76,9 @@ const MDViewer = ({
                     remarkDirectiveRehype,
                     ...(preserveLineBreaks ? [remarkSoftBreaks] : []),
                 ]}
-                components={{ ...components(preview), ...customComponents }}
+                components={
+                    { ...components(preview), ...customComponents } as Components
+                }
                 {...props}
             >
                 {children}

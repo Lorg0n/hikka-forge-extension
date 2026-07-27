@@ -87,6 +87,7 @@ interface ModuleRuntimeProps {
 	settings: ModuleSettings;
 	ui: ContentUIContextValue;
 	exiting: boolean;
+	animateOnMount?: boolean;
 }
 
 export function ModuleRuntime({
@@ -94,6 +95,7 @@ export function ModuleRuntime({
 	settings,
 	ui,
 	exiting,
+	animateOnMount = false,
 }: ModuleRuntimeProps) {
 	const reducedMotion = useReducedMotion();
 	const transition = reducedMotion
@@ -103,11 +105,15 @@ export function ModuleRuntime({
 	return (
 		<ContentUIProvider value={ui}>
 			<ModuleAuthProvider>
-				<AnimatePresence initial={false} mode="wait">
+				<AnimatePresence initial={animateOnMount} mode="wait">
 					{!exiting && (
 						<motion.div
 							key="module"
-							initial={false}
+							initial={
+								animateOnMount
+									? { opacity: 0, y: reducedMotion ? 0 : 10 }
+									: false
+							}
 							animate={{ opacity: 1, y: 0 }}
 							exit={{ opacity: 0, y: reducedMotion ? 0 : -8 }}
 							transition={transition}
@@ -268,6 +274,7 @@ class ModuleManager {
 	private reconciliationObserver: MutationObserver | null = null;
 	private reconciliationFrame: number | null = null;
 	private pendingReloadIds = new Set<string>();
+	private pendingAnimatedMountIds = new Set<string>();
 	private activeStyleTags = new Map<string, HTMLStyleElement>();
 	private mutationBatch = 0;
 	private initialReconciliationReady = false;
@@ -366,6 +373,7 @@ class ModuleManager {
 		moduleSettings: Record<string, ModuleSettings>
 	): void {
 		const reloadIds = new Set<string>();
+		const animatedMountIds = new Set<string>();
 		for (const moduleDef of this.moduleDefinitions.values()) {
 			const nextState = enabledStates[moduleDef.id];
 			if (
@@ -373,6 +381,9 @@ class ModuleManager {
 				this.moduleEnabledStates.get(moduleDef.id) !== nextState
 			) {
 				this.moduleEnabledStates.set(moduleDef.id, nextState);
+				if (nextState && this.initialReconciliationReady) {
+					animatedMountIds.add(moduleDef.id);
+				}
 			}
 
 			const incomingSettings = moduleSettings[moduleDef.id];
@@ -392,10 +403,13 @@ class ModuleManager {
 		}
 
 		logger.log(`${DEBUG_PREFIX} module states synchronized`, enabledStates);
-		this.scheduleReconciliation(reloadIds);
+		this.scheduleReconciliation(reloadIds, animatedMountIds);
 	}
 
-	private evaluateModulesForCurrentUrl(reloadIds = new Set<string>()): void {
+	private evaluateModulesForCurrentUrl(
+		reloadIds = new Set<string>(),
+		animatedMountIds = new Set<string>(),
+	): void {
 		this.manageModuleStyles(reloadIds);
 		for (const moduleDef of this.moduleDefinitions.values()) {
 			if (!moduleDef.component || !moduleDef.elementSelector) continue;
@@ -434,19 +448,30 @@ class ModuleManager {
 			}
 
 			if (!shouldBeMounted) {
+				this.pendingAnimatedMountIds.delete(moduleDef.id);
 				if (active && !pending) this.beginUnmount(moduleDef.id, false);
 				continue;
 			}
 
 			if (pending) {
-				if (!pending.reload) this.cancelUnmount(moduleDef.id);
+				if (!pending.reload) {
+					this.cancelUnmount(moduleDef.id, animatedMountIds.has(moduleDef.id));
+				}
+				animatedMountIds.delete(moduleDef.id);
 				continue;
 			}
 			if (active) {
+				animatedMountIds.delete(moduleDef.id);
 				if (reloadIds.has(moduleDef.id)) this.beginUnmount(moduleDef.id, true);
 				continue;
 			}
-			this.mountModule(moduleDef);
+			if (this.mountModule(moduleDef, animatedMountIds.has(moduleDef.id))) {
+				animatedMountIds.delete(moduleDef.id);
+			}
+		}
+
+		for (const moduleId of animatedMountIds) {
+			this.pendingAnimatedMountIds.add(moduleId);
 		}
 	}
 
@@ -507,7 +532,7 @@ class ModuleManager {
 		return elements[config.index ?? 0] ?? elements[elements.length - 1];
 	}
 
-	private mountModule(moduleDef: ForgeModuleDef): void {
+	private mountModule(moduleDef: ForgeModuleDef, animateOnMount = false): boolean {
 		const targetElement = this.findTarget(moduleDef);
 		if (!targetElement || !moduleDef.component || !moduleDef.elementSelector) {
 			logger.log(`${DEBUG_PREFIX} mount skipped`, {
@@ -515,7 +540,7 @@ class ModuleManager {
 				hasTarget: Boolean(targetElement),
 				hasComponent: Boolean(moduleDef.component),
 			});
-			return;
+			return false;
 		}
 
 		logger.log(`${DEBUG_PREFIX} module mount start`, {
@@ -572,6 +597,7 @@ class ModuleManager {
 					settings={this.moduleSettings[moduleDef.id] ?? {}}
 					ui={ui}
 					exiting={false}
+					animateOnMount={animateOnMount}
 				/>
 			);
 			this.insertElement(host, targetElement, moduleDef.elementSelector.position);
@@ -580,9 +606,11 @@ class ModuleManager {
 				hostId: host.id,
 				hostConnected: host.isConnected,
 			});
+			return true;
 		} catch (error) {
 			logger.error(`[Hikka Forge] Error injecting ${moduleDef.name}:`, error);
 			this.cleanupInstance(instance, moduleDef, false);
+			return false;
 		}
 	}
 
@@ -669,7 +697,7 @@ class ModuleManager {
 		this.pendingUnmounts.set(moduleId, { instance, timeout, reload });
 	}
 
-	private cancelUnmount(moduleId: string): void {
+	private cancelUnmount(moduleId: string, animateOnMount = false): void {
 		const pending = this.pendingUnmounts.get(moduleId);
 		if (!pending) return;
 		clearTimeout(pending.timeout);
@@ -683,6 +711,7 @@ class ModuleManager {
 					settings={this.moduleSettings[moduleId] ?? {}}
 					ui={pending.instance.ui}
 					exiting={false}
+					animateOnMount={animateOnMount}
 				/>
 			);
 		}
@@ -745,7 +774,10 @@ class ModuleManager {
 		});
 	}
 
-	private scheduleReconciliation(reloadIds = new Set<string>()): void {
+	private scheduleReconciliation(
+		reloadIds = new Set<string>(),
+		animatedMountIds = new Set<string>(),
+	): void {
 		logger.log(`${DEBUG_PREFIX} reconciliation scheduled`, {
 			reloadIds: Array.from(reloadIds),
 			frameAlreadyPending: this.reconciliationFrame !== null,
@@ -755,13 +787,18 @@ class ModuleManager {
 		for (const moduleId of reloadIds) {
 			this.pendingReloadIds.add(moduleId);
 		}
+		for (const moduleId of animatedMountIds) {
+			this.pendingAnimatedMountIds.add(moduleId);
+		}
 		if (!this.initialReconciliationReady) return;
 		if (this.reconciliationFrame !== null) return;
 		this.reconciliationFrame = requestAnimationFrame(() => {
 			this.reconciliationFrame = null;
 			const reloadIds = new Set(this.pendingReloadIds);
+			const animatedMountIds = new Set(this.pendingAnimatedMountIds);
 			this.pendingReloadIds.clear();
-			this.evaluateModulesForCurrentUrl(reloadIds);
+			this.pendingAnimatedMountIds.clear();
+			this.evaluateModulesForCurrentUrl(reloadIds, animatedMountIds);
 		});
 	}
 

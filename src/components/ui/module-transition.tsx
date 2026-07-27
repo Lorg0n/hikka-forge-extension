@@ -49,11 +49,14 @@ export function ModuleTransition({
 
 interface ModuleListTransitionProps extends PropsWithChildren {
 	className?: string;
+	/** Disable the list stagger when the parent module already has an enter animation. */
+	animateOnMount?: boolean;
 	children: ReactNode;
 }
 
 export function ModuleListTransition({
 	className,
+	animateOnMount = true,
 	children,
 }: ModuleListTransitionProps) {
 	const reducedMotion = useReducedMotion();
@@ -81,7 +84,7 @@ export function ModuleListTransition({
 
 	return (
 		<motion.div
-			initial="hidden"
+			initial={animateOnMount ? "hidden" : false}
 			animate="visible"
 			variants={{
 				hidden: {},

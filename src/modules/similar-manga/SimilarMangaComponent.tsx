@@ -74,7 +74,10 @@ const SimilarMangaComponent: React.FC = () => {
         <ModuleTransition stateKey="content" animateStateChanges={false}>
         <div className="flex flex-col gap-8">
             <SimilarMangaHeader />
-            <ModuleListTransition className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 w-full gap-4">
+            <ModuleListTransition
+                className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 w-full gap-4"
+                animateOnMount={false}
+            >
                 {similarMangaList.map((manga) => (
                     <ConnectedSimilarMangaCard 
                         key={manga.slug} 

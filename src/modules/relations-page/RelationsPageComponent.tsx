@@ -5,7 +5,7 @@ import { RelationsGraph } from './RelationsGraph';
 import { RelationsPageHeader } from './RelationsPageHeader';
 import { RelationsPageSkeleton } from './RelationsPageSkeleton';
 import { FranchiseContentType, GraphNode } from '@/types';
-import { ModuleTransition } from '@/components/ui/module-transition';
+import { ModulePageTransition } from '@/components/ui/module-page-transition';
 
 const parseContentPath = (pathname: string): { contentType: FranchiseContentType; slug: string } | null => {
     const segments = pathname.split('/').filter(Boolean);
@@ -34,23 +34,23 @@ const RelationsPageComponent: React.FC = () => {
 
     if (!parsed) {
         return (
-            <ModuleTransition stateKey="invalid"><main className="mx-auto mt-8 mb-8 w-full max-w-[87.5rem] px-4 lg:mt-16">
+            <ModulePageTransition stateKey="invalid"><main className="mx-auto mt-8 mb-8 w-full max-w-[87.5rem] px-4 lg:mt-16">
                 <NotFound title="Помилка" description="Не вдалося визначити тайтл." />
-            </main></ModuleTransition>
+            </main></ModulePageTransition>
         );
     }
 
     if (loading) {
         return (
-            <ModuleTransition stateKey="loading"><main className="mx-auto mt-8 mb-8 w-full max-w-[87.5rem] px-4 lg:mt-16">
+            <ModulePageTransition stateKey="loading"><main className="mx-auto mt-8 mb-8 w-full max-w-[87.5rem] px-4 lg:mt-16">
                 <RelationsPageSkeleton />
-            </main></ModuleTransition>
+            </main></ModulePageTransition>
         );
     }
 
     if (error) {
         return (
-            <ModuleTransition stateKey="error"><main className="mx-auto mt-8 mb-8 w-full max-w-[87.5rem] px-4 lg:mt-16">
+            <ModulePageTransition stateKey="error"><main className="mx-auto mt-8 mb-8 w-full max-w-[87.5rem] px-4 lg:mt-16">
                 <div className="flex flex-col gap-8 lg:gap-10">
                     <RelationsPageHeader
                         currentNode={currentNode}
@@ -59,12 +59,12 @@ const RelationsPageComponent: React.FC = () => {
                     />
                     <NotFound title="Помилка завантаження" description={error} />
                 </div>
-            </main></ModuleTransition>
+            </main></ModulePageTransition>
         );
     }
 
     return (
-        <ModuleTransition stateKey="content"><main className="mx-auto mt-8 mb-8 w-full max-w-[87.5rem] px-4 lg:mt-16">
+        <ModulePageTransition stateKey="content"><main className="mx-auto mt-8 mb-8 w-full max-w-[87.5rem] px-4 lg:mt-16">
             <div className="flex flex-col gap-8 lg:gap-10">
                 <RelationsPageHeader
                     currentNode={currentNode}
@@ -74,7 +74,7 @@ const RelationsPageComponent: React.FC = () => {
 
                 <RelationsGraph nodes={nodes} edges={edges} currentNodeId={currentNodeId} />
             </div>
-        </main></ModuleTransition>
+        </main></ModulePageTransition>
     );
 };
 

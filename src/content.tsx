@@ -492,9 +492,13 @@ class ModuleManager {
 
 	private matchesUrlPatterns(url: string, patterns: string[]): boolean {
 		return patterns.some((pattern) => {
-			const regexPattern = pattern
+			// A trailing '=' makes the wildcard hashless: '*=' matches the
+			// pathname/query portion but never crosses into a URL fragment.
+			const hashless = pattern.endsWith("=");
+			const normalizedPattern = hashless ? pattern.slice(0, -1) : pattern;
+			const regexPattern = normalizedPattern
 				.replace(/[.+?^${}()|[\]\\]/g, "\\$&")
-				.replace(/\*/g, ".*");
+				.replace(/\*/g, hashless ? "[^#]*" : ".*");
 			try {
 				return new RegExp(`^${regexPattern}$`).test(url);
 			} catch (error) {

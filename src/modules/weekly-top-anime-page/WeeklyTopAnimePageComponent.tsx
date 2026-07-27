@@ -4,7 +4,7 @@ import { useWeeklyTopAnime } from '@/hooks/useWeeklyTopAnime';
 import { WeeklyTopAnimeList } from './WeeklyTopAnimeList';
 import { WeeklyTopAnimeSkeleton } from './WeeklyTopAnimeSkeleton';
 import NotFound from '@/components/ui/not-found';
-import { ModuleTransition } from '@/components/ui/module-transition';
+import { ModulePageTransition } from '@/components/ui/module-page-transition';
 
 const WeeklyTopAnimePageComponent: React.FC = () => {
     const { startDate, endDate } = useMemo(() => {
@@ -42,15 +42,15 @@ const WeeklyTopAnimePageComponent: React.FC = () => {
 
     if (loading && !data) {
         return (
-            <ModuleTransition stateKey="loading"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
+            <ModulePageTransition stateKey="loading"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
                 <WeeklyTopAnimeSkeleton />
-            </main></ModuleTransition>
+            </main></ModulePageTransition>
         );
     }
 
     if (error) {
         return (
-            <ModuleTransition stateKey="error"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
+            <ModulePageTransition stateKey="error"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
                 <div className="flex flex-col gap-12">
                     <WeeklyTopPageHeader startDate={startDate} endDate={endDate} />
                     <NotFound
@@ -58,12 +58,12 @@ const WeeklyTopAnimePageComponent: React.FC = () => {
                         description={error}
                     />
                 </div>
-            </main></ModuleTransition>
+            </main></ModulePageTransition>
         );
     }
 
     return (
-        <ModuleTransition stateKey="content"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
+        <ModulePageTransition stateKey="content"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
             <div className="flex flex-col gap-12">
                 <div id="top-header">
                     <WeeklyTopPageHeader startDate={startDate} endDate={endDate} />
@@ -74,7 +74,7 @@ const WeeklyTopAnimePageComponent: React.FC = () => {
                     totalElements={data?.totalElements || 0}
                 />
             </div>
-        </main></ModuleTransition>
+        </main></ModulePageTransition>
     );
 };
 

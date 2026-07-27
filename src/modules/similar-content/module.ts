@@ -6,8 +6,8 @@ const similarContentModule: ForgeModuleDef = {
     name: 'Схожий контент',
     description: 'Додає модуль схожого аніме та манґи, які визначаються за допомогою спеціальної моделі.',
     urlPatterns: [
-        'https://dev.hikka.io/anime/*',
-        'https://dev.hikka.io/manga/*',
+        'https://dev.hikka.io/anime/*=',
+        'https://dev.hikka.io/manga/*=',
     ],
     enabledByDefault: true,
     category: 'recommendations',

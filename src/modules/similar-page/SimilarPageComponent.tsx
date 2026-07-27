@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import NotFound from '@/components/ui/not-found';
 import { useSimilarContent } from '@/hooks/useSimilarContent';
 import { Pagination } from '@/components/ui/pagination';
-import { ModuleTransition } from '@/components/ui/module-transition';
+import { ModulePageTransition } from '@/components/ui/module-page-transition';
 import { SimilarContentType } from '@/types';
 import { SimilarPageHeader } from './SimilarPageHeader';
 import { SimilarPageGrid } from './SimilarPageGrid';
@@ -48,11 +48,11 @@ const SimilarPageComponent: React.FC = () => {
 
     if (!route) {
         return (
-            <ModuleTransition stateKey="invalid">
+            <ModulePageTransition stateKey="invalid">
                 <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
                     <NotFound title="Помилка" description="Не вдалося визначити тип контенту." />
                 </main>
-            </ModuleTransition>
+            </ModulePageTransition>
         );
     }
 
@@ -60,17 +60,17 @@ const SimilarPageComponent: React.FC = () => {
 
     if (loading && (!data || !details)) {
         return (
-            <ModuleTransition stateKey="loading">
+            <ModulePageTransition stateKey="loading">
                 <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
                     <SimilarPageSkeleton />
                 </main>
-            </ModuleTransition>
+            </ModulePageTransition>
         );
     }
 
     if (error || !data || !details) {
         return (
-            <ModuleTransition stateKey="error">
+            <ModulePageTransition stateKey="error">
                 <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
                     <div className="flex flex-col gap-12 mt-12">
                         <NotFound
@@ -79,12 +79,12 @@ const SimilarPageComponent: React.FC = () => {
                         />
                     </div>
                 </main>
-            </ModuleTransition>
+            </ModulePageTransition>
         );
     }
 
     return (
-        <ModuleTransition stateKey="content">
+        <ModulePageTransition stateKey="content">
             <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
                 <div className="flex flex-col gap-12">
                     <SimilarPageHeader
@@ -109,7 +109,7 @@ const SimilarPageComponent: React.FC = () => {
                     )}
                 </div>
             </main>
-        </ModuleTransition>
+        </ModulePageTransition>
     );
 };
 

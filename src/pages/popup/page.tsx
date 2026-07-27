@@ -6,7 +6,6 @@ import logo from "@/assets/logo.svg";
 import { Button } from "@/components/ui/button";
 import { ModuleList } from "@/components/ui/module-list";
 import { UserMenu } from "@/components/ui/auth/user-menu";
-import { LoginDialog } from "@/components/ui/auth/login-dialog";
 import { useAuth } from "@/contexts/AuthContext";
 
 import type {
@@ -28,12 +27,11 @@ function App() {
 		new Set()
 	);
 	const [hasPermission, setHasPermission] = useState(true);
-	const [loginDialogOpen, setLoginDialogOpen] = useState(false);
 	const [consoleLoggingEnabled, setConsoleLoggingEnabledState] = useState(false);
 
 	const [version, setVersion] = useState('');
 
-	const { isAuthenticated, login } = useAuth();
+	const { isAuthenticated } = useAuth();
 
 	const settingUpdateTimers = useRef<Record<string, NodeJS.Timeout>>({});
 
@@ -318,15 +316,6 @@ function App() {
 		});
 	}, []);
 
-	const handleLogin = async (token: string): Promise<boolean> => {
-		const success = await login(token);
-		if (success) {
-			// Reload modules after successful login
-			await loadModules();
-		}
-		return success;
-	};
-
 	if (!hasPermission && !isLoading) {
 		return (
 			<div className="flex flex-col min-w-[350px] p-4 gap-4 bg-background text-foreground">
@@ -397,7 +386,7 @@ function App() {
 						</svg>
 					</Button>
 
-					<UserMenu onLoginClick={() => setLoginDialogOpen(true)} />
+					<UserMenu />
 				</div>
 			</div>
 
@@ -421,12 +410,6 @@ function App() {
 					isAuthenticated={isAuthenticated}
 				/>
 			</div>
-
-			<LoginDialog
-				open={loginDialogOpen}
-				onOpenChange={setLoginDialogOpen}
-				onLogin={handleLogin}
-			/>
 
 			<footer className="mt-2 pt-4 px-2 border-t border-border/50 flex justify-between items-center text-xs text-muted-foreground">
 				<a href={`${GITHUB_REPO}/releases`} target="_blank" rel="noopener noreferrer" title="GitHub" className="hover:text-foreground transition-colors">

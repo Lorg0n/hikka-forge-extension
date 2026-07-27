@@ -6,7 +6,6 @@ interface AuthContextType {
     user: UserProfile | null;
     isLoading: boolean;
     isAuthenticated: boolean;
-    login: (token: string) => Promise<boolean>;
     logout: () => Promise<void>;
     refreshUser: () => Promise<void>;
 }
@@ -38,27 +37,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         loadUser();
     }, []);
 
-    const login = async (token: string): Promise<boolean> => {
-        try {
-            await AuthService.setToken(token);
-            const currentUser = await AuthService.getCurrentUser();
-            
-            if (currentUser) {
-                setUser(currentUser);
-                return true;
-            } else {
-                await AuthService.removeToken();
-                setUser(null);
-                return false;
-            }
-        } catch (error) {
-            logger.error('Login failed:', error);
-            await AuthService.removeToken();
-            setUser(null);
-            return false;
-        }
-    };
-
     const logout = async () => {
         await AuthService.logout();
         setUser(null);
@@ -72,7 +50,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         user,
         isLoading,
         isAuthenticated: user !== null,
-        login,
         logout,
         refreshUser,
     };

@@ -17,10 +17,12 @@ import { cn } from '@/lib/utils';
 
 import NoSpoiler from './components/no-spoiler';
 import remarkDisableTokenizer from './plugins/remark-disable-tokenizer';
+import remarkSoftBreaks from './plugins/remark-soft-breaks';
 
 interface Props extends Options {
     preview?: boolean;
     className?: string;
+    preserveLineBreaks?: boolean;
 }
 
 type CustomComponents = Components & {
@@ -51,7 +53,14 @@ const components = (preview?: boolean): CustomComponents =>
         ...(preview ? previewComponents : {}),
     }) as CustomComponents;
 
-const MDViewer = ({ children, className, preview, ...props }: Props) => {
+const MDViewer = ({
+    children,
+    className,
+    preview,
+    preserveLineBreaks = false,
+    components: customComponents,
+    ...props
+}: Props) => {
     return (
         <div className={className}>
             <Markdown
@@ -59,8 +68,9 @@ const MDViewer = ({ children, className, preview, ...props }: Props) => {
                     remarkDisableTokenizer,
                     remarkDirective,
                     remarkDirectiveRehype,
+                    ...(preserveLineBreaks ? [remarkSoftBreaks] : []),
                 ]}
-                components={components(preview)}
+                components={{ ...components(preview), ...customComponents }}
                 {...props}
             >
                 {children}

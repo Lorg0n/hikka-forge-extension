@@ -34,7 +34,7 @@ const RelationsPageComponent: React.FC = () => {
 
     if (!parsed) {
         return (
-            <ModuleTransition stateKey="invalid"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
+            <ModuleTransition stateKey="invalid"><main className="mx-auto mt-8 mb-8 w-full max-w-[87.5rem] px-4 lg:mt-16">
                 <NotFound title="Помилка" description="Не вдалося визначити тайтл." />
             </main></ModuleTransition>
         );
@@ -42,7 +42,7 @@ const RelationsPageComponent: React.FC = () => {
 
     if (loading) {
         return (
-            <ModuleTransition stateKey="loading"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
+            <ModuleTransition stateKey="loading"><main className="mx-auto mt-8 mb-8 w-full max-w-[87.5rem] px-4 lg:mt-16">
                 <RelationsPageSkeleton />
             </main></ModuleTransition>
         );
@@ -50,8 +50,8 @@ const RelationsPageComponent: React.FC = () => {
 
     if (error) {
         return (
-            <ModuleTransition stateKey="error"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
-                <div className="flex flex-col gap-12">
+            <ModuleTransition stateKey="error"><main className="mx-auto mt-8 mb-8 w-full max-w-[87.5rem] px-4 lg:mt-16">
+                <div className="flex flex-col gap-8 lg:gap-10">
                     <RelationsPageHeader
                         currentNode={currentNode}
                         slug={parsed.slug}
@@ -64,8 +64,8 @@ const RelationsPageComponent: React.FC = () => {
     }
 
     return (
-        <ModuleTransition stateKey="content"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
-            <div className="flex flex-col gap-12">
+        <ModuleTransition stateKey="content"><main className="mx-auto mt-8 mb-8 w-full max-w-[87.5rem] px-4 lg:mt-16">
+            <div className="flex flex-col gap-8 lg:gap-10">
                 <RelationsPageHeader
                     currentNode={currentNode}
                     slug={parsed.slug}

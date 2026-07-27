@@ -28,8 +28,9 @@ export const RelationsPageHeader: React.FC<RelationsPageHeaderProps> = ({
             title={title}
             description={`${contentTypeLabel[contentType]} • Всі зв'язані тайтли одним графом`}
             titleHref={backHref}
+            className="surface border-border/70 p-5 sm:p-6"
             media={
-                <div className="relative w-12 shrink-0 overflow-hidden rounded-md bg-muted aspect-[0.7]">
+                <div className="relative w-14 shrink-0 overflow-hidden rounded-lg bg-muted aspect-[0.7] sm:w-16">
                     {imageUrl && (
                         <img src={imageUrl} alt={title} className="size-full object-cover" />
                     )}

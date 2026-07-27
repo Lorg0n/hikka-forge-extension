@@ -63,19 +63,21 @@ export const RelationsGraph: React.FC<RelationsGraphProps> = ({
     }
 
     return (
-        <div className={cn('flex flex-col gap-6', className)}>
+        <section className={cn('flex min-w-0 flex-col gap-5', className)}>
             {relationTypes.length > 0 && (
-                <div className="flex flex-col gap-3">
-                    <div className="flex items-baseline justify-between gap-2 flex-wrap">
-                        <h3 className="font-bold text-lg">
-                            Зв&apos;язки
-                            <span className="text-muted-foreground font-normal text-sm ml-2">
-                                ({nodes.length} тайтл{nodes.length === 1 ? '' : 'ів'})
-                            </span>
-                        </h3>
+                <div className="surface flex flex-col gap-4 rounded-xl border border-border/70 p-4 sm:p-5">
+                    <div className="flex items-end justify-between gap-3 flex-wrap">
+                        <div>
+                            <h2 className="font-display text-2xl font-bold tracking-normal">
+                                Зв&apos;язки
+                            </h2>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                {nodes.length} тайтл{nodes.length === 1 ? '' : 'ів'} у франшизі
+                            </p>
+                        </div>
                         <span className="text-xs text-muted-foreground">Легенда типів зв&apos;язків</span>
                     </div>
-                    <div className="flex flex-wrap gap-x-4 gap-y-2 p-3 rounded-lg border border-border/40 bg-secondary/10">
+                    <div className="flex flex-wrap gap-x-5 gap-y-2 rounded-lg border border-border/50 bg-background/35 p-3">
                         {relationTypes.map(type => (
                             <div
                                 key={type}
@@ -94,15 +96,19 @@ export const RelationsGraph: React.FC<RelationsGraphProps> = ({
                 </div>
             )}
             <div
-                style={{ height: 700 }}
-                className="relative w-full rounded-xl bg-secondary/5 border border-border/30 overflow-hidden shadow-2xl shadow-black/5"
+                className="surface relative min-h-0 w-full overflow-hidden rounded-xl shadow-2xl shadow-black/10"
             >
-                <RelationsGraphContent
-                    nodes={nodes}
-                    edges={edges}
-                    currentNodeId={currentNodeId}
-                />
+                <div
+                    className="relative w-full overflow-hidden rounded-lg border border-border/50"
+                    style={{ height: 'min(78vh, 900px)', minHeight: 620 }}
+                >
+                    <RelationsGraphContent
+                        nodes={nodes}
+                        edges={edges}
+                        currentNodeId={currentNodeId}
+                    />
+                </div>
             </div>
-        </div>
+        </section>
     );
 };

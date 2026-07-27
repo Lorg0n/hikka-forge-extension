@@ -34,8 +34,8 @@ interface GraphLayout {
     height: number;
 }
 
-const CARD_WIDTH = 232;
-const CARD_HEIGHT = 116;
+const CARD_WIDTH = 280;
+const CARD_HEIGHT = 148;
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 3;
 const GRAPH_PADDING = 72;
@@ -129,10 +129,10 @@ const createLayout = async (nodes: GraphNode[], edges: GraphEdge[]): Promise<Gra
             'elk.layered.crossingMinimization.forceNodeModelOrder': 'false',
             'elk.layered.mergeEdges': 'false',
             'elk.layered.unnecessaryBendpoints': 'false',
-            'elk.spacing.nodeNode': '88',
-            'elk.layered.spacing.nodeNodeBetweenLayers': '176',
-            'elk.layered.spacing.edgeNodeBetweenLayers': '36',
-            'elk.layered.spacing.edgeEdgeBetweenLayers': '28',
+            'elk.spacing.nodeNode': '104',
+            'elk.layered.spacing.nodeNodeBetweenLayers': '208',
+            'elk.layered.spacing.edgeNodeBetweenLayers': '44',
+            'elk.layered.spacing.edgeEdgeBetweenLayers': '32',
             'elk.padding': `[top=${GRAPH_PADDING},left=${GRAPH_PADDING},bottom=${GRAPH_PADDING},right=${GRAPH_PADDING}]`,
         },
         children: nodes.map(node => ({
@@ -221,19 +221,23 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
         return () => window.removeEventListener('resize', updateSize);
     }, []);
 
-    // A new ELK result starts focused on the requested title; Fit remains an explicit overview action.
+    // Open on a complete overview so the page is useful immediately. The user
+    // can still zoom into the current title with the regular map controls.
     useEffect(() => {
         if (!layout || !viewportSize.width || !viewportSize.height) return;
         if (centredLayoutRef.current === layout) return;
         centredLayoutRef.current = layout;
-        const current = layout.nodes.find(node => node.id === currentNodeId) || layout.nodes[0];
-        if (!current) return;
-        setZoom(1);
+        const nextZoom = clampZoom(Math.min(
+            viewportSize.width / (layout.width * 1.12),
+            viewportSize.height / (layout.height * 1.12),
+            1.15,
+        ));
+        setZoom(nextZoom);
         setPan({
-            x: viewportSize.width / 2 - (current.x + CARD_WIDTH / 2),
-            y: viewportSize.height / 2 - (current.y + CARD_HEIGHT / 2),
+            x: (viewportSize.width - layout.width * nextZoom) / 2,
+            y: (viewportSize.height - layout.height * nextZoom) / 2,
         });
-    }, [layout, currentNodeId, viewportSize.width, viewportSize.height]);
+    }, [layout, viewportSize.width, viewportSize.height]);
 
     const visibleNodes = useMemo(() => {
         if (!layout) return [];
@@ -283,37 +287,54 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
     };
 
     return (
-        <div ref={viewportRef} className="relative size-full overflow-hidden bg-gradient-to-br from-background via-background to-muted/20" onMouseDown={handleMouseDown}>
+        <div ref={viewportRef} className="relative size-full overflow-hidden bg-card/70" onMouseDown={handleMouseDown}>
             {layout && <div className="absolute left-0 top-0" style={{ width: layout.width, height: layout.height, transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: '0 0' }}>
+                <div
+                    className="pointer-events-none absolute opacity-60 [background-image:radial-gradient(var(--border)_1px,transparent_1px)] [background-size:24px_24px]"
+                    style={{ inset: -2048 }}
+                />
                 <svg className="absolute inset-0 size-full overflow-visible pointer-events-none" aria-hidden="true">
                     <defs>{Array.from(new Set(visibleEdges.map(({ edge }) => edge.relationType))).map(type => <marker key={type} id={`relation-arrow-${type}`} markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill={relationTypeColors[type] || relationTypeColors.OTHER} /></marker>)}</defs>
-                    {visibleEdges.flatMap(({ edge, id, sections }) => sections.map((section, index) => <path key={`${id}-${index}`} d={edgePath(section)} fill="none" stroke={relationTypeColors[edge.relationType] || relationTypeColors.OTHER} strokeOpacity="0.7" strokeWidth="1.6" markerEnd={`url(#relation-arrow-${edge.relationType})`} />))}
+                    {visibleEdges.flatMap(({ edge, id, sections }) => sections.map((section, index) => <path key={`${id}-${index}`} d={edgePath(section)} fill="none" stroke={relationTypeColors[edge.relationType] || relationTypeColors.OTHER} strokeOpacity="0.76" strokeWidth="2.2" markerEnd={`url(#relation-arrow-${edge.relationType})`} />))}
                 </svg>
                 {visibleNodes.map(node => <RelationCard key={node.id} node={node} isCurrent={node.id === currentNodeId} />)}
             </div>}
 
-            <div className="absolute left-3 top-3 z-20 relative w-48">
-                <Icon icon="material-symbols:search" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input placeholder="Пошук..." value={searchQuery} onChange={event => setSearchQuery(event.target.value)} className="h-9 border-border/50 bg-secondary/90 pl-9" />
-                {searchQuery && <Button type="button" variant="ghost" size="icon-xs" onClick={() => setSearchQuery('')} className="absolute right-1 top-1/2 -translate-y-1/2" aria-label="Очистити пошук"><Icon icon="material-symbols:close" className="size-4" /></Button>}
+            {!layout && <div className="absolute inset-0 z-10 flex items-center justify-center text-sm text-muted-foreground">Підготовка графа…</div>}
+
+            <div className="absolute left-4 top-4 z-20 relative w-[min(18rem,calc(100%-7rem))]">
+                <Icon icon="material-symbols:search" className="pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input placeholder="Пошук у графі..." value={searchQuery} onChange={event => setSearchQuery(event.target.value)} className="relative z-0 h-10 border-border/70 bg-background/75 pl-9 shadow-lg backdrop-blur-md" />
+                {searchQuery && <Button type="button" variant="ghost" size="icon-xs" onClick={() => setSearchQuery('')} className="absolute right-1 top-1/2 z-10 -translate-y-1/2" aria-label="Очистити пошук"><Icon icon="material-symbols:close" className="size-4" /></Button>}
             </div>
-            <div className="absolute right-3 top-3 z-20 flex flex-col gap-1">
-                <Button size="icon-sm" variant="outline" onClick={() => zoomAt(viewportSize.width / 2, viewportSize.height / 2, zoom * 1.2)} title="Збільшити" className="bg-background/90 shadow-lg"><Icon icon="material-symbols:add" /></Button>
-                <Button size="icon-sm" variant="outline" onClick={() => zoomAt(viewportSize.width / 2, viewportSize.height / 2, zoom * 0.8)} title="Зменшити" className="bg-background/90 shadow-lg"><Icon icon="material-symbols:remove" /></Button>
-                <Button size="icon-sm" variant="outline" onClick={handleFit} title="Вмістити" className="bg-background/90 shadow-lg"><Icon icon="material-symbols:fit-screen" /></Button>
+            <div className="absolute right-4 top-4 z-20 flex gap-1 rounded-lg border border-border/70 bg-background/95 p-1 shadow-lg">
+                <Button size="icon-sm" variant="ghost" onClick={() => zoomAt(viewportSize.width / 2, viewportSize.height / 2, zoom * 1.2)} title="Збільшити"><Icon icon="material-symbols:add" /></Button>
+                <Button size="icon-sm" variant="ghost" onClick={() => zoomAt(viewportSize.width / 2, viewportSize.height / 2, zoom * 0.8)} title="Зменшити"><Icon icon="material-symbols:remove" /></Button>
+                <Button size="icon-sm" variant="ghost" onClick={handleFit} title="Вмістити"><Icon icon="material-symbols:fit-screen" /></Button>
             </div>
-            <div className="absolute bottom-3 left-3 z-20 rounded-lg border border-border/50 bg-secondary/90 px-3 py-1.5 text-xs font-mono text-muted-foreground">{Math.round(zoom * 100)}% · {visibleNodes.length} вузлів</div>
+            <div className="absolute bottom-4 left-4 z-20 rounded-lg border border-border/70 bg-background/95 px-3 py-1.5 text-xs font-mono text-muted-foreground shadow-lg">{Math.round(zoom * 100)}% · {visibleNodes.length} вузлів</div>
+            <div className="absolute bottom-4 right-4 z-20 hidden rounded-lg border border-border/70 bg-background/90 px-3 py-1.5 text-xs text-muted-foreground shadow-lg sm:block">Перетягуйте, щоб оглянути · колесо — масштаб</div>
         </div>
     );
 };
 
 const RelationCard: React.FC<{ node: LayoutNode; isCurrent: boolean }> = ({ node, isCurrent }) => (
-    <article className={cn('absolute flex h-[116px] w-[232px] gap-3 overflow-hidden rounded-xl border bg-card/95 p-2.5 shadow-xl shadow-black/15 transition-shadow', isCurrent ? 'border-amber-400/80 ring-2 ring-amber-400/25' : 'border-border/70')} style={{ left: node.x, top: node.y }} data-pan-exclude>
-        <img src={node.imageUrl} alt="" className="h-[95px] w-[64px] shrink-0 rounded-md bg-muted object-cover" />
-        <div className="flex min-w-0 flex-1 flex-col">
-            <Link href={`/${node.type}/${node.slug}`} className={cn('line-clamp-2 text-sm font-semibold leading-5 hover:text-primary', isCurrent && 'text-amber-500')}>{node.title}</Link>
-            <span className="mt-1 line-clamp-1 text-[11px] text-muted-foreground">{node.status || '—'}</span>
-            <span className="mt-auto text-[11px] text-muted-foreground">{[node.year > 0 ? node.year : null, node.format].filter(Boolean).join(' • ') || node.type}</span>
+    <article className={cn('surface bg-card/80 absolute flex h-[148px] w-[280px] gap-4 overflow-hidden rounded-xl border p-3 shadow-xl shadow-black/15 transition-shadow', isCurrent ? 'border-amber-400/80 ring-2 ring-amber-400/25' : 'border-border/70')} style={{ left: node.x, top: node.y }} data-pan-exclude>
+        <img src={node.imageUrl} alt="" className="h-[124px] w-[84px] shrink-0 rounded-lg bg-muted object-cover" />
+        <div className="flex min-w-0 flex-1 flex-col py-0.5">
+            <Link
+                href={`/${node.type}/${node.slug}`}
+                className={cn(
+                    'line-clamp-3 text-[15px] font-semibold leading-5',
+                    isCurrent
+                        ? 'text-amber-500 hover:text-amber-300'
+                        : 'text-foreground hover:text-foreground hover:underline',
+                )}
+            >
+                {node.title}
+            </Link>
+            <span className="mt-1.5 line-clamp-1 text-xs text-muted-foreground">{node.status || 'Статус не вказано'}</span>
+            <span className="mt-auto text-xs text-muted-foreground">{[node.year > 0 ? node.year : null, node.format].filter(Boolean).join(' • ') || node.type}</span>
         </div>
     </article>
 );

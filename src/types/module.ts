@@ -23,6 +23,7 @@ export interface ModuleSelector {
   index?: number;
   visibleOnly?: boolean;
   hostWidth?: string;
+  initiallyHidden?: boolean;
 }
 
 export type ModuleSettingType =

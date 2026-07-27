@@ -16,7 +16,7 @@ import {
 	ContentUIProvider,
 	type ContentUIContextValue,
 } from "@/contexts/ContentUIContext";
-// @ts-ignore - Vite transforms ?inline imports into the compiled stylesheet string.
+// @ts-expect-error - Vite transforms ?inline imports into the compiled stylesheet string.
 import extensionStyles from "@/index.css?inline";
 
 const moduleImports = import.meta.glob<{ default: ForgeModuleDef }>(
@@ -533,7 +533,9 @@ class ModuleManager {
 		host.id = `hikka-forge-module-${moduleDef.id}`;
 		host.dataset.moduleId = moduleDef.id;
 		host.dataset.hikkaForge = "content-module";
-		host.style.display = "block";
+		const initiallyHidden = moduleDef.elementSelector.initiallyHidden ?? false;
+		host.hidden = initiallyHidden;
+		host.style.display = initiallyHidden ? "none" : "block";
 		host.style.width = moduleDef.elementSelector.hostWidth ?? "100%";
 
 		const shadowRoot = host.attachShadow({ mode: "open" });

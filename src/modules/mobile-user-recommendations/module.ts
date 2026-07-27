@@ -22,6 +22,7 @@ const mobileUserRecommendationsModule: ForgeModuleDef = {
         // offsetParent while locating this mobile-only rail.
         visibleOnly: false,
         hostWidth: '100%',
+        initiallyHidden: true,
     },
     component: MobileUserRecommendationsComponent,
     icon: {

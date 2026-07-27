@@ -67,6 +67,7 @@ const MobileUserRecommendationsComponent: React.FC = () => {
         host.setAttribute('role', 'tabpanel');
         host.setAttribute('aria-labelledby', RECOMMENDATIONS_TAB_ID);
         host.setAttribute(PANEL_MARKER, 'true');
+        host.hidden = true;
         host.style.display = 'none';
 
         let currentTabList: HTMLElement | null = null;
@@ -151,6 +152,7 @@ const MobileUserRecommendationsComponent: React.FC = () => {
         const setActive = (active: boolean, tabList: HTMLElement | null): void => {
             const becameActive = active && !activeRef.current;
             activeRef.current = active;
+            host.hidden = !active;
             host.style.display = active ? 'block' : 'none';
             if (!tabList) return;
 
@@ -207,6 +209,7 @@ const MobileUserRecommendationsComponent: React.FC = () => {
             ) ?? null;
 
             if (!tabList) {
+                host.hidden = true;
                 host.style.display = 'none';
                 recommendationTab = null;
                 return;
@@ -268,6 +271,7 @@ const MobileUserRecommendationsComponent: React.FC = () => {
             currentTabList?.removeEventListener('click', handleTabListClick, true);
             recommendationTab?.remove();
             restoreNativeContent();
+            host.hidden = false;
             host.style.display = 'block';
         };
     }, [ui]);

@@ -67,6 +67,13 @@ export interface SimilarMangaApiResponse {
     last: boolean;
 }
 
+export type SimilarContentType = 'anime' | 'manga';
+export type SimilarContentItem = SimilarAnimeItem | SimilarMangaItem;
+export type SimilarContentApiResponse =
+    | SimilarAnimeApiResponse
+    | SimilarMangaApiResponse;
+export type ForgeContentDetails = ForgeAnimeDetails | ForgeMangaDetails;
+
 export interface SortInfo {
     empty: boolean;
     sorted: boolean;

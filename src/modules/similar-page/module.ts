@@ -3,9 +3,12 @@ import SimilarPageComponent from './SimilarPageComponent';
 
 const similarPageModule: ForgeModuleDef = {
   id: 'similar-page',
-  name: 'Сторінка схожих аніме',
-  description: 'Додає повноцінну сторінку схожих аніме з навігацією',
-  urlPatterns: ['https://dev.hikka.io/anime/*#similar'],
+  name: 'Сторінка схожого контенту',
+  description: 'Додає повноцінну адаптивну сторінку схожого аніме та манґи з навігацією',
+  urlPatterns: [
+    'https://dev.hikka.io/anime/*#similar',
+    'https://dev.hikka.io/manga/*#similar',
+  ],
   enabledByDefault: true,
   hidden: true,
   elementSelector: {

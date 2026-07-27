@@ -1,13 +1,15 @@
 import React from 'react';
 import { SimilarAnimeCard } from '@/components/ui/anime/similar-anime-card';
-import { SimilarAnimeItem } from '@/types';
+import { SimilarMangaCard } from '@/components/ui/manga/similar-manga-card';
+import { SimilarAnimeItem, SimilarContentItem, SimilarContentType, SimilarMangaItem } from '@/types';
 
 interface SimilarPageGridProps {
-    items: SimilarAnimeItem[];
+    items: SimilarContentItem[];
     totalElements: number;
+    contentType: SimilarContentType;
 }
 
-export const SimilarPageGrid: React.FC<SimilarPageGridProps> = ({ items, totalElements }) => {
+export const SimilarPageGrid: React.FC<SimilarPageGridProps> = ({ items, totalElements, contentType }) => {
     return (
         <section className="flex flex-col gap-8">
             <div className="flex items-start gap-2">
@@ -15,9 +17,13 @@ export const SimilarPageGrid: React.FC<SimilarPageGridProps> = ({ items, totalEl
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {items.map((anime) => (
-                    <SimilarAnimeCard key={anime.slug} anime={anime} />
-                ))}
+                {contentType === 'anime'
+                    ? (items as SimilarAnimeItem[]).map((anime) => (
+                        <SimilarAnimeCard key={anime.slug} anime={anime} />
+                    ))
+                    : (items as SimilarMangaItem[]).map((manga) => (
+                        <SimilarMangaCard key={manga.slug} manga={manga} />
+                    ))}
             </div>
         </section>
     );

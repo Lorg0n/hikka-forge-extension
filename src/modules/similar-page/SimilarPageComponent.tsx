@@ -1,78 +1,115 @@
-import React from 'react'; 
+import React, { useMemo } from 'react';
 import NotFound from '@/components/ui/not-found';
-import { useForgeAnimeDetails } from '@/hooks/useForgeAnimeDetails';
-import { useSimilarAnime } from '@/hooks/useSimilarAnime';
+import { useSimilarContent } from '@/hooks/useSimilarContent';
+import { Pagination } from '@/components/ui/pagination';
+import { ModuleTransition } from '@/components/ui/module-transition';
+import { SimilarContentType } from '@/types';
 import { SimilarPageHeader } from './SimilarPageHeader';
 import { SimilarPageGrid } from './SimilarPageGrid';
 import { SimilarPageSkeleton } from './SimilarPageSkeleton';
-import { Pagination } from '@/components/ui/pagination';
-import { ModuleTransition } from '@/components/ui/module-transition';
+
+interface SimilarContentRoute {
+    contentType: SimilarContentType;
+    slug: string;
+}
+
+const parseRoute = (): SimilarContentRoute | null => {
+    if (typeof window === 'undefined') return null;
+
+    const segments = window.location.pathname.split('/').filter(Boolean);
+    const contentType = segments[0];
+
+    if (contentType !== 'anime' && contentType !== 'manga') return null;
+
+    return {
+        contentType,
+        slug: segments.slice(1).join('/'),
+    };
+};
 
 const SimilarPageComponent: React.FC = () => {
-    const slug = typeof window !== 'undefined'
-        ? window.location.pathname.split('/anime/')[1]?.split('#')[0] || ''
-        : '';
+    const route = useMemo(parseRoute, []);
+    const contentType = route?.contentType ?? 'anime';
+    const slug = route?.slug ?? '';
 
-    const { 
-        data: similarData, 
-        loading: similarLoading, 
-        error: similarError,
+    const {
+        data,
+        details,
+        loading,
+        error,
         currentPage,
-        setPage
-    } = useSimilarAnime({
+        setPage,
+    } = useSimilarContent({
+        contentType,
         slug,
         initialPage: 0,
         initialSize: 24,
     });
 
-    const { data: animeDetails, loading: detailsLoading } = useForgeAnimeDetails({ slug });
-
-    const isLoading = similarLoading || detailsLoading;
-
-    if (isLoading && !similarData) {
+    if (!route) {
         return (
-            <ModuleTransition stateKey="loading"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
-                <SimilarPageSkeleton />
-            </main></ModuleTransition>
+            <ModuleTransition stateKey="invalid">
+                <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
+                    <NotFound title="Помилка" description="Не вдалося визначити тип контенту." />
+                </main>
+            </ModuleTransition>
         );
     }
 
-    if ((similarError || !animeDetails || !similarData) && !isLoading) {
-         return (
-             <ModuleTransition stateKey="error"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
-                 <div className="flex flex-col gap-12 mt-12">
-                    <NotFound
-                        title="Не вдалося завантажити схожі аніме"
-                        description={similarError || 'Спробуйте оновити сторінку'}
-                    />
-                </div>
-            </main></ModuleTransition>
+    const contentLabel = contentType === 'anime' ? 'аніме' : 'манґу';
+
+    if (loading && (!data || !details)) {
+        return (
+            <ModuleTransition stateKey="loading">
+                <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
+                    <SimilarPageSkeleton />
+                </main>
+            </ModuleTransition>
+        );
+    }
+
+    if (error || !data || !details) {
+        return (
+            <ModuleTransition stateKey="error">
+                <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
+                    <div className="flex flex-col gap-12 mt-12">
+                        <NotFound
+                            title={`Не вдалося завантажити ${contentLabel}`}
+                            description={error || 'Спробуйте оновити сторінку'}
+                        />
+                    </div>
+                </main>
+            </ModuleTransition>
         );
     }
 
     return (
-        <ModuleTransition stateKey="content"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
-            <div className="flex flex-col gap-12">
-                <SimilarPageHeader 
-                    details={animeDetails!} 
-                    slug={slug} 
-                />
-                <SimilarPageGrid 
-                    items={similarData!.content} 
-                    totalElements={similarData!.totalElements} 
-                />
+        <ModuleTransition stateKey="content">
+            <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
+                <div className="flex flex-col gap-12">
+                    <SimilarPageHeader
+                        details={details}
+                        slug={slug}
+                        contentType={contentType}
+                    />
+                    <SimilarPageGrid
+                        items={data.content}
+                        totalElements={data.totalElements}
+                        contentType={contentType}
+                    />
 
-                {similarData && similarData.totalPages > 1 && (
-                    <div className="mt-4">
-                        <Pagination 
-                            currentPage={currentPage + 1}
-                            totalPages={similarData.totalPages}
-                            onPageChange={(page) => setPage(page - 1)}
-                        />
-                    </div>
-                )}
-            </div>
-        </main></ModuleTransition>
+                    {data.totalPages > 1 && (
+                        <div className="mt-4">
+                            <Pagination
+                                currentPage={currentPage + 1}
+                                totalPages={data.totalPages}
+                                onPageChange={(page) => setPage(page - 1)}
+                            />
+                        </div>
+                    )}
+                </div>
+            </main>
+        </ModuleTransition>
     );
 };
 

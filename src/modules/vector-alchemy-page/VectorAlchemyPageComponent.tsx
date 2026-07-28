@@ -42,14 +42,14 @@ import { createRecipeEmbedding, parseVectorExpression } from "./alchemy.recipe";
 import { useAlchemyCatalogSearch } from "./useAlchemyCatalogSearch";
 import { useAlchemyPalette } from "./useAlchemyPalette";
 
-const CARD_WIDTH = 190;
-const CARD_HEIGHT = 84;
+const CARD_WIDTH = 220;
+const CARD_HEIGHT = 112;
 const CLOSE_RESULT_BAND = 0.02;
 const MAX_ZOOM = 2;
 const MIN_ZOOM = 0.35;
 
 type RecipeIngredient = PaletteObject & { weight: 1 | -1 };
-type ReactionNotice = { x: number; y: number; label: string; result?: string };
+type ReactionNotice = { x: number; y: number; label: string };
 
 function typeIcon(type: PaletteObject["type"] | AlchemyCatalogItem["type"]) {
   if (type === "element") return "material-symbols:science-outline";
@@ -59,16 +59,16 @@ function typeIcon(type: PaletteObject["type"] | AlchemyCatalogItem["type"]) {
 function CardBody({ card }: { card: BoardCard }) {
   return (
     <>
-      <div className="flex h-full w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-violet-500/12">
+      <div className="flex h-full w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-violet-500/12">
         {card.imageUrl ? (
           <img src={card.imageUrl} alt="" className="size-full object-cover" />
         ) : (
           <Icon icon={typeIcon(card.type)} className="text-xl text-violet-400" />
         )}
       </div>
-      <div className="min-w-0 self-center">
-        <span className="block line-clamp-2 text-sm font-semibold leading-tight">{card.title}</span>
-        <span className="mt-1 block line-clamp-1 text-[11px] text-muted-foreground">
+      <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5">
+        <span className="block line-clamp-3 text-sm font-semibold leading-5">{card.title}</span>
+        <span className="mt-1 line-clamp-2 text-xs text-muted-foreground">
           {card.subtitle || (card.type === "element" ? "Базовий елемент" : card.type)}
         </span>
       </div>
@@ -76,7 +76,7 @@ function CardBody({ card }: { card: BoardCard }) {
   );
 }
 
-function BoardCardView({ card, onToggleSign }: { card: BoardCard; onToggleSign: (id: string) => void }) {
+function BoardCardView({ card, draggingSign, onToggleSign }: { card: BoardCard; draggingSign?: 1 | -1; onToggleSign: (id: string) => void }) {
   const draggable = useDraggable({
     id: `board:${card.instanceId}`,
     data: { source: "board", card } satisfies DragData,
@@ -93,14 +93,16 @@ function BoardCardView({ card, onToggleSign }: { card: BoardCard; onToggleSign: 
       onDoubleClick={() => onToggleSign(card.instanceId)}
       {...draggable.listeners}
       {...draggable.attributes}
-      className={`absolute z-[1] flex h-[84px] w-[190px] cursor-grab touch-none select-none gap-2 overflow-hidden rounded-xl border bg-card/95 p-2 shadow-xl backdrop-blur transition-[opacity,box-shadow,border-color] active:cursor-grabbing ${
+      className={`absolute z-[1] flex h-[112px] w-[220px] cursor-grab touch-none select-none gap-2.5 overflow-hidden rounded-xl border bg-card/95 p-2.5 shadow-xl backdrop-blur transition-[opacity,box-shadow,border-color] active:cursor-grabbing ${
         draggable.isDragging
           ? "opacity-0"
-          : card.sign < 0
-            ? "border-red-400/70 shadow-[0_0_24px_rgba(248,113,113,.2)]"
-            : droppable.isOver
-              ? "border-violet-300 shadow-[0_0_0_2px_rgba(167,139,250,.5),0_0_30px_rgba(139,92,246,.55)]"
-              : "border-border/80 hover:border-violet-400/60 hover:shadow-violet-500/15"
+          : droppable.isOver && draggingSign === -1
+            ? "z-[3] border-2 border-red-400 ring-2 ring-red-400/45 shadow-[0_0_0_4px_rgba(248,113,113,.12),0_0_28px_rgba(248,113,113,.45)]"
+            : droppable.isOver && draggingSign === 1
+              ? "z-[3] border-2 border-white ring-2 ring-white/35 shadow-[0_0_0_4px_rgba(255,255,255,.1),0_0_26px_rgba(255,255,255,.22)]"
+            : card.sign < 0
+              ? "border-red-400/80 shadow-[0_0_20px_rgba(248,113,113,.2)]"
+              : "border-border/80 hover:border-violet-400/70 hover:shadow-[0_0_24px_rgba(139,92,246,.18)]"
       }`}
       style={{ left: card.x, top: card.y }}
       title="Подвійний клік змінює знак інгредієнта"
@@ -476,7 +478,6 @@ const VectorAlchemyPageComponent: React.FC = () => {
   const [adminSaving, setAdminSaving] = useState(false);
   const [replaceVector, setReplaceVector] = useState(true);
   const [ingredientQuery, setIngredientQuery] = useState("");
-  const reactionTimerRef = useRef<number | null>(null);
   const setCatalogError = useCallback((message: string) => setError(message), []);
   const { elements, setElements, palette, setPalette, isLoading: loading } = useAlchemyPalette(setCatalogError);
   const { query: catalogQuery, setQuery: setCatalogQuery, results: catalogResults, isSearching: catalogSearching, clear: clearCatalog } = useAlchemyCatalogSearch(setCatalogError);
@@ -488,34 +489,64 @@ const VectorAlchemyPageComponent: React.FC = () => {
   const viewRef = useRef({ pan, zoom });
   viewRef.current = { pan, zoom };
 
-  useEffect(() => () => {
-    if (reactionTimerRef.current !== null) window.clearTimeout(reactionTimerRef.current);
+  const zoomAt = useCallback((requestedZoom: number, focalPoint?: { x: number; y: number }) => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const current = viewRef.current;
+    const next = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, requestedZoom));
+    if (next === current.zoom) return;
+    const x = focalPoint?.x ?? viewport.clientWidth / 2;
+    const y = focalPoint?.y ?? viewport.clientHeight / 2;
+    const ratio = next / current.zoom;
+    setPan({ x: x - (x - current.pan.x) * ratio, y: y - (y - current.pan.y) * ratio });
+    setZoom(next);
   }, []);
+
+  const fitCards = useCallback(() => {
+    const viewport = viewportRef.current;
+    if (!viewport || !cards.length) {
+      setPan({ x: 0, y: 0 });
+      setZoom(1);
+      return;
+    }
+    const rect = viewport.getBoundingClientRect();
+    const minX = Math.min(...cards.map((card) => card.x));
+    const minY = Math.min(...cards.map((card) => card.y));
+    const maxX = Math.max(...cards.map((card) => card.x + CARD_WIDTH));
+    const maxY = Math.max(...cards.map((card) => card.y + CARD_HEIGHT));
+    const contentWidth = Math.max(CARD_WIDTH, maxX - minX);
+    const contentHeight = Math.max(CARD_HEIGHT, maxY - minY);
+    const padding = 72;
+    const next = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Math.min((rect.width - padding * 2) / contentWidth, (rect.height - padding * 2) / contentHeight)));
+    setZoom(next);
+    setPan({
+      x: (rect.width - contentWidth * next) / 2 - minX * next,
+      y: (rect.height - contentHeight * next) / 2 - minY * next,
+    });
+  }, [cards]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
     const handleWheel = (event: WheelEvent) => {
+      if ((event.target as HTMLElement).closest("[data-ingredient-dock]")) return;
       event.preventDefault();
       const rect = viewport.getBoundingClientRect();
       const current = viewRef.current;
-      const next = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, current.zoom * (event.deltaY < 0 ? 1.12 : 0.9)));
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-      const ratio = next / current.zoom;
-      setPan({ x: x - (x - current.pan.x) * ratio, y: y - (y - current.pan.y) * ratio });
-      setZoom(next);
+      zoomAt(current.zoom * (event.deltaY < 0 ? 1.12 : 0.9), {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+      });
     };
     viewport.addEventListener("wheel", handleWheel, { passive: false });
     return () => viewport.removeEventListener("wheel", handleWheel);
-  }, []);
+  }, [zoomAt]);
   const addToPalette = useCallback((item: PaletteObject) => setPalette((current) => current.some((existing) => existing.paletteId === item.paletteId) ? current : [...current, item]), [setPalette]);
   const removeFromPalette = useCallback((paletteId: string) => setPalette((current) => current.filter((item) => item.type === "element" || item.paletteId !== paletteId)), [setPalette]);
   useEffect(() => { const remove = (event: Event) => removeFromPalette((event as CustomEvent<string>).detail); window.addEventListener("alchemy-remove-palette", remove); return () => window.removeEventListener("alchemy-remove-palette", remove); }, [removeFromPalette]);
 
   const craft = useCallback(async (first: BoardCard, second: BoardCard, x: number, y: number, consumedIds: string[]) => {
     const ingredients = [asIngredient(first), asIngredient(second)];
-    if (reactionTimerRef.current !== null) window.clearTimeout(reactionTimerRef.current);
     setCards((current) => current.filter((card) => !consumedIds.includes(card.instanceId)));
     setReactionNotice({ x, y, label: `${first.title} + ${second.title}` });
     setCrafting(true);
@@ -528,12 +559,8 @@ const VectorAlchemyPageComponent: React.FC = () => {
         const chosen = close[Math.floor(Math.random() * close.length)] ?? response.content[0];
         addToPalette(paletteFromResult(chosen));
         setCards((current) => [...current, cardFromResult(chosen, x, y)]);
-        setReactionNotice({ x, y, label: `${first.title} + ${second.title}`, result: chosen.title });
-        reactionTimerRef.current = window.setTimeout(() => {
-          setReactionNotice(null);
-          reactionTimerRef.current = null;
-        }, 650);
       }
+      setReactionNotice(null);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Алхімічна реакція не вдалася.");
@@ -598,14 +625,22 @@ const VectorAlchemyPageComponent: React.FC = () => {
         <section ref={(node) => { viewportRef.current = node; boardDrop.setNodeRef(node); }} className={`relative mt-3 h-[min(76svh,850px)] min-h-[430px] overflow-hidden rounded-2xl border bg-background shadow-2xl shadow-black/10 touch-none sm:min-h-[520px] ${boardDrop.isOver ? "ring-2 ring-violet-400/50" : ""}`} onPointerDown={onBoardPointerDown} onPointerMove={onBoardPointerMove} onPointerUp={() => { panRef.current = null; }} onPointerCancel={() => { panRef.current = null; }}>
           <UnifiedIngredientDock elements={elements} palette={palette} query={ingredientQuery} onQuery={onIngredientQuery} catalogResults={catalogResults} catalogSearching={catalogSearching} onRemove={removeFromPalette} />
           <div className="absolute inset-0 opacity-45 [background-image:radial-gradient(var(--border)_1px,transparent_1px)] [background-size:26px_26px]" />
-          <div className="pointer-events-none absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-xl border border-border/60 bg-background/75 px-3 py-2 text-center text-xs text-muted-foreground backdrop-blur"><span className="font-medium text-foreground">Мапа відкриттів</span><span className="mx-1.5">·</span>{boardDrop.isOver ? <span className="font-medium text-violet-400">Відпустіть, щоб додати</span> : "Колесо — масштаб · тягніть фон — рух"}</div>
-          <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-xl border bg-background/80 p-1 backdrop-blur"><Button size="icon-sm" variant="ghost" onClick={() => setZoom((value) => Math.min(MAX_ZOOM, value * 1.2))} aria-label="Збільшити"><Icon icon="material-symbols:add" /></Button><span className="min-w-10 text-center text-[11px] text-muted-foreground">{Math.round(zoom * 100)}%</span><Button size="icon-sm" variant="ghost" onClick={() => setZoom((value) => Math.max(MIN_ZOOM, value * 0.8))} aria-label="Зменшити"><Icon icon="material-symbols:remove" /></Button><Button size="icon-sm" variant="ghost" onClick={() => { setPan({ x: 0, y: 0 }); setZoom(1); }} aria-label="Скинути масштаб"><Icon icon="material-symbols:center-focus-strong" /></Button></div>
-          <div className="absolute left-0 top-0 h-full w-full" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: "0 0" }}>{cards.map((card) => <BoardCardView key={card.instanceId} card={card} onToggleSign={toggleCardSign} />)}{reactionNotice && <div className={`pointer-events-none absolute z-20 flex h-[84px] w-[190px] flex-col items-center justify-center rounded-xl border border-violet-300/70 bg-violet-500/10 shadow-[0_0_34px_rgba(139,92,246,.5)] ${reactionNotice.result ? "animate-pulse" : ""}`} style={{ left: reactionNotice.x, top: reactionNotice.y }}><span className={`${reactionNotice.result ? "hidden" : "absolute size-20 animate-ping bg-violet-400/20"} rounded-full`} /><Icon icon={reactionNotice.result ? "material-symbols:auto-awesome" : "svg-spinners:3-dots-fade"} className="relative text-2xl text-violet-200" /><span className="relative mt-1 max-w-[11rem] truncate px-2 text-center text-[10px] font-medium text-violet-100">{reactionNotice.result || reactionNotice.label}</span></div>}</div>
+          <div className="pointer-events-none absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-xl border border-border/60 bg-background/75 px-3 py-2 text-center text-xs text-muted-foreground backdrop-blur">{boardDrop.isOver ? <span className="font-medium text-violet-400">Відпустіть, щоб додати</span> : "Тягніть фон — рух · колесо — масштаб"}</div>
+          <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-xl border bg-background/80 p-1 backdrop-blur">
+            <Button size="icon-sm" variant="ghost" onClick={() => zoomAt(zoom * 1.2)} title="Збільшити" aria-label="Збільшити"><Icon icon="material-symbols:add" /></Button>
+            <span className="min-w-10 text-center text-[11px] text-muted-foreground">{Math.round(zoom * 100)}%</span>
+            <Button size="icon-sm" variant="ghost" onClick={() => zoomAt(zoom * 0.8)} title="Зменшити" aria-label="Зменшити"><Icon icon="material-symbols:remove" /></Button>
+            <Button size="icon-sm" variant="ghost" onClick={fitCards} title="Вмістити картки" aria-label="Вмістити картки"><Icon icon="material-symbols:fit-screen" /></Button>
+          </div>
+          <div className="absolute left-0 top-0 h-full w-full" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: "0 0" }}>
+            {cards.map((card) => <BoardCardView key={card.instanceId} card={card} draggingSign={activeCard?.sign} onToggleSign={toggleCardSign} />)}
+            {reactionNotice && <div className="pointer-events-none absolute z-20 flex h-[112px] w-[220px] flex-col items-center justify-center rounded-xl border-2 border-violet-300/80 bg-violet-500/10 text-violet-100 shadow-[0_0_0_4px_rgba(167,139,250,.12),0_0_30px_rgba(139,92,246,.55)]" style={{ left: reactionNotice.x, top: reactionNotice.y }}><span className="absolute size-20 animate-ping rounded-full bg-violet-400/20" /><Icon icon="svg-spinners:3-dots-fade" className="relative text-2xl" /><span className="relative mt-1 max-w-[13rem] truncate px-3 text-center text-[10px] font-medium">{reactionNotice.label}</span></div>}
+          </div>
           {!cards.length && !reactionNotice && <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-8 text-center"><div className="max-w-xs"><span className="mx-auto mb-3 flex size-14 items-center justify-center rounded-2xl bg-violet-500/10 text-violet-400"><Icon icon="material-symbols:gesture" className="text-3xl" /></span><p className="font-medium">Перетягніть два інгредієнти сюди</p><p className="mt-1 text-sm text-muted-foreground">Вони зʼявляться на мапі, а поєднання відкриють нові результати.</p></div></div>}
         </section>
       </>}
     </main></ModulePageTransition>
-    <DragOverlay dropAnimation={null}>{activeCard && <article className="flex h-[84px] w-[190px] gap-2 overflow-hidden rounded-xl border border-violet-300 bg-card p-2 shadow-[0_0_0_2px_rgba(167,139,250,.5),0_0_36px_rgba(139,92,246,.6)]"><CardBody card={activeCard} /></article>}</DragOverlay>
+    <DragOverlay dropAnimation={null}>{activeCard && <article className={`flex h-[112px] w-[220px] gap-2.5 overflow-hidden rounded-xl border-2 bg-card p-2.5 shadow-xl ${activeCard.sign < 0 ? "border-red-400 shadow-[0_0_22px_rgba(248,113,113,.35)]" : "border-white shadow-[0_0_18px_rgba(255,255,255,.22)]"}`}><CardBody card={activeCard} /></article>}</DragOverlay>
   </DndContext>;
 };
 

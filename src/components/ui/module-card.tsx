@@ -40,7 +40,6 @@ export function ModuleCard({
         <Switch
             checked={moduleInfo.enabled}
             onCheckedChange={(checked) => onToggle(moduleInfo.id, checked)}
-            disabled={requiresAuth}
             aria-label={`Toggle ${moduleInfo.name}`}
         />
     );
@@ -49,7 +48,7 @@ export function ModuleCard({
         <div
             className={cn(
                 "overflow-hidden rounded-lg border bg-card shadow-sm transition-colors",
-                requiresAuth && "opacity-60"
+                requiresAuth && "border-muted bg-muted/20"
             )}
         >
             {/* Header — whole row expands the card when the module has settings */}
@@ -84,21 +83,6 @@ export function ModuleCard({
                         <span className="text-sm font-medium leading-none">
                             {moduleInfo.name}
                         </span>
-                        {requiresAuth && (
-                            <Tooltip delayDuration={200}>
-                                <TooltipTrigger asChild>
-                                    <div className="flex size-4 shrink-0 items-center justify-center">
-                                        <Icon
-                                            icon="material-symbols:lock-rounded"
-                                            className="size-3.5 text-muted-foreground"
-                                        />
-                                    </div>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>Увійдіть для використання цього модуля</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        )}
                     </div>
                     <p className="text-xs leading-snug text-muted-foreground">
                         {moduleInfo.description}
@@ -130,10 +114,19 @@ export function ModuleCard({
                         {requiresAuth ? (
                             <Tooltip delayDuration={200}>
                                 <TooltipTrigger asChild>
-                                    <div>{switchComponent}</div>
+                                    <div
+                                        className="flex size-8 items-center justify-center text-muted-foreground"
+                                        role="status"
+                                        aria-label="Потрібен вхід для увімкнення модуля"
+                                    >
+                                        <Icon
+                                            icon="material-symbols:lock-rounded"
+                                            className="size-4"
+                                        />
+                                    </div>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                    <p>Увійдіть для використання цього модуля</p>
+                                    <p>Увійдіть, щоб увімкнути цей модуль</p>
                                 </TooltipContent>
                             </Tooltip>
                         ) : (

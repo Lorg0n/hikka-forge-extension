@@ -6,7 +6,7 @@ export interface ApiErrorResponse {
     error: string;
     message?: string;
     path?: string;
-    details?: any;
+    details?: unknown;
 }
 
 export interface CommentItem {

@@ -2,7 +2,7 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
-import type { ModuleInfo } from "@/types/module";
+import type { ModuleInfo, ModuleSettings, ModuleSettingValue } from "@/types/module";
 import { ModuleSettingsSection } from "./module-settings-section";
 import {
     Tooltip,
@@ -14,10 +14,10 @@ import { cn } from "@/lib/utils";
 
 interface ModuleCardProps {
     moduleInfo: ModuleInfo;
-    currentModuleSettings: Record<string, any>;
+    currentModuleSettings: ModuleSettings;
     isExpanded: boolean;
     onToggle: (moduleId: string, enabled: boolean) => void;
-    onSettingChange: (moduleId: string, settingId: string, value: any) => void;
+    onSettingChange: (moduleId: string, settingId: string, value: ModuleSettingValue) => void;
     onResetSettings: (moduleId: string) => void;
     onToggleExpansion: (moduleId: string) => void;
     isAuthenticated?: boolean;

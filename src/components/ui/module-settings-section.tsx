@@ -1,12 +1,12 @@
 import { Button } from "@/components/ui/button";
-import type { ModuleSetting } from "@/types/module";
+import type { ModuleSetting, ModuleSettings, ModuleSettingValue } from "@/types/module";
 import { SettingInput } from "./setting-input";
 
 interface ModuleSettingsSectionProps {
 	moduleId: string;
 	settings: ModuleSetting[];
-	currentModuleSettings: Record<string, any>;
-	onSettingChange: (moduleId: string, settingId: string, value: any) => void;
+	currentModuleSettings: ModuleSettings;
+	onSettingChange: (moduleId: string, settingId: string, value: ModuleSettingValue) => void;
 	onResetSettings: (moduleId: string) => void;
 }
 

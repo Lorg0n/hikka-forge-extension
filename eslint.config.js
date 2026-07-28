@@ -25,4 +25,17 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    files: [
+      'src/components/ui/badge.tsx',
+      'src/components/ui/button.tsx',
+      'src/components/ui/form.tsx',
+      'src/contexts/AuthContext.tsx',
+      'src/contexts/ContentUIContext.tsx',
+      'src/contexts/ModuleAuthContext.tsx',
+    ],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 )

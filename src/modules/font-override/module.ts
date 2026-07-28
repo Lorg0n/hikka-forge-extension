@@ -1,6 +1,6 @@
-import type { ForgeModuleDef } from '@/types/module';
+import type { ForgeModuleDef, ModuleSettings } from '@/types/module';
 
-const getFontStyles = (settings: Record<string, any>) => {
+const getFontStyles = (settings: ModuleSettings) => {
   const fontUrl = settings.fontUrl || 'https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap';
   const fontFamily = settings.fontFamily || 'Inter';
 

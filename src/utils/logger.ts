@@ -15,6 +15,7 @@ async function loadEnabledState(): Promise<void> {
 		const result = await storage.get(LOGGING_STORAGE_KEY);
 		enabled = result[LOGGING_STORAGE_KEY] === true;
 	} catch {
+		return;
 	}
 }
 

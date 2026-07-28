@@ -1,18 +1,18 @@
 import { Form } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { ModuleCategory, ModuleInfo } from "@/types/module";
+import type { ModuleCategory, ModuleInfo, ModuleSettings, ModuleSettingValue } from "@/types/module";
 import { MODULE_CATEGORIES } from "@/constants";
 import { useForm } from "react-hook-form"; 
 import { ModuleCard } from "./module-card";
 
 interface ModuleListProps {
 	modules: ModuleInfo[];
-	moduleSettings: Record<string, Record<string, any>>;
+	moduleSettings: Record<string, ModuleSettings>;
 	isLoading: boolean;
 	error: string | null;
 	expandedModules: Set<string>;
 	handleToggleChange: (moduleId: string, enabled: boolean) => Promise<void>;
-	handleSettingChange: (moduleId: string, settingId: string, value: any) => void;
+	handleSettingChange: (moduleId: string, settingId: string, value: ModuleSettingValue) => void;
 	handleResetSettings: (moduleId: string) => Promise<void>;
 	toggleModuleExpansion: (moduleId: string) => void;
 	isAuthenticated?: boolean;

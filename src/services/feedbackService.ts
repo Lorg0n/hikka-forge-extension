@@ -28,7 +28,7 @@ export interface FeedbackResponse {
 export class FeedbackService {
     private static async makeAuthenticatedRequest(
         endpoint: string,
-        body: any,
+        body: SimilarityFeedbackParams | RecommendationFeedbackParams | AlchemyFeedbackParams,
         token: string
     ): Promise<FeedbackResponse> {
         try {

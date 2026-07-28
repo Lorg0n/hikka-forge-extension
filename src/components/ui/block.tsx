@@ -1,7 +1,7 @@
 import { ComponentPropsWithoutRef, memo } from 'react';
 import { cn } from '@/lib/utils';
 
-interface Props extends ComponentPropsWithoutRef<'section'> {}
+type Props = ComponentPropsWithoutRef<'section'>;
 
 const Block = ({ children, className, ...props }: Props) => {
     return (

@@ -3,11 +3,26 @@ import type {
 	ModuleInfo,
 	ContentMessage,
 	ModuleSettingValue,
+	ModuleSettings,
 } from "./types/module";
 import browser from "./utils/browser";
 
 type LogMethod = "debug" | "info" | "log" | "warn" | "error" | "trace";
 type Logger = Record<LogMethod, (...args: unknown[]) => void>;
+type ContentScriptRegistrationMessage = {
+	type: "REGISTER_CONTENT_SCRIPT";
+	modules: ModuleInfo[];
+};
+type IncomingMessage = BackgroundMessage | ContentScriptRegistrationMessage;
+
+function isMissingContentScriptConnection(error: unknown): boolean {
+	if (!(error instanceof Error)) return false;
+
+	return (
+		error.message.includes("Could not establish connection") ||
+		error.message.includes("Receiving end does not exist")
+	);
+}
 
 function createBackgroundLogger(): Logger {
 	let enabled = false;
@@ -71,7 +86,6 @@ class BackgroundManager {
 		browser.runtime.onInstalled.addListener((details) => {
 			if (details.reason === "install") {
 				logger.log("[Hikka Forge] Extension installed. Default states will be applied on first use.");
-			} else if (details.reason === "update") {
 			}
 			moduleDefinitionsCache = null;
 		});
@@ -79,7 +93,7 @@ class BackgroundManager {
 
 	private initMessageListener(): void {
 		browser.runtime.onMessage.addListener(
-			(message: BackgroundMessage | any, sender, sendResponse) => {
+			(message: IncomingMessage, sender, sendResponse) => {
 				if (message.type === "REGISTER_CONTENT_SCRIPT") {
 					logger.log(`[Hikka Forge] Content script from tab ${sender.tab?.id} registered with ${message.modules.length} modules.`);
 					this.handleContentScriptRegistration(message.modules, sender.tab?.id)
@@ -223,7 +237,7 @@ class BackgroundManager {
 
 	private async getModuleDefinitionsWithState(): Promise<{
 		modules: ModuleInfo[];
-		moduleSettings: Record<string, Record<string, any>>;
+		moduleSettings: Record<string, ModuleSettings>;
 	}> {
 		const now = Date.now();
 		if (moduleDefinitionsCache && now - cacheTimestamp < CACHE_DURATION) {
@@ -253,7 +267,7 @@ class BackgroundManager {
 		definitions: ModuleInfo[]
 	): Promise<{
 		modules: ModuleInfo[];
-		moduleSettings: Record<string, Record<string, any>>;
+		moduleSettings: Record<string, ModuleSettings>;
 	}> {
 		if (!definitions || definitions.length === 0) {
 			return { modules: [], moduleSettings: {} };
@@ -261,7 +275,7 @@ class BackgroundManager {
 
 		try {
 			const allStoredData = await browser.storage.sync.get(null);
-			const moduleSettings: Record<string, Record<string, any>> = {};
+			const moduleSettings: Record<string, ModuleSettings> = {};
 
 			const updatedModules = definitions.map((def) => {
 				const enabledKey = `module_enabled_${def.id}`;
@@ -272,7 +286,7 @@ class BackgroundManager {
 					? storedEnabled
 					: (def.enabledByDefault ?? false);
 
-				const settings: Record<string, any> = {};
+				const settings: ModuleSettings = {};
 				if (def.settings) {
 					def.settings.forEach((setting) => {
 						const settingKey = `module_setting_${def.id}_${setting.id}`;
@@ -348,11 +362,8 @@ class BackgroundManager {
 							response
 						);
 					}
-				} catch (error: any) {
-					if (
-						!error.message.includes("Could not establish connection") &&
-						!error.message.includes("Receiving end does not exist")
-					) {
+				} catch (error: unknown) {
+					if (!isMissingContentScriptConnection(error)) {
 						logger.warn(
 							`[Hikka Forge] Error fetching module info from tab ${tab.id}:`,
 							error
@@ -372,7 +383,9 @@ class BackgroundManager {
 		if (this.tabStates.has(tabId)) {
 			try {
 				await this.sendSyncMessageToTab(tabId);
-			} catch (error) { }
+			} catch (error) {
+				logger.debug(`[Hikka Forge] Failed to sync tab ${tabId}:`, error);
+			}
 		}
 	}
 
@@ -396,7 +409,7 @@ class BackgroundManager {
 			const { modules, moduleSettings } =
 				await this.getModuleDefinitionsWithState();
 			const enabledStates: Record<string, boolean> = {};
-			const flatModuleSettings: Record<string, Record<string, any>> = {};
+			const flatModuleSettings: Record<string, ModuleSettings> = {};
 
 			modules.forEach((mod) => {
 				enabledStates[mod.id] = mod.enabled;
@@ -418,11 +431,8 @@ class BackgroundManager {
 			logger.log(
 				`[Hikka Forge] SYNC_MODULES sent successfully to tab ${tabId}`
 			);
-		} catch (error: any) {
-			if (
-				!error.message.includes("Could not establish connection") &&
-				!error.message.includes("Receiving end does not exist")
-			) {
+		} catch (error: unknown) {
+			if (!isMissingContentScriptConnection(error)) {
 				logger.error(
 					`[Hikka Forge] Error sending SYNC_MODULES to tab ${tabId}:`,
 					error

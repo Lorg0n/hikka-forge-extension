@@ -1,3 +1,7 @@
+import { createRequire } from "node:module";
+
+const loadJson = createRequire(import.meta.url);
+
 const getBaseManifest = () => ({
     manifest_version: 3,
     name: "Hikka Forge",
@@ -44,12 +48,8 @@ const getBaseManifest = () => ({
 export const generateManifest = (browser: string) => {
     const base = getBaseManifest();
 
-    try {
-        const packageJson = require('../../package.json');
-        base.version = packageJson.version;
-    } catch (e) {
-        console.warn('Could not read version from package.json');
-    }
+    const packageJson = loadJson('../../package.json') as { version: string };
+    base.version = packageJson.version;
 
     if (browser === 'firefox') {
         return {

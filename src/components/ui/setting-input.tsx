@@ -14,15 +14,15 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { ModuleSetting } from "@/types/module";
+import type { ModuleSetting, ModuleSettingValue } from "@/types/module";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { Icon } from "@iconify/react/dist/iconify.js";
 
 interface SettingInputProps {
     moduleId: string;
     setting: ModuleSetting;
-    currentValue: any;
-    onValueChange: (moduleId: string, settingId: string, value: any) => void;
+    currentValue: ModuleSettingValue;
+    onValueChange: (moduleId: string, settingId: string, value: ModuleSettingValue) => void;
 }
 
 export function SettingInput({
@@ -31,7 +31,7 @@ export function SettingInput({
     currentValue,
     onValueChange,
 }: SettingInputProps) {
-    const handleInputChange = (value: any) => {
+    const handleInputChange = (value: ModuleSettingValue) => {
         onValueChange(moduleId, setting.id, value);
     };
 

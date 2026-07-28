@@ -12,14 +12,20 @@ import type {
 	ModuleInfo,
 	PopupMessage,
 	GetModulesResponse,
-	SimpleActionResponse
+	SimpleActionResponse,
+	ModuleSettings,
+	ModuleSettingValue,
 } from "@/types/module";
 import { GITHUB_REPO, HIKKA_BASE, POLICY_PAGE } from "@/constants";
+
+function getErrorMessage(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
+}
 
 function App() {
 	const [modules, setModules] = useState<ModuleInfo[]>([]);
 	const [moduleSettings, setModuleSettings] = useState<
-		Record<string, Record<string, any>>
+		Record<string, ModuleSettings>
 	>({});
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -33,7 +39,7 @@ function App() {
 
 	const { isAuthenticated } = useAuth();
 
-	const settingUpdateTimers = useRef<Record<string, NodeJS.Timeout>>({});
+	const settingUpdateTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
 	const loadModules = useCallback(async () => {
 		setIsLoading(true);
@@ -57,8 +63,8 @@ function App() {
 				setError("Failed to load module settings. " + errorMessage);
 				logger.error("Popup: Error loading modules -", errorMessage);
 			}
-		} catch (err: any) {
-			setError(`Error communicating with background script: ${err.message}`);
+		} catch (err: unknown) {
+			setError(`Error communicating with background script: ${getErrorMessage(err)}`);
 			logger.error("Popup: Error sending message -", err);
 		} finally {
 			setIsLoading(false);
@@ -78,6 +84,7 @@ function App() {
 	}, [loadModules]);
 
 	useEffect(() => {
+		const timers = settingUpdateTimers.current;
 		checkPermissions();
 		void getConsoleLoggingEnabled().then(setConsoleLoggingEnabledState);
 
@@ -85,8 +92,8 @@ function App() {
 		setVersion(manifest.version);
 
 		return () => {
-			for (const timerId in settingUpdateTimers.current) {
-				clearTimeout(settingUpdateTimers.current[timerId]);
+			for (const timerId in timers) {
+				clearTimeout(timers[timerId]);
 			}
 		};
 	}, [checkPermissions]);
@@ -95,9 +102,9 @@ function App() {
 		setConsoleLoggingEnabledState(value);
 		try {
 			await setConsoleLoggingEnabled(value);
-		} catch (err: any) {
+		} catch (err: unknown) {
 			setConsoleLoggingEnabledState(!value);
-			setError(`Failed to update debug logging: ${err.message}`);
+			setError(`Failed to update debug logging: ${getErrorMessage(err)}`);
 		}
 	}, []);
 
@@ -149,9 +156,9 @@ function App() {
 					logger.log(`Popup: Module ${moduleId} toggled successfully.`);
 					setError(null);
 				}
-			} catch (err: any) {
+			} catch (err: unknown) {
 				logger.error("Popup: Error sending toggle message -", err);
-				setError(`Error saving setting: ${err.message}`);
+				setError(`Error saving setting: ${getErrorMessage(err)}`);
 				loadModules();
 			}
 		},
@@ -159,7 +166,7 @@ function App() {
 	);
 
 	const handleSettingChange = useCallback(
-		(moduleId: string, settingId: string, value: any) => {
+		(moduleId: string, settingId: string, value: ModuleSettingValue) => {
 			setModuleSettings((prev) => ({
 				...prev,
 				[moduleId]: {
@@ -205,9 +212,9 @@ function App() {
 						);
 						setError(null);
 					}
-				} catch (err: any) {
+				} catch (err: unknown) {
 					logger.error("Popup: Error sending setting update message -", err);
-					setError(`Error saving setting: ${err.message}`);
+					setError(`Error saving setting: ${getErrorMessage(err)}`);
 					loadModules();
 				} finally {
 					delete settingUpdateTimers.current[timerKey];
@@ -237,9 +244,9 @@ function App() {
 
 				loadModules();
 			}
-		} catch (err: any) {
+		} catch (err: unknown) {
 			logger.error("Popup: Error sending refresh message -", err);
-			setError(`Error triggering refresh: ${err.message}`);
+			setError(`Error triggering refresh: ${getErrorMessage(err)}`);
 		}
 	}, [loadModules]);
 
@@ -254,7 +261,7 @@ function App() {
 				return;
 			}
 
-			const newModuleSettings: Record<string, any> = {};
+			const newModuleSettings: ModuleSettings = {};
 			const promises: Promise<SimpleActionResponse>[] = [];
 
 			moduleDef.settings.forEach((setting) => {
@@ -292,10 +299,10 @@ function App() {
 				logger.log(
 					`Popup: Refresh triggered after settings reset for ${moduleId}.`
 				);
-			} catch (err: any) {
+			} catch (err: unknown) {
 				logger.error(`Popup: Error resetting settings for ${moduleId}:`, err);
 				setError(
-					`Failed to reset settings for ${moduleDef.name}. ${err.message}`
+					`Failed to reset settings for ${moduleDef.name}. ${getErrorMessage(err)}`
 				);
 
 				loadModules();

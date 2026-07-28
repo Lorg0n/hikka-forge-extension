@@ -8,8 +8,19 @@
 
     <style>
       html {
+        overflow-x: hidden;
         scrollbar-color: #4a4a4a #1a1a1a; 
         scrollbar-width: thin; 
+      }
+
+      #root {
+        width: 450px;
+      }
+
+      @supports not (-moz-appearance: none) {
+        #root {
+          width: 442px;
+        }
       }
 
       ::-webkit-scrollbar {

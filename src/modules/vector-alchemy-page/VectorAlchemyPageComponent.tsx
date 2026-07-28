@@ -38,7 +38,7 @@ import {
   paletteFromElement,
   paletteFromResult,
 } from "./alchemy.utils";
-import { createRecipeEmbedding, parseVectorExpression } from "./alchemy.recipe";
+import { createExpressionEmbedding, createRecipeEmbedding } from "./alchemy.recipe";
 import { useAlchemyCatalogSearch } from "./useAlchemyCatalogSearch";
 import { useAlchemyPalette } from "./useAlchemyPalette";
 
@@ -101,8 +101,8 @@ function BoardCardView({ card, draggingSign, onToggleSign }: { card: BoardCard; 
             : droppable.isOver && draggingSign === 1
               ? "z-[3] border-2 border-white ring-2 ring-white/35 shadow-[0_0_0_4px_rgba(255,255,255,.1),0_0_26px_rgba(255,255,255,.22)]"
             : card.sign < 0
-              ? "border-red-400/80 shadow-[0_0_20px_rgba(248,113,113,.2)]"
-              : "border-border/80 hover:border-violet-400/70 hover:shadow-[0_0_24px_rgba(139,92,246,.18)]"
+              ? "border-red-400/80 shadow-[0_0_20px_rgba(248,113,113,.2)] hover:border-red-300"
+              : "border-border/80 hover:border-white/80 hover:shadow-[0_0_22px_rgba(255,255,255,.16)]"
       }`}
       style={{ left: card.x, top: card.y }}
       title="Подвійний клік змінює знак інгредієнта"
@@ -250,14 +250,16 @@ function UnifiedIngredientDock({
 }
 
 function HighlightedExpression({ value }: { value: string }) {
-  const parts = value.split(/(element|anime|manga|[+-]|[()\"])/g);
+  const parts = value.split(/(element|anime|manga|[+\-*\/^()]|[()\"])/g);
   return (
     <>
       {parts.map((part, index) => {
         const className = /^(element|anime|manga)$/.test(part)
           ? "text-sky-400"
-          : /^[+-]$/.test(part)
+          : /^[+\-*\/^]$/.test(part)
             ? "text-amber-300"
+            : /^[()]$/.test(part)
+              ? "text-violet-300"
             : part === '"'
               ? "text-emerald-300"
               : "text-foreground";
@@ -381,6 +383,7 @@ function AdminWorkspace({
   const [listQuery, setListQuery] = useState("");
   const [advanced, setAdvanced] = useState(false);
   const [cursor, setCursor] = useState(adminExpression.length);
+  const editorRef = useRef<HTMLTextAreaElement>(null);
   const lookup = expressionLookup(adminExpression, cursor);
   const filteredElements = elements.filter((item) => item.name.toLowerCase().includes(listQuery.trim().toLowerCase()));
   const suggestions = useMemo(() => {
@@ -404,6 +407,18 @@ function AdminWorkspace({
     onExpression(event.target.value, nextCursor);
     const nextLookup = expressionLookup(event.target.value, nextCursor);
     onSearch(nextLookup?.query || "");
+  };
+  const insertOperator = (operator: string) => {
+    const start = editorRef.current?.selectionStart ?? cursor;
+    const end = editorRef.current?.selectionEnd ?? start;
+    const next = adminExpression.slice(0, start) + operator + adminExpression.slice(end);
+    const nextCursor = start + operator.length;
+    onExpression(next, nextCursor);
+    setCursor(nextCursor);
+    window.requestAnimationFrame(() => {
+      editorRef.current?.focus();
+      editorRef.current?.setSelectionRange(nextCursor, nextCursor);
+    });
   };
   useEffect(() => setCursor(adminExpression.length), [adminElement?.id]);
   return (
@@ -434,7 +449,7 @@ function AdminWorkspace({
             <label className="grid gap-1.5 text-sm font-medium md:col-span-2">Опис<Input value={adminDescription} onChange={(event) => onDescription(event.target.value)} placeholder="Коротке пояснення елемента" /></label>
           </div>
           <div className={`mt-5 rounded-2xl border p-4 ${replaceVector ? "border-violet-400/50 bg-violet-500/8" : "bg-muted/25"}`}>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><p className="font-medium">Рецепт вектора</p><p className="mt-1 text-xs text-muted-foreground">Додавайте елементи, аніме та манґу. Натисніть знак, щоб змінити вагу.</p></div>{adminElement && <Button size="sm" variant={replaceVector ? "default" : "outline"} onClick={() => onReplace(!replaceVector)} disabled={!lastRecipe && !recipeIngredients.length}>{replaceVector ? "Зберігати рецепт" : "Замінити вектор"}</Button>}</div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><p className="font-medium">Рецепт вектора</p><p className="mt-1 text-xs text-muted-foreground">+ і − поєднують вектори; * / ^ працюють із числами; дужки групують вираз.</p></div>{adminElement && <Button size="sm" variant={replaceVector ? "default" : "outline"} onClick={() => onReplace(!replaceVector)}>{replaceVector ? "Зберігати рецепт" : "Замінити вектор"}</Button>}</div>
             {replaceVector && <>
               <div className="relative mt-4">
                 <Icon icon="material-symbols:add-circle-outline" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-violet-400" />
@@ -443,7 +458,10 @@ function AdminWorkspace({
               </div>
               <div className="mt-3 flex min-h-10 flex-wrap gap-2">{recipeIngredients.map((ingredient, index) => <RecipeChip key={`${ingredient.paletteId}-${index}`} ingredient={ingredient} onWeight={() => onIngredients(recipeIngredients.map((item, itemIndex) => itemIndex === index ? { ...item, weight: item.weight === 1 ? -1 : 1 } : item))} onRemove={() => onIngredients(recipeIngredients.filter((_, itemIndex) => itemIndex !== index))} />)}{!recipeIngredients.length && <span className="text-sm text-muted-foreground">Поки що немає інгредієнтів.</span>}</div>
               <div className="mt-3 flex items-center justify-between gap-2"><button type="button" onClick={() => { setAdvanced((value) => !value); if (!adminExpression && recipeIngredients.length) onExpression(ingredientsToExpression(recipeIngredients), 0); }} className="text-xs font-medium text-violet-400 hover:text-violet-300">{advanced ? "Сховати редактор синтаксису" : "Відкрити редактор синтаксису"}</button>{lastRecipe && <span className="truncate text-xs text-muted-foreground">Остання реакція: {lastRecipe.label}</span>}</div>
-              {advanced && <div className="relative mt-3 overflow-hidden rounded-xl border border-border bg-background/70 font-mono text-sm"><pre aria-hidden className="pointer-events-none min-h-24 whitespace-pre-wrap break-words p-3 leading-6"><HighlightedExpression value={adminExpression} /></pre><textarea value={adminExpression} onChange={handleExpressionChange} onSelect={(event) => setCursor(event.currentTarget.selectionStart)} onClick={(event) => setCursor(event.currentTarget.selectionStart)} spellCheck={false} className="absolute inset-0 min-h-24 w-full resize-y bg-transparent p-3 font-mono text-sm leading-6 text-transparent caret-foreground outline-none selection:bg-violet-400/30" aria-label="Векторний вираз" placeholder={'anime("frieren-123") - element("2")}'} />{lookup && suggestions.length > 0 && <div className="absolute left-3 top-full z-10 mt-1 hidden rounded-lg border bg-popover p-1 shadow-lg sm:block">{suggestions.slice(0, 5).map((item) => <button type="button" key={item.paletteId} onClick={() => chooseSuggestion(item)} className="block px-2 py-1 text-left text-xs hover:bg-accent">{item.type}("{item.sourceId}") · {item.title}</button>)}</div>}</div>}
+              {advanced && <>
+                <div className="mt-3 flex flex-wrap items-center gap-1 rounded-xl border border-border bg-background/50 p-1.5"><span className="px-1.5 text-[11px] text-muted-foreground">Оператори</span>{[" + ", " − ", " * ", " / ", " ^ ", "(", ")"].map((operator) => <button type="button" key={operator} onClick={() => insertOperator(operator === " − " ? " - " : operator)} className="min-w-7 rounded-lg px-2 py-1 text-xs font-semibold text-amber-300 hover:bg-accent">{operator.trim()}</button>)}</div>
+                <div className="relative mt-2 overflow-hidden rounded-xl border border-border bg-background/70 font-mono text-sm"><pre aria-hidden className="pointer-events-none min-h-24 whitespace-pre-wrap break-words p-3 leading-6"><HighlightedExpression value={adminExpression} /></pre><textarea ref={editorRef} value={adminExpression} onChange={handleExpressionChange} onSelect={(event) => setCursor(event.currentTarget.selectionStart)} onClick={(event) => setCursor(event.currentTarget.selectionStart)} spellCheck={false} className="absolute inset-0 min-h-24 w-full resize-y bg-transparent p-3 font-mono text-sm leading-6 text-transparent caret-foreground outline-none selection:bg-violet-400/30" aria-label="Векторний вираз" placeholder={'anime("frieren-123") + 2 * (element("2") - manga("one-piece"))'} />{lookup && suggestions.length > 0 && <div className="absolute left-3 top-full z-10 mt-1 hidden rounded-lg border bg-popover p-1 shadow-lg sm:block">{suggestions.slice(0, 5).map((item) => <button type="button" key={item.paletteId} onClick={() => chooseSuggestion(item)} className="block px-2 py-1 text-left text-xs hover:bg-accent">{item.type}("{item.sourceId}") · {item.title}</button>)}</div>}</div>
+              </>}
             </>}
             {!replaceVector && <p className="mt-3 text-xs text-muted-foreground">Поточний 256-вимірний вектор буде збережено без змін.</p>}
           </div>
@@ -599,11 +617,15 @@ const VectorAlchemyPageComponent: React.FC = () => {
   const saveAdminElement = async () => {
     if (!adminName.trim()) return setError("Вкажіть назву елемента.");
     let sourceIngredients: AlchemyIngredient[] | undefined;
-    try { sourceIngredients = adminExpression.trim() ? parseVectorExpression(adminExpression) : recipeIngredients.length ? recipeIngredients.map(({ type, sourceId, weight }) => type === "element" ? { type, id: Number(sourceId), weight } : { type, slug: String(sourceId), weight }) : lastRecipe?.ingredients; } catch (err) { return setError(err instanceof Error ? err.message : "Некоректний векторний вираз."); }
-    if (replaceVector && !sourceIngredients?.length) return setError("Додайте інгредієнти до рецепту.");
+    try { sourceIngredients = recipeIngredients.length ? recipeIngredients.map(({ type, sourceId, weight }) => type === "element" ? { type, id: Number(sourceId), weight } : { type, slug: String(sourceId), weight }) : lastRecipe?.ingredients; } catch (err) { return setError(err instanceof Error ? err.message : "Некоректний рецепт."); }
+    if (replaceVector && !adminExpression.trim() && !sourceIngredients?.length) return setError("Додайте інгредієнти до рецепту.");
     setAdminSaving(true);
     try {
-      const embedding = adminElement && !replaceVector ? await AlchemyService.getEmbedding("element", adminElement.id) : await createRecipeEmbedding(sourceIngredients!);
+      const embedding = adminElement && !replaceVector
+        ? await AlchemyService.getEmbedding("element", adminElement.id)
+        : adminExpression.trim()
+          ? await createExpressionEmbedding(adminExpression)
+          : await createRecipeEmbedding(sourceIngredients!);
       const payload = { name: adminName.trim(), description: adminDescription || null, imageUrl: adminImageUrl || null, embedding };
       const saved = adminElement ? await AlchemyService.updateElement(adminElement.id, payload) : await AlchemyService.createElement(payload);
       setElements((current) => adminElement ? current.map((item) => item.id === saved.id ? saved : item) : [...current, saved].sort((a, b) => a.name.localeCompare(b.name)));
@@ -634,7 +656,14 @@ const VectorAlchemyPageComponent: React.FC = () => {
           </div>
           <div className="absolute left-0 top-0 h-full w-full" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: "0 0" }}>
             {cards.map((card) => <BoardCardView key={card.instanceId} card={card} draggingSign={activeCard?.sign} onToggleSign={toggleCardSign} />)}
-            {reactionNotice && <div className="pointer-events-none absolute z-20 flex h-[112px] w-[220px] flex-col items-center justify-center rounded-xl border-2 border-violet-300/80 bg-violet-500/10 text-violet-100 shadow-[0_0_0_4px_rgba(167,139,250,.12),0_0_30px_rgba(139,92,246,.55)]" style={{ left: reactionNotice.x, top: reactionNotice.y }}><span className="absolute size-20 animate-ping rounded-full bg-violet-400/20" /><Icon icon="svg-spinners:3-dots-fade" className="relative text-2xl" /><span className="relative mt-1 max-w-[13rem] truncate px-3 text-center text-[10px] font-medium">{reactionNotice.label}</span></div>}
+            {reactionNotice && <div role="status" aria-label={`Обчислення реакції: ${reactionNotice.label}`} className="pointer-events-none absolute z-20 flex h-[112px] w-[220px] animate-pulse gap-2.5 rounded-xl border border-violet-300/70 bg-card/90 p-2.5 shadow-[0_0_0_3px_rgba(167,139,250,.1),0_0_26px_rgba(139,92,246,.3)]" style={{ left: reactionNotice.x, top: reactionNotice.y }}>
+              <span className="h-full w-16 shrink-0 rounded-lg bg-muted/80" />
+              <span className="flex min-w-0 flex-1 flex-col justify-center gap-2">
+                <span className="h-3 w-4/5 rounded-full bg-muted/90" />
+                <span className="h-3 w-3/5 rounded-full bg-muted/70" />
+                <span className="h-2 w-2/5 rounded-full bg-muted/60" />
+              </span>
+            </div>}
           </div>
           {!cards.length && !reactionNotice && <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-8 text-center"><div className="max-w-xs"><span className="mx-auto mb-3 flex size-14 items-center justify-center rounded-2xl bg-violet-500/10 text-violet-400"><Icon icon="material-symbols:gesture" className="text-3xl" /></span><p className="font-medium">Перетягніть два інгредієнти сюди</p><p className="mt-1 text-sm text-muted-foreground">Вони зʼявляться на мапі, а поєднання відкриють нові результати.</p></div></div>}
         </section>

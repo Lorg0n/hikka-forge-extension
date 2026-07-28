@@ -318,7 +318,7 @@ function App() {
 
 	if (!hasPermission && !isLoading) {
 		return (
-			<div className="flex flex-col min-w-[350px] p-4 gap-4 bg-background text-foreground">
+			<div className="flex w-[450px] flex-col gap-4 bg-background p-4 text-foreground">
 				<h1 className="font-bold text-xl">Потрібен дозвіл</h1>
 				<p className="text-sm text-muted-foreground">
 					Hikka Forge потрібен дозвіл для роботи на сайті dev.hikka.io.
@@ -331,7 +331,7 @@ function App() {
 	}
 
 	return (
-		<div className="flex flex-col min-w-[350px] max-w-[450px] relative overflow-hidden p-4 gap-6 bg-background text-foreground">
+		<div className="relative flex w-[450px] flex-col gap-6 overflow-hidden bg-background p-4 text-foreground">
 			<div className="flex justify-between items-center flex-grow-0 flex-shrink-0 relative gap-4">
 				<div className="flex items-center gap-3">
 					<img src={logo} alt="Logo" className="size-7" />

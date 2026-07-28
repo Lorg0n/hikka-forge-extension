@@ -127,7 +127,7 @@ function PaletteItem({ item, onRemove }: { item: PaletteObject; onRemove?: (id: 
       ref={draggable.setNodeRef}
       {...draggable.listeners}
       {...draggable.attributes}
-      className="group flex min-w-[148px] max-w-[190px] touch-none select-none items-center gap-2 rounded-xl border border-transparent bg-muted/35 p-2 text-left transition-colors hover:border-violet-400/40 hover:bg-violet-500/10"
+      className="group flex w-full min-w-0 max-w-none touch-none select-none items-center gap-2 rounded-xl border border-transparent bg-muted/35 p-2 text-left transition-colors hover:border-violet-400/40 hover:bg-violet-500/10"
     >
       {item.imageUrl ? (
         <img src={item.imageUrl} alt="" className="size-8 shrink-0 rounded-lg object-cover" />
@@ -212,9 +212,8 @@ function UnifiedIngredientDock({
   }, [palette, query]);
   const showCatalog = query.trim().length >= 2;
   return (
-    <section className="surface rounded-2xl border p-3 shadow-lg shadow-black/5">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="flex shrink-0 items-center gap-2 px-1">
+    <section data-ingredient-dock className="surface absolute bottom-3 left-3 top-3 z-30 flex w-64 max-w-[calc(100%-1.5rem)] flex-col rounded-2xl border p-3 shadow-2xl shadow-black/20 backdrop-blur-md">
+      <div className="flex shrink-0 items-center gap-2 px-1">
           <span className="flex size-8 items-center justify-center rounded-lg bg-violet-500/12 text-violet-400">
             <Icon icon="material-symbols:inventory-2-outline" />
           </span>
@@ -224,7 +223,7 @@ function UnifiedIngredientDock({
           </div>
           <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">{elements.length}</span>
         </div>
-        <div className="relative min-w-0 flex-1">
+        <div className="relative mt-3 shrink-0">
           <Icon icon="material-symbols:search" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
@@ -235,12 +234,11 @@ function UnifiedIngredientDock({
           />
           {catalogSearching && <Icon icon="svg-spinners:90-ring-with-bg" className="absolute right-3 top-1/2 -translate-y-1/2 text-violet-400" />}
         </div>
-      </div>
-      <div className="no-scrollbar mt-3 flex min-h-[52px] gap-2 overflow-x-auto pb-0.5">
+      <div className="mt-3 min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
         {filtered.map((item) => <PaletteItem key={item.paletteId} item={item} onRemove={onRemove} />)}
         {showCatalog && catalogResults.map((item) => <CatalogItem key={`${item.type}-${item.slug}`} item={item} />)}
         {!filtered.length && !catalogResults.length && (
-          <div className="flex items-center px-2 text-sm text-muted-foreground">
+          <div className="flex items-center px-2 py-2 text-sm text-muted-foreground">
             {showCatalog && !catalogSearching ? "Нічого не знайдено." : "Додайте інгредієнт для початку."}
           </div>
         )}
@@ -566,7 +564,7 @@ const VectorAlchemyPageComponent: React.FC = () => {
     if (data.catalog) clearCatalog();
   };
   const toggleCardSign = (id: string) => setCards((current) => current.map((card) => card.instanceId === id ? { ...card, sign: card.sign === 1 ? -1 : 1 } : card));
-  const onBoardPointerDown = (event: React.PointerEvent<HTMLDivElement>) => { if ((event.target as HTMLElement).closest("button, input, textarea, [data-board-card]")) return; panRef.current = { clientX: event.clientX, clientY: event.clientY, x: pan.x, y: pan.y }; };
+  const onBoardPointerDown = (event: React.PointerEvent<HTMLDivElement>) => { if ((event.target as HTMLElement).closest("button, input, textarea, [data-board-card], [data-ingredient-dock]")) return; panRef.current = { clientX: event.clientX, clientY: event.clientY, x: pan.x, y: pan.y }; };
   const onBoardPointerMove = (event: React.PointerEvent<HTMLDivElement>) => { if (!panRef.current) return; setPan({ x: panRef.current.x + event.clientX - panRef.current.clientX, y: panRef.current.y + event.clientY - panRef.current.clientY }); };
   const prepareCreate = useCallback(() => { setAdminElement(null); setAdminName(""); setAdminDescription(""); setAdminImageUrl(""); setReplaceVector(true); setAdminExpression(lastRecipe ? ingredientsToExpression(recipeIngredientsFromRecipe(lastRecipe, palette)) : ""); setRecipeIngredients(lastRecipe ? recipeIngredientsFromRecipe(lastRecipe, palette) : []); setError(null); }, [lastRecipe, palette]);
   const openAdmin = () => { setAdminMode(true); if (!adminElement) prepareCreate(); };
@@ -597,10 +595,10 @@ const VectorAlchemyPageComponent: React.FC = () => {
       </header>
       {error && <div className="mb-3 flex items-center gap-2 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"><Icon icon="material-symbols:error-outline" />{error}</div>}
       {adminMode && !authLoading ? <AdminWorkspace elements={elements} palette={palette} adminElement={adminElement} adminName={adminName} adminDescription={adminDescription} adminImageUrl={adminImageUrl} adminExpression={adminExpression} recipeIngredients={recipeIngredients} replaceVector={replaceVector} lastRecipe={lastRecipe} saving={adminSaving} searchQuery={catalogQuery} catalogResults={catalogResults} catalogSearching={catalogSearching} onSearch={setCatalogQuery} onSelectIngredient={selectAdminIngredient} onNew={prepareCreate} onEdit={prepareEdit} onName={setAdminName} onDescription={setAdminDescription} onImage={setAdminImageUrl} onExpression={(value) => setAdminExpression(value)} onIngredients={setRecipeIngredients} onReplace={setReplaceVector} onSave={saveAdminElement} /> : <>
-        <UnifiedIngredientDock elements={elements} palette={palette} query={ingredientQuery} onQuery={onIngredientQuery} catalogResults={catalogResults} catalogSearching={catalogSearching} onRemove={removeFromPalette} />
         <section ref={(node) => { viewportRef.current = node; boardDrop.setNodeRef(node); }} className={`relative mt-3 h-[min(76svh,850px)] min-h-[430px] overflow-hidden rounded-2xl border bg-background shadow-2xl shadow-black/10 touch-none sm:min-h-[520px] ${boardDrop.isOver ? "ring-2 ring-violet-400/50" : ""}`} onPointerDown={onBoardPointerDown} onPointerMove={onBoardPointerMove} onPointerUp={() => { panRef.current = null; }} onPointerCancel={() => { panRef.current = null; }}>
+          <UnifiedIngredientDock elements={elements} palette={palette} query={ingredientQuery} onQuery={onIngredientQuery} catalogResults={catalogResults} catalogSearching={catalogSearching} onRemove={removeFromPalette} />
           <div className="absolute inset-0 opacity-45 [background-image:radial-gradient(var(--border)_1px,transparent_1px)] [background-size:26px_26px]" />
-          <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-xl border border-border/60 bg-background/75 px-3 py-2 text-xs text-muted-foreground backdrop-blur"><span className="font-medium text-foreground">Мапа відкриттів</span><span className="mx-1.5">·</span>{boardDrop.isOver ? <span className="font-medium text-violet-400">Відпустіть, щоб додати</span> : "Колесо — масштаб · тягніть фон — рух"}</div>
+          <div className="pointer-events-none absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-xl border border-border/60 bg-background/75 px-3 py-2 text-center text-xs text-muted-foreground backdrop-blur"><span className="font-medium text-foreground">Мапа відкриттів</span><span className="mx-1.5">·</span>{boardDrop.isOver ? <span className="font-medium text-violet-400">Відпустіть, щоб додати</span> : "Колесо — масштаб · тягніть фон — рух"}</div>
           <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-xl border bg-background/80 p-1 backdrop-blur"><Button size="icon-sm" variant="ghost" onClick={() => setZoom((value) => Math.min(MAX_ZOOM, value * 1.2))} aria-label="Збільшити"><Icon icon="material-symbols:add" /></Button><span className="min-w-10 text-center text-[11px] text-muted-foreground">{Math.round(zoom * 100)}%</span><Button size="icon-sm" variant="ghost" onClick={() => setZoom((value) => Math.max(MIN_ZOOM, value * 0.8))} aria-label="Зменшити"><Icon icon="material-symbols:remove" /></Button><Button size="icon-sm" variant="ghost" onClick={() => { setPan({ x: 0, y: 0 }); setZoom(1); }} aria-label="Скинути масштаб"><Icon icon="material-symbols:center-focus-strong" /></Button></div>
           <div className="absolute left-0 top-0 h-full w-full" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: "0 0" }}>{cards.map((card) => <BoardCardView key={card.instanceId} card={card} onToggleSign={toggleCardSign} />)}{reactionNotice && <div className={`pointer-events-none absolute z-20 flex h-[84px] w-[190px] flex-col items-center justify-center rounded-xl border border-violet-300/70 bg-violet-500/10 shadow-[0_0_34px_rgba(139,92,246,.5)] ${reactionNotice.result ? "animate-pulse" : ""}`} style={{ left: reactionNotice.x, top: reactionNotice.y }}><span className={`${reactionNotice.result ? "hidden" : "absolute size-20 animate-ping bg-violet-400/20"} rounded-full`} /><Icon icon={reactionNotice.result ? "material-symbols:auto-awesome" : "svg-spinners:3-dots-fade"} className="relative text-2xl text-violet-200" /><span className="relative mt-1 max-w-[11rem] truncate px-2 text-center text-[10px] font-medium text-violet-100">{reactionNotice.result || reactionNotice.label}</span></div>}</div>
           {!cards.length && !reactionNotice && <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-8 text-center"><div className="max-w-xs"><span className="mx-auto mb-3 flex size-14 items-center justify-center rounded-2xl bg-violet-500/10 text-violet-400"><Icon icon="material-symbols:gesture" className="text-3xl" /></span><p className="font-medium">Перетягніть два інгредієнти сюди</p><p className="mt-1 text-sm text-muted-foreground">Вони зʼявляться на мапі, а поєднання відкриють нові результати.</p></div></div>}

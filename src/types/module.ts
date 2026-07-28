@@ -97,6 +97,12 @@ export interface ForgeModuleDef {
         name: string; // iconify icon id, e.g. "material-symbols:translate"
         color?: string; // optional color, e.g. "#ec70bb" or "text-primary-foreground"
     };
+	/** Optional popup-only shortcut to a page provided by this module. */
+	popupAction?: {
+		label: string;
+		href: string;
+		icon?: string;
+	};
 }
 
 export interface ModuleInfo {
@@ -114,6 +120,11 @@ export interface ModuleInfo {
         name: string;
         color?: string;
     };
+	popupAction?: {
+		label: string;
+		href: string;
+		icon?: string;
+	};
 }
 
 interface ModuleToggleAction {

@@ -1,7 +1,7 @@
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ExternalLink } from "lucide-react";
 import type { ModuleInfo, ModuleSettings, ModuleSettingValue } from "@/types/module";
 import { ModuleSettingsSection } from "./module-settings-section";
 import {
@@ -21,6 +21,7 @@ interface ModuleCardProps {
     onResetSettings: (moduleId: string) => void;
     onToggleExpansion: (moduleId: string) => void;
     isAuthenticated?: boolean;
+	 onPopupAction?: (href: string) => void;
 }
 
 export function ModuleCard({
@@ -32,6 +33,7 @@ export function ModuleCard({
     onResetSettings,
     onToggleExpansion,
     isAuthenticated = false,
+	 onPopupAction,
 }: ModuleCardProps) {
     const hasSettings = moduleInfo.settings && moduleInfo.settings.length > 0;
     const requiresAuth = moduleInfo.authRequired && !isAuthenticated;
@@ -88,6 +90,21 @@ export function ModuleCard({
                         {moduleInfo.description}
                     </p>
                 </div>
+
+				{moduleInfo.popupAction && moduleInfo.enabled && (
+					<Button
+						variant="outline"
+						size="sm"
+						className="h-7 shrink-0 gap-1 px-2 text-xs"
+						onClick={(event) => {
+							event.stopPropagation();
+							onPopupAction?.(moduleInfo.popupAction!.href);
+						}}
+					>
+						<ExternalLink className="size-3" />
+						{moduleInfo.popupAction.label}
+					</Button>
+				)}
 
                 <div className="flex shrink-0 items-center gap-1">
                     {hasSettings && (

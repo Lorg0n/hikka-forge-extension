@@ -323,6 +323,17 @@ function App() {
 		});
 	}, []);
 
+	const handlePopupAction = useCallback(async (href: string) => {
+		try {
+			const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+			if (!tab?.id) throw new Error("Active tab was not found.");
+			await browser.tabs.update(tab.id, { url: new URL(href, HIKKA_BASE).toString() });
+			window.close();
+		} catch (err: unknown) {
+			setError(`Не вдалося відкрити сторінку: ${getErrorMessage(err)}`);
+		}
+	}, []);
+
 	if (!hasPermission && !isLoading) {
 		return (
 			<div className="flex w-full flex-col gap-4 bg-background p-4 text-foreground">
@@ -415,6 +426,7 @@ function App() {
 					handleResetSettings={handleResetSettings}
 					toggleModuleExpansion={toggleModuleExpansion}
 					isAuthenticated={isAuthenticated}
+					handlePopupAction={handlePopupAction}
 				/>
 			</div>
 

@@ -16,6 +16,7 @@ interface ModuleListProps {
 	handleResetSettings: (moduleId: string) => Promise<void>;
 	toggleModuleExpansion: (moduleId: string) => void;
 	isAuthenticated?: boolean;
+	handlePopupAction: (href: string) => void;
 }
 
 interface ModuleGroup {
@@ -57,6 +58,7 @@ export function ModuleList({
 	handleResetSettings,
 	toggleModuleExpansion,
 	isAuthenticated = false,
+	handlePopupAction,
 }: ModuleListProps) {
 	const form = useForm();
 
@@ -109,6 +111,7 @@ export function ModuleList({
 									onResetSettings={handleResetSettings}
 									onToggleExpansion={toggleModuleExpansion}
 									isAuthenticated={isAuthenticated}
+									onPopupAction={handlePopupAction}
 								/>
 							))}
 						</div>

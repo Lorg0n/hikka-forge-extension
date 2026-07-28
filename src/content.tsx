@@ -861,6 +861,7 @@ class ModuleManager {
 			authRequired: moduleDef.authRequired ?? false,
 			category: moduleDef.category,
 			icon: moduleDef.icon,
+			popupAction: moduleDef.popupAction,
 		}));
 	}
 

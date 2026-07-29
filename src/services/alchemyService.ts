@@ -61,16 +61,13 @@ interface ElementPayload {
 async function request<T>(
   path: string,
   init?: RequestInit,
-  authenticated = false,
 ): Promise<T> {
   const headers = new Headers(init?.headers);
   headers.set("accept", "application/json");
   if (init?.body) headers.set("content-type", "application/json");
-  if (authenticated) {
-    const token = await AuthService.getToken();
-    if (!token) throw new Error("Потрібен вхід до акаунта.");
-    headers.set("Authorization", `Bearer ${token}`);
-  }
+  const token = await AuthService.getToken();
+  if (!token) throw new Error("Потрібен вхід до акаунта.");
+  headers.set("Authorization", `Bearer ${token}`);
   const response = await fetch(`${API_BACKEND_BASE}${path}`, {
     ...init,
     headers,
@@ -124,31 +121,25 @@ export const AlchemyService = {
     ];
   },
   getAdminElement: (id: number) =>
-    request<AdminAlchemyElement>(
-      `/admin/alchemy/elements/${id}`,
-      undefined,
-      true,
-    ),
+    request<AdminAlchemyElement>(`/admin/alchemy/elements/${id}`),
   createElement: (payload: ElementPayload) =>
     request<AdminAlchemyElement>(
       "/admin/alchemy/elements",
       { method: "POST", body: JSON.stringify(payload) },
-      true,
     ),
   updateElement: (id: number, payload: ElementPayload) =>
     request<AdminAlchemyElement>(
       `/admin/alchemy/elements/${id}`,
       { method: "PUT", body: JSON.stringify(payload) },
-      true,
     ),
   deleteElement: (id: number) =>
-    request<void>(`/admin/alchemy/elements/${id}`, { method: "DELETE" }, true),
+    request<void>(`/admin/alchemy/elements/${id}`, { method: "DELETE" }),
   getEmbedding: (type: AlchemySourceType, idOrSlug: number | string) => {
     const path =
       type === "element"
         ? `/admin/alchemy/elements/${idOrSlug}`
         : `/${type}/${idOrSlug}/embedding`;
-    return request<AdminAlchemyElement | number[]>(path, undefined, true).then(
+    return request<AdminAlchemyElement | number[]>(path).then(
       (value) => {
         const embedding = Array.isArray(value) ? value : value.embedding;
         if (

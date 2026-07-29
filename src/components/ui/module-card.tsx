@@ -1,7 +1,7 @@
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
-import { ChevronDown, ExternalLink } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import type { ModuleInfo, ModuleSettings, ModuleSettingValue } from "@/types/module";
 import { ModuleSettingsSection } from "./module-settings-section";
 import {
@@ -91,22 +91,23 @@ export function ModuleCard({
                     </p>
                 </div>
 
-				{moduleInfo.popupAction && moduleInfo.enabled && (
-					<Button
-						variant="outline"
-						size="sm"
-						className="h-7 shrink-0 gap-1 px-2 text-xs"
-						onClick={(event) => {
-							event.stopPropagation();
-							onPopupAction?.(moduleInfo.popupAction!.href);
-						}}
-					>
-						<ExternalLink className="size-3" />
-						{moduleInfo.popupAction.label}
-					</Button>
-				)}
-
                 <div className="flex shrink-0 items-center gap-1">
+					{moduleInfo.popupAction && (
+						<Button
+							variant="outline"
+							size="icon-sm"
+							className="shrink-0"
+							disabled={requiresAuth}
+							onClick={(event) => {
+								event.stopPropagation();
+								onPopupAction?.(moduleInfo.popupAction!.href);
+							}}
+							aria-label={requiresAuth ? "Увійдіть, щоб відкрити модуль" : moduleInfo.popupAction.label}
+							title={requiresAuth ? "Увійдіть, щоб відкрити модуль" : moduleInfo.popupAction.label}
+						>
+							<Icon icon={moduleInfo.popupAction.icon ?? "material-symbols:open-in-new"} />
+						</Button>
+					)}
                     {hasSettings && (
                         <Button
                             variant="ghost"
@@ -127,7 +128,7 @@ export function ModuleCard({
                             />
                         </Button>
                     )}
-                    <div onClick={(e) => e.stopPropagation()}>
+					{!moduleInfo.popupAction && <div onClick={(e) => e.stopPropagation()}>
                         {requiresAuth ? (
                             <Tooltip delayDuration={200}>
                                 <TooltipTrigger asChild>
@@ -140,7 +141,7 @@ export function ModuleCard({
                                             icon="material-symbols:lock-rounded"
                                             className="size-4"
                                         />
-                                    </div>
+					</div>
                                 </TooltipTrigger>
                                 <TooltipContent>
                                     <p>Увійдіть, щоб увімкнути цей модуль</p>
@@ -149,7 +150,7 @@ export function ModuleCard({
                         ) : (
                             switchComponent
                         )}
-                    </div>
+                    </div>}
                 </div>
             </div>
 

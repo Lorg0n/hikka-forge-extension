@@ -21,11 +21,11 @@ import { catalogSuggestionItems } from "./alchemy.admin";
 import { typeIcon } from "./alchemy.icons";
 
 function HighlightedExpression({ value }: { value: string }) {
-  const parts = value.split(/(element|anime|manga|[+*^()/-]|[()"])/g);
+  const parts = value.split(/(normalize|element|anime|manga|[+*^()/-]|[()"])/g);
   return (
     <>
       {parts.map((part, index) => {
-        const className = /^(element|anime|manga)$/.test(part)
+        const className = /^(normalize|element|anime|manga)$/.test(part)
           ? "text-sky-400"
           : /^[+*^/-]$/.test(part)
             ? "text-amber-300"
@@ -190,6 +190,20 @@ export function AlchemyAdminWorkspace({
     });
   };
 
+  const insertNormalize = () => {
+    const start = editorRef.current?.selectionStart ?? cursor;
+    const end = editorRef.current?.selectionEnd ?? start;
+    const value = "normalize()";
+    const next = adminExpression.slice(0, start) + value + adminExpression.slice(end);
+    const nextCursor = start + "normalize(".length;
+    onExpression(next, nextCursor);
+    setCursor(nextCursor);
+    window.requestAnimationFrame(() => {
+      editorRef.current?.focus();
+      editorRef.current?.setSelectionRange(nextCursor, nextCursor);
+    });
+  };
+
   useEffect(() => {
     setCursor(adminExpressionRef.current.length);
     setAdvanced(Boolean(adminElementRef.current && adminExpressionRef.current.trim()));
@@ -237,8 +251,8 @@ export function AlchemyAdminWorkspace({
             <label className="grid gap-1.5 text-sm font-medium">URL зображення<Input value={adminImageUrl} onChange={(event) => onImage(event.target.value)} placeholder="https://…" /></label>
             <label className="grid gap-1.5 text-sm font-medium md:col-span-2">Опис<Input value={adminDescription} onChange={(event) => onDescription(event.target.value)} placeholder="Коротке пояснення елемента" /></label>
           </div>
-          <div className={`mt-5 rounded-2xl border p-4 ${replaceVector ? "border-violet-400/50 bg-violet-500/8" : "bg-muted/25"}`}>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><p className="font-medium">Рецепт вектора</p><p className="mt-1 text-xs text-muted-foreground">+ і − поєднують вектори; * / ^ працюють із числами; дужки групують вираз.</p></div>{adminElement && <Button size="sm" variant={replaceVector ? "default" : "outline"} onClick={() => onReplace(!replaceVector)}>{replaceVector ? "Зберігати рецепт" : "Замінити вектор"}</Button>}</div>
+            <div className={`mt-5 rounded-2xl border p-4 ${replaceVector ? "border-violet-400/50 bg-violet-500/8" : "bg-muted/25"}`}>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><p className="font-medium">Рецепт вектора</p><p className="mt-1 text-xs text-muted-foreground">+ і − поєднують вектори; normalize() масштабує вектор; * / ^ працюють із числами.</p></div>{adminElement && <Button size="sm" variant={replaceVector ? "default" : "outline"} onClick={() => onReplace(!replaceVector)}>{replaceVector ? "Зберігати рецепт" : "Замінити вектор"}</Button>}</div>
             {replaceVector && <>
               <div className="relative mt-4">
                 <Icon icon="material-symbols:add-circle-outline" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-violet-400" />
@@ -248,8 +262,8 @@ export function AlchemyAdminWorkspace({
               <div className="mt-3 flex min-h-10 flex-wrap gap-2">{recipeIngredients.map((ingredient, index) => <RecipeChip key={`${ingredient.paletteId}-${index}`} ingredient={ingredient} onWeight={() => onIngredients(recipeIngredients.map((item, itemIndex) => itemIndex === index ? { ...item, weight: item.weight === 1 ? -1 : 1 } : item))} onRemove={() => onIngredients(recipeIngredients.filter((_, itemIndex) => itemIndex !== index))} />)}{!recipeIngredients.length && <span className="text-sm text-muted-foreground">Поки що немає інгредієнтів.</span>}</div>
               <div className="mt-3 flex items-center justify-between gap-2"><button type="button" onClick={() => { setAdvanced((value) => !value); if (!adminExpression && recipeIngredients.length) onExpression(ingredientsToExpression(recipeIngredients), 0); }} className="text-xs font-medium text-violet-400 hover:text-violet-300">{advanced ? "Сховати редактор синтаксису" : "Відкрити редактор синтаксису"}</button>{lastRecipe && <span className="truncate text-xs text-muted-foreground">Остання реакція: {lastRecipe.label}</span>}</div>
               {advanced && <>
-                <div className="mt-3 flex flex-wrap items-center gap-1 rounded-xl border border-border bg-background/50 p-1.5"><span className="px-1.5 text-[11px] text-muted-foreground">Оператори</span>{[" + ", " − ", " * ", " / ", " ^ ", "(", ")"].map((operator) => <button type="button" key={operator} onClick={() => insertOperator(operator === " − " ? " - " : operator)} className="min-w-7 rounded-lg px-2 py-1 text-xs font-semibold text-amber-300 hover:bg-accent">{operator.trim()}</button>)}</div>
-                <div className="relative mt-2 overflow-hidden rounded-xl border border-border bg-background/70 font-mono text-sm"><pre aria-hidden className="pointer-events-none min-h-24 whitespace-pre-wrap break-words p-3 leading-6"><HighlightedExpression value={adminExpression} /></pre><textarea ref={editorRef} value={adminExpression} onChange={handleExpressionChange} onSelect={(event) => setCursor(event.currentTarget.selectionStart)} onClick={(event) => setCursor(event.currentTarget.selectionStart)} spellCheck={false} className="absolute inset-0 min-h-24 w-full resize-y bg-transparent p-3 font-mono text-sm leading-6 text-transparent caret-foreground outline-none selection:bg-violet-400/30" aria-label="Векторний вираз" placeholder={'anime("frieren-123") + 2 * (element("2") - manga("one-piece"))'} />{lookup && suggestions.length > 0 && <div className="absolute left-3 top-full z-10 mt-1 hidden rounded-lg border bg-popover p-1 shadow-lg sm:block">{suggestions.slice(0, 5).map((item) => <button type="button" key={item.paletteId} onClick={() => chooseSuggestion(item)} className="block px-2 py-1 text-left text-xs hover:bg-accent">{item.type}("{item.sourceId}") · {item.title}</button>)}</div>}</div>
+              <div className="mt-3 flex flex-wrap items-center gap-1 rounded-xl border border-border bg-background/50 p-1.5"><span className="px-1.5 text-[11px] text-muted-foreground">Оператори</span>{[" + ", " − ", " * ", " / ", " ^ ", "(", ")"].map((operator) => <button type="button" key={operator} onClick={() => insertOperator(operator === " − " ? " - " : operator)} className="min-w-7 rounded-lg px-2 py-1 text-xs font-semibold text-amber-300 hover:bg-accent">{operator.trim()}</button>)}<button type="button" onClick={insertNormalize} className="rounded-lg px-2 py-1 text-xs font-semibold text-sky-300 hover:bg-accent">normalize()</button></div>
+                <div className="relative mt-2 overflow-hidden rounded-xl border border-border bg-background/70 font-mono text-sm"><pre aria-hidden className="pointer-events-none min-h-24 whitespace-pre-wrap break-words p-3 leading-6"><HighlightedExpression value={adminExpression} /></pre><textarea ref={editorRef} value={adminExpression} onChange={handleExpressionChange} onSelect={(event) => setCursor(event.currentTarget.selectionStart)} onClick={(event) => setCursor(event.currentTarget.selectionStart)} spellCheck={false} className="absolute inset-0 min-h-24 w-full resize-y bg-transparent p-3 font-mono text-sm leading-6 text-transparent caret-foreground outline-none selection:bg-violet-400/30" aria-label="Векторний вираз" placeholder={'normalize((anime("frieren-123") - anime("one-piece"))) / 2'} />{lookup && suggestions.length > 0 && <div className="absolute left-3 top-full z-10 mt-1 hidden rounded-lg border bg-popover p-1 shadow-lg sm:block">{suggestions.slice(0, 5).map((item) => <button type="button" key={item.paletteId} onClick={() => chooseSuggestion(item)} className="block px-2 py-1 text-left text-xs hover:bg-accent">{item.type}("{item.sourceId}") · {item.title}</button>)}</div>}</div>
               </>}
             </>}
             {!replaceVector && <p className="mt-3 text-xs text-muted-foreground">Поточний 256-вимірний вектор буде збережено без змін.</p>}

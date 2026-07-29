@@ -10,6 +10,7 @@ const ZERO_VECTOR_THRESHOLD = 1e-9;
 type TokenType =
   | "number"
   | "reference"
+  | "normalize"
   | "operator"
   | "leftParen"
   | "rightParen"
@@ -44,7 +45,17 @@ type BinaryNode = {
   right: ExpressionNode;
 };
 
-type ExpressionNode = ReferenceNode | NumberNode | UnaryNode | BinaryNode;
+type NormalizeNode = {
+  kind: "normalize";
+  operand: ExpressionNode;
+};
+
+type ExpressionNode =
+  | ReferenceNode
+  | NumberNode
+  | UnaryNode
+  | BinaryNode
+  | NormalizeNode;
 
 type VectorValue =
   | { kind: "vector"; value: number[] }
@@ -84,7 +95,9 @@ function tokenize(expression: string): Token[] {
       continue;
     }
 
-    const functionName = expression.slice(cursor).match(/^(element|anime|manga)/);
+    const functionName = expression
+      .slice(cursor)
+      .match(/^(normalize|element|anime|manga)/);
     if (functionName) {
       const start = cursor;
       cursor += functionName[0].length;
@@ -93,6 +106,10 @@ function tokenize(expression: string): Token[] {
         throw new Error(
           'Очікується "(" після ' + functionName[0] + " на позиції " + (start + 1) + ".",
         );
+      }
+      if (functionName[0] === "normalize") {
+        tokens.push({ type: "normalize", value: functionName[0], position: start });
+        continue;
       }
       cursor += 1;
       while (cursor < expression.length && /\s/.test(expression[cursor])) cursor += 1;
@@ -223,7 +240,24 @@ class ExpressionParser {
               slug: value,
               weight: 1,
             },
-          };
+        };
+    }
+    if (token.type === "normalize") {
+      this.cursor += 1;
+      if (this.peek().type !== "leftParen") {
+        throw new Error('Очікується "(" після normalize.');
+      }
+      this.cursor += 1;
+      const operand = this.parseAdditive();
+      if (this.peek().type !== "rightParen") {
+        throw new Error(
+          'Очікується ")" після normalize на позиції ' +
+            (this.peek().position + 1) +
+            ".",
+        );
+      }
+      this.cursor += 1;
+      return { kind: "normalize", operand };
     }
     if (token.type === "leftParen") {
       this.cursor += 1;
@@ -300,6 +334,19 @@ async function evaluate(
     return operand.kind === "scalar"
       ? { kind: "scalar", value: -operand.value }
       : { kind: "vector", value: operand.value.map((value) => -value) };
+  }
+  if (node.kind === "normalize") {
+    const operand = await evaluate(node.operand, cache);
+    if (operand.kind !== "vector") {
+      throw new Error("normalize працює лише з векторами.");
+    }
+    const norm = Math.hypot(...operand.value);
+    if (!Number.isFinite(norm) || norm <= ZERO_VECTOR_THRESHOLD) {
+      throw new Error("Неможливо нормалізувати нульовий вектор.");
+    }
+    const normalized = operand.value.map((value) => value / norm);
+    assertFinite(normalized);
+    return { kind: "vector", value: normalized };
   }
 
   const [left, right] = await Promise.all([

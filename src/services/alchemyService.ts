@@ -19,6 +19,11 @@ export interface AlchemyIngredient {
   weight: number;
 }
 
+export interface AlchemyHistoryItem {
+  type: "anime" | "manga";
+  slug: string;
+}
+
 export interface AlchemyResult {
   contentType: "anime" | "manga";
   slug: string;
@@ -48,19 +53,30 @@ export interface PagedResponse<T> {
 }
 
 export interface AdminAlchemyElement extends AlchemyElement {
+  adminDescription: string | null;
   embedding: number[];
 }
 
-interface ElementPayload {
+export interface ElementPayload {
   name: string;
   description?: string | null;
+  adminDescription?: string | null;
   imageUrl?: string | null;
   embedding: number[];
+}
+
+export interface AlchemyQueryOptions {
+  history?: AlchemyHistoryItem[];
+  repeatSuppression?: number;
+  seed?: number;
+  page?: number;
+  size?: number;
 }
 
 async function request<T>(
   path: string,
   init?: RequestInit,
+  options?: { parseResponse?: boolean },
 ): Promise<T> {
   const headers = new Headers(init?.headers);
   headers.set("accept", "application/json");
@@ -86,6 +102,10 @@ async function request<T>(
     throw new Error(message);
   }
   if (response.status === 204) return undefined as T;
+  if (options?.parseResponse === false) return undefined as T;
+  if (!response.headers.get("content-type")?.includes("application/json")) {
+    return undefined as T;
+  }
   return response.json() as Promise<T>;
 }
 
@@ -94,14 +114,38 @@ export const AlchemyService = {
     request<PagedResponse<AlchemyElement>>(
       `/alchemy/elements?page=${page}&size=${size}&sort=name,asc`,
     ),
+  listAllElements: async (size = 50) => {
+    const elements: AlchemyElement[] = [];
+    let page = 0;
+    let last = false;
+    while (!last) {
+      const response = await AlchemyService.listElements(page, size);
+      elements.push(...response.content);
+      last = response.last || response.content.length === 0;
+      page += 1;
+    }
+    return elements;
+  },
   query: (
     ingredients: AlchemyIngredient[],
     resultType: AlchemyResultType = "any",
+    options: AlchemyQueryOptions = {},
   ) =>
-    request<PagedResponse<AlchemyResult>>("/alchemy/query?page=0&size=20", {
+    request<PagedResponse<AlchemyResult>>(
+      `/alchemy/query?page=${options.page ?? 0}&size=${options.size ?? 20}`,
+      {
       method: "POST",
-      body: JSON.stringify({ ingredients, resultType }),
-    }),
+      body: JSON.stringify({
+        ingredients,
+        resultType,
+        ...(options.history?.length ? { history: options.history } : {}),
+        ...(options.repeatSuppression !== undefined
+          ? { repeatSuppression: options.repeatSuppression }
+          : {}),
+        ...(options.seed !== undefined ? { seed: options.seed } : {}),
+      }),
+      },
+    ),
   searchCatalog: async (query: string) => {
     const body = JSON.stringify({ q: query });
     const options = { method: "POST", body };
@@ -133,7 +177,11 @@ export const AlchemyService = {
       { method: "PUT", body: JSON.stringify(payload) },
     ),
   deleteElement: (id: number) =>
-    request<void>(`/admin/alchemy/elements/${id}`, { method: "DELETE" }),
+    request<void>(
+      `/admin/alchemy/elements/${id}`,
+      { method: "DELETE" },
+      { parseResponse: false },
+    ),
   getEmbedding: (type: AlchemySourceType, idOrSlug: number | string) => {
     const path =
       type === "element"

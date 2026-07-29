@@ -1,6 +1,7 @@
 import type {
   AlchemyCatalogItem,
   AlchemyElement,
+  AlchemyHistoryItem,
   AlchemyIngredient,
   AlchemyResult,
 } from "@/services/alchemyService";
@@ -33,6 +34,14 @@ export const paletteFromResult = (result: AlchemyResult): PaletteObject => ({
   imageUrl: result.imageUrl,
 });
 
+export const mergeAlchemyHistory = (
+  ...histories: AlchemyHistoryItem[][]
+): AlchemyHistoryItem[] => {
+  const unique = new Map<string, AlchemyHistoryItem>();
+  histories.flat().forEach((item) => unique.set(`${item.type}:${item.slug}`, item));
+  return Array.from(unique.values()).slice(-200);
+};
+
 export const paletteFromCatalog = (
   item: AlchemyCatalogItem,
 ): PaletteObject => ({
@@ -49,10 +58,12 @@ export const cardFromPalette = (
   item: PaletteObject,
   x: number,
   y: number,
-): BoardCard => ({ ...item, instanceId: makeId(), x, y, sign: 1 });
+  history: AlchemyHistoryItem[] = [],
+): BoardCard => ({ ...item, instanceId: makeId(), x, y, sign: 1, history });
 
 export const cardFromResult = (
   result: AlchemyResult,
   x: number,
   y: number,
-): BoardCard => cardFromPalette(paletteFromResult(result), x, y);
+  history: AlchemyHistoryItem[] = [],
+): BoardCard => cardFromPalette(paletteFromResult(result), x, y, history);

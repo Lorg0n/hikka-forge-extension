@@ -1,5 +1,6 @@
 import type {
   AlchemyCatalogItem,
+  AlchemyHistoryItem,
   AlchemyIngredient,
   AlchemySourceType,
 } from "@/services/alchemyService";
@@ -19,6 +20,7 @@ export type BoardCard = PaletteObject & {
   x: number;
   y: number;
   sign: 1 | -1;
+  history: AlchemyHistoryItem[];
 };
 
 export type Recipe = { ingredients: AlchemyIngredient[]; label: string };

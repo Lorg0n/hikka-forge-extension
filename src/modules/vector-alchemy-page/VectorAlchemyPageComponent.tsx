@@ -21,6 +21,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import NotFound from "@/components/ui/not-found";
 import { ModulePageTransition } from "@/components/ui/module-page-transition";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/ModuleAuthContext";
 import {
   AlchemyService,
@@ -36,6 +46,7 @@ import {
   cardFromResult,
   paletteFromCatalog,
   paletteFromElement,
+  mergeAlchemyHistory,
 } from "./alchemy.utils";
 import { createExpressionEmbedding, createRecipeEmbedding } from "./alchemy.recipe";
 import { useAlchemyCatalogSearch } from "./useAlchemyCatalogSearch";
@@ -351,6 +362,7 @@ function AdminWorkspace({
   onIngredients,
   onReplace,
   onSave,
+  onDelete,
 }: {
   elements: AlchemyElement[];
   palette: PaletteObject[];
@@ -377,10 +389,12 @@ function AdminWorkspace({
   onIngredients: (value: RecipeIngredient[]) => void;
   onReplace: (value: boolean) => void;
   onSave: () => void;
+  onDelete: (element: AlchemyElement) => void;
 }) {
   const [listQuery, setListQuery] = useState("");
   const [advanced, setAdvanced] = useState(false);
   const [cursor, setCursor] = useState(adminExpression.length);
+  const [deleteTarget, setDeleteTarget] = useState<AlchemyElement | null>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const lookup = expressionLookup(adminExpression, cursor);
   const filteredElements = elements.filter((item) => item.name.toLowerCase().includes(listQuery.trim().toLowerCase()));
@@ -418,7 +432,10 @@ function AdminWorkspace({
       editorRef.current?.setSelectionRange(nextCursor, nextCursor);
     });
   };
-  useEffect(() => setCursor(adminExpression.length), [adminElement?.id]);
+  useEffect(() => {
+    setCursor(adminExpression.length);
+    setAdvanced(Boolean(adminElement && adminExpression.trim()));
+  }, [adminElement?.id]);
   return (
     <section className="surface overflow-hidden rounded-2xl border shadow-xl shadow-black/5">
       <div className="flex flex-col gap-3 border-b px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
@@ -426,16 +443,21 @@ function AdminWorkspace({
           <span className="flex size-9 items-center justify-center rounded-xl bg-violet-500/12 text-violet-400"><Icon icon="material-symbols:admin-panel-settings-outline" /></span>
           <div><h2 className="font-semibold">Керування елементами</h2><p className="text-xs text-muted-foreground">Створюйте та редагуйте базові елементи алхімії.</p></div>
         </div>
-        <Button variant="outline" size="sm" onClick={onNew}><Icon icon="material-symbols:add" /> Новий елемент</Button>
       </div>
-      <div className="grid lg:grid-cols-[15rem_minmax(0,1fr)]">
+      <div className="grid lg:items-stretch lg:grid-cols-[15rem_minmax(0,1fr)]">
         <aside className="border-b p-3 lg:flex lg:min-h-0 lg:flex-col lg:border-b-0 lg:border-r">
           <div className="mb-2 flex items-center justify-between px-2"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Каталог</p><span className="text-xs text-muted-foreground">{elements.length}</span></div>
-          <p className="mb-2 px-2 text-[11px] text-muted-foreground">Базові елементи захищені від видалення.</p>
-          <Input value={listQuery} onChange={(event) => setListQuery(event.target.value)} placeholder="Знайти елемент" className="mb-2 h-9" />
-          <div className="max-h-72 space-y-1 overflow-y-auto lg:min-h-0 lg:max-h-none lg:flex-1">
-            {filteredElements.map((element) => <div key={element.id} className={`flex items-center gap-1 rounded-lg p-1 ${adminElement?.id === element.id ? "bg-violet-500/12" : "hover:bg-muted/60"}`}>
+          <p className="mb-2 px-2 text-[11px] text-muted-foreground">Видалення елемента незворотне.</p>
+          <div className="mb-2 flex items-center gap-2">
+            <Input value={listQuery} onChange={(event) => setListQuery(event.target.value)} placeholder="Знайти елемент" className="h-9 min-w-0 flex-1" />
+            <Button type="button" variant="outline" size="icon-sm" onClick={onNew} title="Новий елемент" aria-label="Створити новий елемент">
+              <Icon icon="material-symbols:add" />
+            </Button>
+          </div>
+          <div className="max-h-72 min-h-0 space-y-1 overflow-y-auto lg:flex-1 lg:max-h-none">
+            {filteredElements.map((element) => <div key={element.id} className={`group flex items-center gap-1 rounded-lg p-1 ${adminElement?.id === element.id ? "bg-violet-500/12" : "hover:bg-muted/60"}`}>
               <button type="button" className="min-w-0 flex-1 truncate px-2 py-1.5 text-left text-sm" onClick={() => void onEdit(element)}>{element.name}</button>
+              <Button type="button" size="icon-xs" variant="ghost" className="text-red-400 opacity-0 transition-opacity hover:bg-red-500/15 hover:text-red-300 focus-visible:opacity-100 group-hover:opacity-100" onClick={() => setDeleteTarget(element)} aria-label={`Видалити ${element.name}`}><Icon icon="material-symbols:delete-outline" /></Button>
             </div>)}
           </div>
         </aside>
@@ -466,6 +488,18 @@ function AdminWorkspace({
           <div className="mt-5 flex gap-2"><Button onClick={onSave} disabled={saving || !adminName.trim() || (!adminElement && !replaceVector)}>{saving ? "Збереження…" : adminElement ? "Зберегти зміни" : "Створити елемент"}</Button><Button variant="ghost" onClick={onNew}>Очистити</Button></div>
         </div>
       </div>
+      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Видалити базовий елемент?</AlertDialogTitle>
+            <AlertDialogDescription>«{deleteTarget?.name}» буде видалено з backend і з поточної алхімічної мапи. Цю дію неможливо скасувати.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Скасувати</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { if (deleteTarget) onDelete(deleteTarget); setDeleteTarget(null); }}>Видалити</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }
@@ -567,14 +601,24 @@ const VectorAlchemyPageComponent: React.FC = () => {
     setReactionNotice({ x, y, label: `${first.title} + ${second.title}` });
     setCrafting(true);
     try {
-      const response = await AlchemyService.query(ingredients);
+      const history = mergeAlchemyHistory(first.history, second.history);
+      const response = await AlchemyService.query(ingredients, "any", {
+        history,
+        repeatSuppression: 1,
+      });
       setLastRecipe({ ingredients, label: `${first.title} + ${second.title}` });
       if (response.content.length) {
         // The backend already returns candidates in deterministic similarity
         // order. Random near-tie selection made the same recipe produce
         // different results and caused unexplained titles to recur.
         const chosen = response.content[0];
-        setCards((current) => [...current, cardFromResult(chosen, x, y)]);
+        setCards((current) => [
+          ...current,
+          cardFromResult(chosen, x, y, mergeAlchemyHistory(
+            history,
+            [{ type: chosen.contentType, slug: chosen.slug }],
+          )),
+        ]);
       }
       setReactionNotice(null);
       setError(null);
@@ -609,15 +653,42 @@ const VectorAlchemyPageComponent: React.FC = () => {
   const toggleCardSign = (id: string) => setCards((current) => current.map((card) => card.instanceId === id ? { ...card, sign: card.sign === 1 ? -1 : 1 } : card));
   const onBoardPointerDown = (event: React.PointerEvent<HTMLDivElement>) => { if ((event.target as HTMLElement).closest("button, input, textarea, [data-board-card], [data-ingredient-dock]")) return; panRef.current = { clientX: event.clientX, clientY: event.clientY, x: pan.x, y: pan.y }; };
   const onBoardPointerMove = (event: React.PointerEvent<HTMLDivElement>) => { if (!panRef.current) return; setPan({ x: panRef.current.x + event.clientX - panRef.current.clientX, y: panRef.current.y + event.clientY - panRef.current.clientY }); };
-  const prepareCreate = useCallback(() => { setAdminElement(null); setAdminName(""); setAdminDescription(""); setAdminImageUrl(""); setReplaceVector(true); setAdminExpression(lastRecipe ? ingredientsToExpression(recipeIngredientsFromRecipe(lastRecipe, palette)) : ""); setRecipeIngredients(lastRecipe ? recipeIngredientsFromRecipe(lastRecipe, palette) : []); setError(null); }, [lastRecipe, palette]);
+  const prepareCreate = useCallback(() => {
+    const expression = lastRecipe
+      ? ingredientsToExpression(recipeIngredientsFromRecipe(lastRecipe, palette))
+      : "";
+    setAdminElement(null);
+    setAdminName("");
+    setAdminDescription("");
+    setAdminImageUrl("");
+    setReplaceVector(true);
+    setAdminExpression(expression);
+    setRecipeIngredients(lastRecipe ? recipeIngredientsFromRecipe(lastRecipe, palette) : []);
+    setError(null);
+  }, [lastRecipe, palette]);
   const openAdmin = () => { setAdminMode(true); if (!adminElement) prepareCreate(); };
-  const prepareEdit = async (element: AlchemyElement) => { try { await AlchemyService.getAdminElement(element.id); setAdminElement(element); setAdminName(element.name); setAdminDescription(element.description || ""); setAdminImageUrl(element.imageUrl || ""); setReplaceVector(false); setRecipeIngredients([]); setAdminExpression(""); setError(null); } catch (err) { setError(err instanceof Error ? err.message : "Немає доступу до елемента."); } };
+  const prepareEdit = async (element: AlchemyElement) => {
+    try {
+      const loaded = await AlchemyService.getAdminElement(element.id);
+      setAdminElement(loaded);
+      setAdminName(loaded.name);
+      setAdminDescription(loaded.description || "");
+      setAdminImageUrl(loaded.imageUrl || "");
+      setReplaceVector(Boolean(loaded.adminDescription?.trim()));
+      setRecipeIngredients([]);
+      setAdminExpression(loaded.adminDescription || "");
+      setError(null);
+    } catch (err) { setError(err instanceof Error ? err.message : "Немає доступу до елемента."); }
+  };
+  const updateAdminExpression = useCallback((value: string) => {
+    setAdminExpression(value);
+  }, []);
   const updateRecipeIngredients = useCallback((value: RecipeIngredient[]) => {
     setRecipeIngredients(value);
     // Keep the visual recipe and advanced editor synchronized. This prevents
     // the save path from silently using an older expression.
-    setAdminExpression(ingredientsToExpression(value));
-  }, []);
+    updateAdminExpression(ingredientsToExpression(value));
+  }, [updateAdminExpression]);
   const saveAdminElement = async () => {
     if (!adminName.trim()) return setError("Вкажіть назву елемента.");
     let sourceIngredients: AlchemyIngredient[] | undefined;
@@ -630,12 +701,27 @@ const VectorAlchemyPageComponent: React.FC = () => {
         : adminExpression.trim()
           ? await createExpressionEmbedding(adminExpression)
           : await createRecipeEmbedding(sourceIngredients!);
-      const payload = { name: adminName.trim(), description: adminDescription || null, imageUrl: adminImageUrl || null, embedding };
+      const payload = { name: adminName.trim(), description: adminDescription || null, adminDescription: adminExpression.trim() || null, imageUrl: adminImageUrl || null, embedding };
       const saved = adminElement ? await AlchemyService.updateElement(adminElement.id, payload) : await AlchemyService.createElement(payload);
       setElements((current) => adminElement ? current.map((item) => item.id === saved.id ? saved : item) : [...current, saved].sort((a, b) => a.name.localeCompare(b.name)));
       setPalette((current) => current.some((item) => item.paletteId === `element:${saved.id}`) ? current.map((item) => item.paletteId === `element:${saved.id}` ? paletteFromElement(saved) : item) : [...current, paletteFromElement(saved)]);
       prepareCreate(); setError(null);
     } catch (err) { setError(err instanceof Error ? err.message : "Не вдалося зберегти елемент."); } finally { setAdminSaving(false); }
+  };
+  const deleteAdminElement = async (element: AlchemyElement) => {
+    setAdminSaving(true);
+    try {
+      await AlchemyService.deleteElement(element.id);
+      setElements((current) => current.filter((item) => item.id !== element.id));
+      setPalette((current) => current.filter((item) => item.paletteId !== `element:${element.id}`));
+      setCards((current) => current.filter((card) => !(card.type === "element" && Number(card.sourceId) === element.id)));
+      if (adminElement?.id === element.id) prepareCreate();
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не вдалося видалити елемент.");
+    } finally {
+      setAdminSaving(false);
+    }
   };
   const selectAdminIngredient = (item: PaletteObject) => { updateRecipeIngredients(recipeIngredients.some((ingredient) => ingredient.paletteId === item.paletteId) ? recipeIngredients : [...recipeIngredients, toRecipeIngredient(item)]); setIngredientQuery(""); setCatalogQuery(""); };
 
@@ -647,7 +733,7 @@ const VectorAlchemyPageComponent: React.FC = () => {
         <div className="flex items-center gap-2"><div className="hidden rounded-full border bg-card px-3 py-1.5 text-xs text-muted-foreground sm:block">{crafting ? "Шукаємо реакцію…" : "Двічі клікніть картку, щоб змінити знак"}</div>{isAdmin && <Button size="sm" variant={adminMode ? "default" : "outline"} onClick={() => adminMode ? setAdminMode(false) : openAdmin()}><Icon icon={adminMode ? "material-symbols:play-arrow" : "material-symbols:admin-panel-settings-outline"} />{adminMode ? "До гри" : "Керування"}</Button>}</div>
       </header>
       {error && <div className="mb-3 flex items-center gap-2 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"><Icon icon="material-symbols:error-outline" />{error}</div>}
-      {adminMode && !authLoading ? <AdminWorkspace elements={elements} palette={palette} adminElement={adminElement} adminName={adminName} adminDescription={adminDescription} adminImageUrl={adminImageUrl} adminExpression={adminExpression} recipeIngredients={recipeIngredients} replaceVector={replaceVector} lastRecipe={lastRecipe} saving={adminSaving} searchQuery={catalogQuery} catalogResults={catalogResults} catalogSearching={catalogSearching} onSearch={setCatalogQuery} onSelectIngredient={selectAdminIngredient} onNew={prepareCreate} onEdit={prepareEdit} onName={setAdminName} onDescription={setAdminDescription} onImage={setAdminImageUrl} onExpression={(value) => setAdminExpression(value)} onIngredients={updateRecipeIngredients} onReplace={setReplaceVector} onSave={saveAdminElement} /> : <>
+      {adminMode && !authLoading ? <AdminWorkspace elements={elements} palette={palette} adminElement={adminElement} adminName={adminName} adminDescription={adminDescription} adminImageUrl={adminImageUrl} adminExpression={adminExpression} recipeIngredients={recipeIngredients} replaceVector={replaceVector} lastRecipe={lastRecipe} saving={adminSaving} searchQuery={catalogQuery} catalogResults={catalogResults} catalogSearching={catalogSearching} onSearch={setCatalogQuery} onSelectIngredient={selectAdminIngredient} onNew={prepareCreate} onEdit={prepareEdit} onName={setAdminName} onDescription={setAdminDescription} onImage={setAdminImageUrl} onExpression={(value) => updateAdminExpression(value)} onIngredients={updateRecipeIngredients} onReplace={setReplaceVector} onSave={saveAdminElement} onDelete={deleteAdminElement} /> : <>
         <section ref={(node) => { viewportRef.current = node; boardDrop.setNodeRef(node); }} className={`relative mt-3 h-[min(76svh,850px)] min-h-[430px] overflow-hidden rounded-2xl border bg-background shadow-2xl shadow-black/10 touch-none sm:min-h-[520px] ${boardDrop.isOver ? "ring-2 ring-violet-400/50" : ""}`} onPointerDown={onBoardPointerDown} onPointerMove={onBoardPointerMove} onPointerUp={() => { panRef.current = null; }} onPointerCancel={() => { panRef.current = null; }}>
           <UnifiedIngredientDock elements={elements} palette={palette} query={ingredientQuery} onQuery={onIngredientQuery} catalogResults={catalogResults} catalogSearching={catalogSearching} onRemove={removeFromPalette} />
           <div className="absolute inset-0 opacity-45 [background-image:radial-gradient(var(--border)_1px,transparent_1px)] [background-size:26px_26px]" />

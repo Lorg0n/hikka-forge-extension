@@ -10,10 +10,9 @@ export function useAlchemyPalette(onError: (message: string) => void) {
   const load = useCallback(async () => {
     setIsLoading(true);
     try {
-      const page = await AlchemyService.listElements();
-      const serverElements = page.content.map(paletteFromElement);
-      setElements(page.content);
-      setPalette(serverElements);
+      const serverElements = await AlchemyService.listAllElements();
+      setElements(serverElements);
+      setPalette(serverElements.map(paletteFromElement));
     } catch (error) {
       onError(
         error instanceof Error

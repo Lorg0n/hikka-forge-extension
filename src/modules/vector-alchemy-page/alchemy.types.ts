@@ -25,6 +25,10 @@ export type BoardCard = PaletteObject & {
 
 export type Recipe = { ingredients: AlchemyIngredient[]; label: string };
 
+export type RecipeIngredient = PaletteObject & { weight: 1 | -1 };
+
+export type ReactionNotice = { x: number; y: number; label: string };
+
 export type DragData = {
   source: "board" | "palette" | "catalog";
   card?: BoardCard;

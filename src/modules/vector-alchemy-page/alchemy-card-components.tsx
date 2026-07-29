@@ -11,7 +11,12 @@ export function CardBody({ card }: { card: BoardCard }) {
     <>
       <div className="flex h-full w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-violet-500/12">
         {card.imageUrl ? (
-          <img src={card.imageUrl} alt="" className="size-full object-cover" />
+          <img
+            src={card.imageUrl}
+            alt=""
+            draggable={false}
+            className="size-full object-cover"
+          />
         ) : (
           <Icon icon={typeIcon(card.type)} className="text-xl text-violet-400" />
         )}
@@ -58,7 +63,7 @@ export function BoardCardView({
       onDoubleClick={() => onToggleSign(card.instanceId)}
       {...draggable.listeners}
       {...draggable.attributes}
-      className={`absolute z-[1] flex h-[112px] w-[220px] cursor-grab touch-none select-none gap-2.5 overflow-hidden rounded-xl border bg-card/95 p-2.5 shadow-xl backdrop-blur transition-[opacity,box-shadow,border-color] active:cursor-grabbing ${
+      className={`absolute z-[1] flex h-[112px] w-[220px] cursor-grab touch-none select-none gap-2.5 overflow-hidden rounded-xl border bg-card/95 p-2.5 shadow-xl backdrop-blur transition-[box-shadow,border-color] active:cursor-grabbing ${
         draggable.isDragging
           ? "opacity-0"
           : droppable.isOver && draggingSign === -1
@@ -106,7 +111,12 @@ export function PaletteItem({
       className="group flex w-full min-w-0 max-w-none touch-none select-none items-center gap-2 rounded-xl border border-transparent bg-muted/35 p-2 text-left transition-colors hover:border-violet-400/40 hover:bg-violet-500/10"
     >
       {item.imageUrl ? (
-        <img src={item.imageUrl} alt="" className="size-8 shrink-0 rounded-lg object-cover" />
+        <img
+          src={item.imageUrl}
+          alt=""
+          draggable={false}
+          className="size-8 shrink-0 rounded-lg object-cover"
+        />
       ) : (
         <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/12 text-violet-400">
           <Icon icon={typeIcon(item.type)} />
@@ -150,7 +160,12 @@ export function CatalogItem({ item }: { item: AlchemyCatalogItem }) {
       className="group flex w-full touch-none items-center gap-2 rounded-xl p-2 text-left hover:bg-accent"
     >
       {item.imageUrl ? (
-        <img src={item.imageUrl} alt="" className="size-9 shrink-0 rounded-lg object-cover" />
+        <img
+          src={item.imageUrl}
+          alt=""
+          draggable={false}
+          className="size-9 shrink-0 rounded-lg object-cover"
+        />
       ) : (
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
           <Icon icon={typeIcon(item.type)} />

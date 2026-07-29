@@ -362,7 +362,7 @@ const VectorAlchemyPageComponent: React.FC = () => {
       <DragOverlay dropAnimation={null}>
         {board.activeCard && (
           <article
-            className={`flex h-[112px] w-[220px] gap-2.5 overflow-hidden rounded-xl border-2 bg-card p-2.5 shadow-xl ${board.activeCard.sign < 0 ? "border-red-400 shadow-[0_0_22px_rgba(248,113,113,.35)]" : "border-white shadow-[0_0_18px_rgba(255,255,255,.22)]"}`}
+            className={`pointer-events-none flex h-[112px] w-[220px] gap-2.5 overflow-hidden rounded-xl border-2 bg-card p-2.5 opacity-100 shadow-xl ${board.activeCard.sign < 0 ? "border-red-400 shadow-[0_0_22px_rgba(248,113,113,.35)]" : "border-white shadow-[0_0_18px_rgba(255,255,255,.22)]"}`}
           >
             <CardBody card={board.activeCard} />
           </article>

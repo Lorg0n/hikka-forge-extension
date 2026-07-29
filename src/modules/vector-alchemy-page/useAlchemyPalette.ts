@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { AlchemyService, type AlchemyElement } from "@/services/alchemyService";
+import {
+  AlchemyService,
+  briefAlchemyError,
+  type AlchemyElement,
+} from "@/services/alchemyService";
 import type { PaletteObject } from "./alchemy.types";
 import { paletteFromElement } from "./alchemy.utils";
 
@@ -14,11 +18,7 @@ export function useAlchemyPalette(onError: (message: string) => void) {
       setElements(serverElements);
       setPalette(serverElements.map(paletteFromElement));
     } catch (error) {
-      onError(
-        error instanceof Error
-          ? error.message
-          : "Не вдалося завантажити елементи.",
-      );
+      onError(briefAlchemyError(error, "Не вдалося завантажити елементи."));
     } finally {
       setIsLoading(false);
     }

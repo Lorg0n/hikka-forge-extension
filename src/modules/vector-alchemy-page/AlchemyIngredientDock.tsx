@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Icon } from "@iconify/react";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import type {
   AlchemyCatalogItem,
   AlchemyElement,
@@ -71,16 +72,33 @@ export function AlchemyIngredientDock({
         )}
       </div>
       <div className="mt-3 min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
-        {filtered.map((item) => (
-          <PaletteItem key={item.paletteId} item={item} onRemove={onRemove} />
-        ))}
-        {showCatalog &&
-          catalogResults.map((item) => (
-            <CatalogItem key={`${item.type}-${item.slug}`} item={item} />
-          ))}
-        {!filtered.length && !catalogResults.length && (
+        {showCatalog && catalogSearching ? (
+          Array.from({ length: 5 }).map((_, index) => (
+            <div
+              key={`catalog-skeleton-${index}`}
+              className="flex items-center gap-2 rounded-xl p-2"
+            >
+              <Skeleton className="size-9 shrink-0 rounded-lg" />
+              <span className="flex min-w-0 flex-1 flex-col gap-2">
+                <Skeleton className="h-3 w-4/5" />
+                <Skeleton className="h-2.5 w-2/5" />
+              </span>
+            </div>
+          ))
+        ) : (
+          <>
+            {filtered.map((item) => (
+              <PaletteItem key={item.paletteId} item={item} onRemove={onRemove} />
+            ))}
+            {showCatalog &&
+              catalogResults.map((item) => (
+                <CatalogItem key={`${item.type}-${item.slug}`} item={item} />
+              ))}
+          </>
+        )}
+        {!catalogSearching && !filtered.length && !catalogResults.length && (
           <div className="flex items-center px-2 py-2 text-sm text-muted-foreground">
-            {showCatalog && !catalogSearching
+            {showCatalog
               ? "Нічого не знайдено."
               : "Додайте інгредієнт для початку."}
           </div>

@@ -9,6 +9,9 @@ import { AlchemyIngredientDock } from "./AlchemyIngredientDock";
 export function AlchemyBoard({
   viewportRef,
   boardDrop,
+  deleteZoneDrop,
+  activeDragSource,
+  deleteCandidate,
   cards,
   activeCard,
   pan,
@@ -30,6 +33,9 @@ export function AlchemyBoard({
 }: {
   viewportRef: React.RefObject<HTMLDivElement | null>;
   boardDrop: { setNodeRef: (node: HTMLElement | null) => void; isOver: boolean };
+  deleteZoneDrop: { setNodeRef: (node: HTMLElement | null) => void; isOver: boolean };
+  activeDragSource: "board" | "palette" | "catalog" | null;
+  deleteCandidate: boolean;
   cards: BoardCard[];
   activeCard: BoardCard | null;
   pan: { x: number; y: number };
@@ -112,6 +118,18 @@ export function AlchemyBoard({
           <Icon icon="material-symbols:fit-screen" />
         </Button>
       </div>
+      {activeDragSource === "board" && (
+        <div
+          ref={deleteZoneDrop.setNodeRef}
+          data-alchemy-delete-zone
+          role="button"
+          aria-label="Видалити картку"
+          className={`absolute bottom-3 right-3 z-20 flex h-16 w-44 items-center justify-center gap-2 rounded-xl border-2 border-dashed px-3 text-sm font-medium shadow-xl backdrop-blur transition-colors ${deleteCandidate || deleteZoneDrop.isOver ? "border-red-300 bg-red-500/30 text-red-100 ring-2 ring-red-400/50" : "border-red-400/60 bg-background/85 text-red-300"}`}
+        >
+          <Icon icon="material-symbols:delete-outline" />
+          {deleteCandidate || deleteZoneDrop.isOver ? "Відпустіть для видалення" : "Видалити картку"}
+        </div>
+      )}
       <div
         className="absolute left-0 top-0 h-full w-full"
         style={{

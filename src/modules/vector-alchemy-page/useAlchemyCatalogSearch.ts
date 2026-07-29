@@ -7,7 +7,7 @@ import {
 const MIN_QUERY_LENGTH = 2;
 const SEARCH_DELAY_MS = 280;
 
-export function useAlchemyCatalogSearch(onError: (message: string) => void) {
+export function useAlchemyCatalogSearch() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<AlchemyCatalogItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -16,6 +16,7 @@ export function useAlchemyCatalogSearch(onError: (message: string) => void) {
     const value = query.trim();
     if (value.length < MIN_QUERY_LENGTH) {
       setResults([]);
+      setIsSearching(false);
       return;
     }
 
@@ -24,14 +25,7 @@ export function useAlchemyCatalogSearch(onError: (message: string) => void) {
       setIsSearching(true);
       void AlchemyService.searchCatalog(value)
         .then((items) => isCurrent && setResults(items))
-        .catch((error) => {
-          if (isCurrent)
-            onError(
-              error instanceof Error
-                ? error.message
-                : "Не вдалося знайти тайтли.",
-            );
-        })
+        .catch(() => isCurrent && setResults([]))
         .finally(() => isCurrent && setIsSearching(false));
     }, SEARCH_DELAY_MS);
 
@@ -39,7 +33,7 @@ export function useAlchemyCatalogSearch(onError: (message: string) => void) {
       isCurrent = false;
       window.clearTimeout(timer);
     };
-  }, [onError, query]);
+  }, [query]);
 
   const clear = () => {
     setQuery("");

@@ -5,10 +5,12 @@ import {
   useSensor,
   PointerSensor,
   type DragEndEvent,
+  type DragMoveEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
 import {
   AlchemyService,
+  briefAlchemyError,
 } from "@/services/alchemyService";
 import type {
   BoardCard,
@@ -32,6 +34,26 @@ import {
 } from "./alchemy.constants";
 
 type BoardPoint = { x: number; y: number };
+const DELETE_ZONE_PADDING = 24;
+
+const rectsTouch = (
+  first: Pick<DOMRect, "left" | "right" | "top" | "bottom">,
+  second: Pick<DOMRect, "left" | "right" | "top" | "bottom">,
+  padding = 0,
+) =>
+  first.right >= second.left - padding &&
+  first.left <= second.right + padding &&
+  first.bottom >= second.top - padding &&
+  first.top <= second.bottom + padding;
+
+const isRectOutside = (
+  rect: Pick<DOMRect, "left" | "right" | "top" | "bottom">,
+  boundary: Pick<DOMRect, "left" | "right" | "top" | "bottom">,
+) =>
+  rect.left < boundary.left ||
+  rect.right > boundary.right ||
+  rect.top < boundary.top ||
+  rect.bottom > boundary.bottom;
 
 export function useAlchemyBoard({
   setError,
@@ -44,11 +66,14 @@ export function useAlchemyBoard({
 }) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const boardDrop = useDroppable({ id: "board" });
+  const deleteZoneDrop = useDroppable({ id: "delete-zone" });
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
   const [cards, setCards] = useState<BoardCard[]>([]);
   const [activeCard, setActiveCard] = useState<BoardCard | null>(null);
+  const [activeDragSource, setActiveDragSource] = useState<DragData["source"] | null>(null);
+  const [deleteCandidate, setDeleteCandidate] = useState(false);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [crafting, setCrafting] = useState(false);
@@ -153,7 +178,7 @@ export function useAlchemyBoard({
         setReactionNotice(null);
         setError("");
       } catch (error) {
-        setError(error instanceof Error ? error.message : "Алхімічна реакція не вдалася.");
+        setError(briefAlchemyError(error, "Алхімічна реакція не вдалася."));
         setReactionNotice(null);
       } finally {
         setCrafting(false);
@@ -184,11 +209,35 @@ export function useAlchemyBoard({
 
   const onDragStart = (event: DragStartEvent) => {
     const data = event.active.data.current as DragData;
+    setActiveDragSource(data.source);
+    setDeleteCandidate(false);
     if (data.card) setActiveCard(data.card);
     else if (data.palette) setActiveCard(cardFromPalette(data.palette, 0, 0));
     else if (data.catalog) {
       setActiveCard(cardFromPalette(paletteFromCatalog(data.catalog), 0, 0));
     }
+  };
+
+  const onDragMove = (event: DragMoveEvent) => {
+    const data = event.active.data.current as DragData;
+    if (data.source !== "board" || !data.card) {
+      setDeleteCandidate(false);
+      return;
+    }
+    const activeRect = event.active.rect.current.translated;
+    const deleteRect = deleteZoneDrop.rect.current;
+    const viewportRect = viewportRef.current?.getBoundingClientRect();
+    const touchesDeleteZone = Boolean(
+      activeRect &&
+        deleteRect &&
+        rectsTouch(activeRect, deleteRect, DELETE_ZONE_PADDING),
+    );
+    const isOutsideBoard = Boolean(
+        activeRect &&
+        viewportRect &&
+        isRectOutside(activeRect, viewportRect),
+    );
+    setDeleteCandidate(touchesDeleteZone || isOutsideBoard);
   };
 
   const onDragEnd = (event: DragEndEvent) => {
@@ -210,7 +259,31 @@ export function useAlchemyBoard({
           client.y <= rect.bottom,
       );
     const point = toBoardPoint(event);
+    const activeRect = event.active.rect.current.translated;
+    const deleteRect = deleteZoneDrop.rect.current;
+    const viewportRect = viewportRef.current?.getBoundingClientRect();
+    const touchesDeleteZone = Boolean(
+      activeRect &&
+        deleteRect &&
+        rectsTouch(activeRect, deleteRect, DELETE_ZONE_PADDING),
+    );
+    const isOutsideBoard = Boolean(
+      activeRect && viewportRect && isRectOutside(activeRect, viewportRect),
+    );
     setActiveCard(null);
+    setActiveDragSource(null);
+    setDeleteCandidate(false);
+
+    if (
+      data.source === "board" &&
+      data.card &&
+      (overId === "delete-zone" || touchesDeleteZone || isOutsideBoard || !isInsideBoard)
+    ) {
+      setCards((current) =>
+        current.filter((card) => card.instanceId !== data.card?.instanceId),
+      );
+      return;
+    }
 
     if (data.source === "palette" && !isInsideBoard) return;
     if (data.source === "catalog" && !isInsideBoard && data.catalog) {
@@ -308,7 +381,15 @@ export function useAlchemyBoard({
     stopPanning: () => {
       panRef.current = null;
     },
-    clearActiveCard: () => setActiveCard(null),
+    clearActiveCard: () => {
+      setActiveCard(null);
+      setActiveDragSource(null);
+      setDeleteCandidate(false);
+    },
+    activeDragSource,
+    deleteCandidate,
+    deleteZoneDrop,
+    onDragMove,
     toggleCardSign,
     removeCardsForElement,
   };

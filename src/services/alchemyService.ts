@@ -5,6 +5,17 @@ export type AlchemySourceType = "element" | "anime" | "manga";
 export type AlchemyResultType = "anime" | "manga" | "any";
 export const ALCHEMY_VECTOR_SIZE = 256;
 
+export function briefAlchemyError(error: unknown, fallback: string) {
+  const raw = error instanceof Error ? error.message : "";
+  const message = raw.replace(/\s+/g, " ").trim();
+  if (!message) return fallback;
+  if (/\b401\b/.test(message)) return "Потрібен вхід до акаунта.";
+  if (/\b403\b/.test(message)) return "Недостатньо прав.";
+  if (/\b404\b/.test(message)) return "Не знайдено.";
+  if (/\b5\d{2}\b/.test(message)) return "Сервіс тимчасово недоступний.";
+  return message.length > 120 ? `${message.slice(0, 117)}…` : message;
+}
+
 export interface AlchemyElement {
   id: number;
   name: string;
@@ -42,6 +53,15 @@ export interface AlchemyCatalogItem {
   imageUrl: string | null;
   year: number | null;
   mediaType: string | null;
+}
+
+export interface AlchemySearchOptions {
+  genre?: string[];
+  mediaType?: string;
+  status?: string;
+  yearFrom?: number;
+  yearTo?: number;
+  hasEmbedding?: boolean;
 }
 
 export interface PagedResponse<T> {
@@ -146,16 +166,21 @@ export const AlchemyService = {
       }),
       },
     ),
-  searchCatalog: async (query: string) => {
-    const body = JSON.stringify({ q: query });
-    const options = { method: "POST", body };
+  searchCatalog: async (
+    query: string,
+    searchOptions: AlchemySearchOptions = { hasEmbedding: true },
+  ) => {
+    const options = {
+      method: "POST",
+      body: JSON.stringify({ q: query, ...searchOptions }),
+    };
     const [anime, manga] = await Promise.all([
       request<PagedResponse<Omit<AlchemyCatalogItem, "type">>>(
-        "/anime/search?page=0&size=6",
+        "/anime/search?page=0&size=8",
         options,
       ),
       request<PagedResponse<Omit<AlchemyCatalogItem, "type">>>(
-        "/manga/search?page=0&size=6",
+        "/manga/search?page=0&size=8",
         options,
       ),
     ]);

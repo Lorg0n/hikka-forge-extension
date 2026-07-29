@@ -2,10 +2,12 @@ import React, { useCallback, useState } from "react";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { Icon } from "@iconify/react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ModulePageTransition } from "@/components/ui/module-page-transition";
 import { useAuth } from "@/contexts/ModuleAuthContext";
 import {
   AlchemyService,
+  briefAlchemyError,
   type AlchemyElement,
   type AlchemyIngredient,
 } from "@/services/alchemyService";
@@ -40,8 +42,7 @@ const VectorAlchemyPageComponent: React.FC = () => {
     results: catalogResults,
     isSearching: catalogSearching,
     clear: clearCatalog,
-  } = useAlchemyCatalogSearch(setCatalogError);
-  const [ingredientQuery, setIngredientQuery] = useState("");
+  } = useAlchemyCatalogSearch();
   const [adminMode, setAdminMode] = useState(false);
   const [adminElement, setAdminElement] = useState<AlchemyElement | null>(null);
   const [adminName, setAdminName] = useState("");
@@ -70,13 +71,7 @@ const VectorAlchemyPageComponent: React.FC = () => {
       ),
     [setPalette],
   );
-  const onIngredientQuery = useCallback(
-    (value: string) => {
-      setIngredientQuery(value);
-      setCatalogQuery(value);
-    },
-    [setCatalogQuery],
-  );
+  const onIngredientQuery = setCatalogQuery;
 
   React.useEffect(() => {
     const remove = (event: Event) =>
@@ -128,11 +123,7 @@ const VectorAlchemyPageComponent: React.FC = () => {
       setAdminExpression(loaded.adminDescription || "");
       setError(null);
     } catch (loadError) {
-      setError(
-        loadError instanceof Error
-          ? loadError.message
-          : "Немає доступу до елемента.",
-      );
+      setError(briefAlchemyError(loadError, "Не вдалося відкрити елемент."));
     }
   };
 
@@ -162,9 +153,7 @@ const VectorAlchemyPageComponent: React.FC = () => {
           )
         : board.lastRecipe?.ingredients;
     } catch (saveError) {
-      setError(
-        saveError instanceof Error ? saveError.message : "Некоректний рецепт.",
-      );
+      setError(briefAlchemyError(saveError, "Некоректний рецепт."));
       return;
     }
     if (replaceVector && !adminExpression.trim() && !sourceIngredients?.length) {
@@ -205,11 +194,7 @@ const VectorAlchemyPageComponent: React.FC = () => {
       prepareCreate();
       setError(null);
     } catch (saveError) {
-      setError(
-        saveError instanceof Error
-          ? saveError.message
-          : "Не вдалося зберегти елемент.",
-      );
+      setError(briefAlchemyError(saveError, "Не вдалося зберегти елемент."));
     } finally {
       setAdminSaving(false);
     }
@@ -227,11 +212,7 @@ const VectorAlchemyPageComponent: React.FC = () => {
       if (adminElement?.id === element.id) prepareCreate();
       setError(null);
     } catch (deleteError) {
-      setError(
-        deleteError instanceof Error
-          ? deleteError.message
-          : "Не вдалося видалити елемент.",
-      );
+      setError(briefAlchemyError(deleteError, "Не вдалося видалити елемент."));
     } finally {
       setAdminSaving(false);
     }
@@ -250,8 +231,15 @@ const VectorAlchemyPageComponent: React.FC = () => {
   if (loading) {
     return (
       <ModulePageTransition stateKey="loading">
-        <main className="mx-auto mt-8 max-w-[92rem] px-4 lg:mt-12">
-          Завантаження алхімічної мапи…
+        <main className="mx-auto my-5 w-full max-w-[92rem] px-3 sm:px-5 lg:my-8">
+          <div className="mb-4 flex items-center gap-3 px-1">
+            <Skeleton className="size-9 rounded-xl" />
+            <span className="flex flex-col gap-2">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-3 w-64" />
+            </span>
+          </div>
+          <Skeleton className="h-[min(76svh,850px)] min-h-[430px] w-full rounded-2xl sm:min-h-[520px]" />
         </main>
       </ModulePageTransition>
     );
@@ -261,6 +249,7 @@ const VectorAlchemyPageComponent: React.FC = () => {
     <DndContext
       sensors={board.sensors}
       onDragStart={board.onDragStart}
+      onDragMove={board.onDragMove}
       onDragEnd={board.onDragEnd}
       onDragCancel={board.clearActiveCard}
     >
@@ -337,6 +326,9 @@ const VectorAlchemyPageComponent: React.FC = () => {
             <AlchemyBoard
               viewportRef={board.viewportRef}
               boardDrop={board.boardDrop}
+              deleteZoneDrop={board.deleteZoneDrop}
+              activeDragSource={board.activeDragSource}
+              deleteCandidate={board.deleteCandidate}
               cards={board.cards}
               activeCard={board.activeCard}
               pan={board.pan}
@@ -344,7 +336,7 @@ const VectorAlchemyPageComponent: React.FC = () => {
               reactionNotice={board.reactionNotice}
               elements={elements}
               palette={palette}
-              ingredientQuery={ingredientQuery}
+              ingredientQuery={catalogQuery}
               catalogResults={catalogResults}
               catalogSearching={catalogSearching}
               onIngredientQuery={onIngredientQuery}
@@ -362,7 +354,7 @@ const VectorAlchemyPageComponent: React.FC = () => {
       <DragOverlay dropAnimation={null}>
         {board.activeCard && (
           <article
-            className={`pointer-events-none flex h-[112px] w-[220px] gap-2.5 overflow-hidden rounded-xl border-2 bg-card p-2.5 opacity-100 shadow-xl ${board.activeCard.sign < 0 ? "border-red-400 shadow-[0_0_22px_rgba(248,113,113,.35)]" : "border-white shadow-[0_0_18px_rgba(255,255,255,.22)]"}`}
+            className={`pointer-events-none flex h-[112px] w-[220px] gap-2.5 overflow-hidden rounded-xl border-2 p-2.5 opacity-100 shadow-xl ${board.deleteCandidate ? "border-red-300 bg-red-500/25 text-red-50 ring-2 ring-red-400/70 shadow-[0_0_24px_rgba(248,113,113,.55)]" : board.activeCard.sign < 0 ? "bg-card border-red-400 shadow-[0_0_22px_rgba(248,113,113,.35)]" : "bg-card border-white shadow-[0_0_18px_rgba(255,255,255,.22)]"}`}
           >
             <CardBody card={board.activeCard} />
           </article>

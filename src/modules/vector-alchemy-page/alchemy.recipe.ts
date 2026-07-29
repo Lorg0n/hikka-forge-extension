@@ -1,9 +1,10 @@
 import {
+  ALCHEMY_VECTOR_SIZE,
   AlchemyService,
   type AlchemyIngredient,
 } from "@/services/alchemyService";
 
-const VECTOR_SIZE = 256;
+const VECTOR_SIZE = ALCHEMY_VECTOR_SIZE;
 const ZERO_VECTOR_THRESHOLD = 1e-9;
 
 type TokenType =
@@ -364,6 +365,7 @@ export async function createExpressionEmbedding(expression: string): Promise<num
 export async function createRecipeEmbedding(
   ingredients: AlchemyIngredient[],
 ): Promise<number[]> {
+  if (!ingredients.length) throw new Error("Рецепт не містить інгредієнтів.");
   const vectors = await Promise.all(
     ingredients.map(async (ingredient) => ({
       ingredient,
@@ -375,6 +377,9 @@ export async function createRecipeEmbedding(
   );
   const combined = Array.from({ length: VECTOR_SIZE }, () => 0);
   for (const { ingredient, vector } of vectors) {
+    if (vector.length !== VECTOR_SIZE) {
+      throw new Error("Backend returned a vector with an unexpected dimension.");
+    }
     vector.forEach((value, index) => {
       combined[index] += ingredient.weight * value;
     });

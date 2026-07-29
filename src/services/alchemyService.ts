@@ -3,6 +3,7 @@ import { AuthService } from "@/services/authService";
 
 export type AlchemySourceType = "element" | "anime" | "manga";
 export type AlchemyResultType = "anime" | "manga" | "any";
+export const ALCHEMY_VECTOR_SIZE = 256;
 
 export interface AlchemyElement {
   id: number;
@@ -148,7 +149,18 @@ export const AlchemyService = {
         ? `/admin/alchemy/elements/${idOrSlug}`
         : `/${type}/${idOrSlug}/embedding`;
     return request<AdminAlchemyElement | number[]>(path, undefined, true).then(
-      (value) => (Array.isArray(value) ? value : value.embedding),
+      (value) => {
+        const embedding = Array.isArray(value) ? value : value.embedding;
+        if (
+          embedding.length !== ALCHEMY_VECTOR_SIZE ||
+          !embedding.every(Number.isFinite)
+        ) {
+          throw new Error(
+            `Backend returned an invalid ${ALCHEMY_VECTOR_SIZE}-dimensional embedding.`,
+          );
+        }
+        return embedding;
+      },
     );
   },
 };

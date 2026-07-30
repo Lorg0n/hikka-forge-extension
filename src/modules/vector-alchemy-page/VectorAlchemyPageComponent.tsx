@@ -23,7 +23,6 @@ import { useAlchemyBoard } from "./useAlchemyBoard";
 import { AlchemyAdminWorkspace } from "./AlchemyAdminWorkspace";
 import {
   ingredientsToExpression,
-  recipeIngredientsFromRecipe,
   toRecipeIngredient,
 } from "./alchemy.admin";
 import { AlchemyBoard } from "./AlchemyBoard";
@@ -87,24 +86,15 @@ const VectorAlchemyPageComponent: React.FC = () => {
   });
 
   const prepareCreate = useCallback(() => {
-    const expression = board.lastRecipe
-      ? ingredientsToExpression(
-          recipeIngredientsFromRecipe(board.lastRecipe, palette),
-        )
-      : "";
     setAdminElement(null);
     setAdminName("");
     setAdminDescription("");
     setAdminImageUrl("");
     setReplaceVector(true);
-    setAdminExpression(expression);
-    setRecipeIngredients(
-      board.lastRecipe
-        ? recipeIngredientsFromRecipe(board.lastRecipe, palette)
-        : [],
-    );
+    setAdminExpression("");
+    setRecipeIngredients([]);
     setError(null);
-  }, [board.lastRecipe, palette]);
+  }, []);
 
   const openAdmin = () => {
     setAdminMode(true);
@@ -151,7 +141,7 @@ const VectorAlchemyPageComponent: React.FC = () => {
               ? { type, id: Number(sourceId), weight }
               : { type, slug: String(sourceId), weight },
           )
-        : board.lastRecipe?.ingredients;
+        : undefined;
     } catch (saveError) {
       setError(briefAlchemyError(saveError, "Некоректний рецепт."));
       return;
@@ -224,7 +214,7 @@ const VectorAlchemyPageComponent: React.FC = () => {
         ? recipeIngredients
         : [...recipeIngredients, toRecipeIngredient(item)],
     );
-    setIngredientQuery("");
+    onIngredientQuery("");
     clearCatalog();
   };
 

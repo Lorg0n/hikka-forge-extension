@@ -245,7 +245,7 @@ export function AlchemyAdminWorkspace({
           </div>
         </aside>
         <div className="p-4 sm:p-6">
-          <div className="mb-5 flex items-start justify-between gap-3"><div><p className="font-medium">{adminElement ? `Редагування: ${adminElement.name}` : "Новий базовий елемент"}</p><p className="mt-1 text-xs text-muted-foreground">{adminElement ? "Змініть метадані або замініть вектор рецептом." : "Сформуйте вектор із рецепту або останньої реакції."}</p></div></div>
+          <div className="mb-5 flex items-start justify-between gap-3"><div><p className="font-medium">{adminElement ? `Редагування: ${adminElement.name}` : "Новий базовий елемент"}</p><p className="mt-1 text-xs text-muted-foreground">{adminElement ? "Змініть метадані або замініть вектор рецептом." : "Сформуйте вектор із вибраного рецепту."}</p></div></div>
           <div className="grid gap-3 md:grid-cols-2">
             <label className="grid gap-1.5 text-sm font-medium">Назва<Input value={adminName} onChange={(event) => onName(event.target.value)} placeholder="Наприклад, Світло" /></label>
             <label className="grid gap-1.5 text-sm font-medium">URL зображення<Input value={adminImageUrl} onChange={(event) => onImage(event.target.value)} placeholder="https://…" /></label>

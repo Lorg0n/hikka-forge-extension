@@ -4,6 +4,7 @@ const vectorAlchemyModule: ForgeModuleDef = {
     id: 'vector-alchemy',
     name: 'Векторна алхімія',
     description: 'Поєднуйте елементи та тайтли у мапі відкриттів.',
+    beta: true,
     urlPatterns: ['https://dev.hikka.io/*'],
     enabledByDefault: true,
     authRequired: true,

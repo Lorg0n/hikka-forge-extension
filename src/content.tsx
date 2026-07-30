@@ -853,6 +853,7 @@ class ModuleManager {
 			id: moduleDef.id,
 			name: moduleDef.name,
 			description: moduleDef.description,
+			beta: moduleDef.beta,
 			enabled: this.moduleEnabledStates.get(moduleDef.id) ?? false,
 			urlPatterns: moduleDef.urlPatterns,
 			enabledByDefault: moduleDef.enabledByDefault,

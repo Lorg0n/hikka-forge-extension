@@ -85,6 +85,15 @@ export function ModuleCard({
                         <span className="text-sm font-medium leading-none">
                             {moduleInfo.name}
                         </span>
+                        {moduleInfo.beta && (
+                            <span
+                                className="rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-amber-600 dark:text-amber-400"
+                                aria-label="Beta module"
+                                title="Beta module"
+                            >
+                                Beta
+                            </span>
+                        )}
                     </div>
                     <p className="text-xs leading-snug text-muted-foreground">
                         {moduleInfo.description}

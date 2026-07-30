@@ -81,6 +81,7 @@ export interface ForgeModuleDef {
 	id: string;
 	name: string;
 	description: string;
+	beta?: boolean;
 	/** Mount this module only while the named module is enabled. */
 	dependsOn?: string;
 	urlPatterns: string[];
@@ -109,6 +110,7 @@ export interface ModuleInfo {
 	id: string;
 	name: string;
 	description: string;
+	beta?: boolean;
 	enabledByDefault?: boolean;
 	enabled: boolean;
 	urlPatterns: string[];

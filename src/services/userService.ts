@@ -1,6 +1,6 @@
 import { logger } from "@/utils/logger";
 import { UserCommentsApiResponse, ApiErrorResponse, UserRecommendationsApiResponse, RecommendationContentType } from '@/types';
-import { API_BACKEND_BASE } from '@/constants';
+import { API_BACKEND_BASE, HIKKA_API_BASE } from '@/constants';
 
 interface FetchUserCommentsParams {
     username: string;
@@ -45,6 +45,29 @@ export const fetchUserComments = async ({
     }
 
     return response.json() as Promise<UserCommentsApiResponse>;
+};
+
+interface HikkaUserProfileResponse {
+    reference?: string;
+}
+
+/** Returns Hikka's stable profile reference for a username. */
+export const fetchUserProfileReference = async (username: string): Promise<string> => {
+    const response = await fetch(
+        `${HIKKA_API_BASE}/user/${encodeURIComponent(username)}`,
+        { headers: { accept: 'application/json' } },
+    );
+
+    if (!response.ok) {
+        throw new Error(`User lookup failed: ${response.status}`);
+    }
+
+    const user = await response.json() as HikkaUserProfileResponse;
+    if (!user.reference) {
+        throw new Error('User reference was not returned');
+    }
+
+    return user.reference;
 };
 
 interface FetchUserRecommendationsParams {

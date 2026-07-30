@@ -22,9 +22,21 @@ export function CardBody({ card }: { card: BoardCard }) {
         )}
       </div>
       <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5">
-        <span className="block line-clamp-3 text-sm font-semibold leading-5">
-          {card.title}
-        </span>
+        {card.type === "anime" || card.type === "manga" ? (
+          <a
+            href={`/${card.type}/${card.sourceId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onDoubleClick={(event) => event.stopPropagation()}
+            className="block line-clamp-3 text-sm font-semibold leading-5 hover:underline"
+          >
+            {card.title}
+          </a>
+        ) : (
+          <span className="block line-clamp-3 text-sm font-semibold leading-5">
+            {card.title}
+          </span>
+        )}
         <span className="mt-1 line-clamp-2 text-xs text-muted-foreground">
           {card.subtitle ||
             (card.type === "element" ? "Базовий елемент" : card.type)}

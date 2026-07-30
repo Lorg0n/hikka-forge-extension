@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useHikkaCallback } from '@/hooks/useHikkaCallback';
 import { AuthService } from '@/services/authService';
 import { Button } from '@/components/ui/button';
+import { HIKKA_BASE } from '@/constants';
 
 const AuthPageLegacyComponent: React.FC = () => {
     const [isRedirecting, setIsRedirecting] = useState(false);
@@ -21,7 +22,7 @@ const AuthPageLegacyComponent: React.FC = () => {
             setIsRedirecting(true);
             AuthService.setToken(data.secret).then(async () => {
                 if (await AuthService.getCurrentUser()) {
-                    setTimeout(() => window.location.href = '/', 800);
+                    setTimeout(() => window.location.href = `${HIKKA_BASE}/`, 800);
                 } else {
                     await AuthService.removeToken();
                     setIsRedirecting(false);
@@ -62,7 +63,7 @@ const AuthPageLegacyComponent: React.FC = () => {
                             <Button
                                 variant="secondary"
                                 className="w-full border border-border bg-secondary/20 hover:bg-secondary"
-                                onClick={() => window.location.href = '/'}
+                                onClick={() => window.location.href = `${HIKKA_BASE}/`}
                                 disabled={isLoading}
                             >
                                 На головну

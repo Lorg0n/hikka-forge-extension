@@ -6,6 +6,8 @@ const similarPageModule: ForgeModuleDef = {
   name: 'Сторінка схожого контенту',
   description: 'Додає повноцінну адаптивну сторінку схожого аніме та манґи з навігацією',
   urlPatterns: [
+    'https://hikka.io/anime/*#similar',
+    'https://hikka.io/manga/*#similar',
     'https://dev.hikka.io/anime/*#similar',
     'https://dev.hikka.io/manga/*#similar',
   ],

@@ -47,6 +47,22 @@ function createBackgroundLogger(): Logger {
 
 const logger = createBackgroundLogger();
 
+const HIKKA_TAB_URL_PATTERNS = [
+	"https://hikka.io/*",
+	"https://dev.hikka.io/*",
+];
+
+function isHikkaUrl(url: string | undefined): boolean {
+	if (!url) return false;
+	try {
+		const parsed = new URL(url);
+		return parsed.protocol === "https:" &&
+			(parsed.hostname === "hikka.io" || parsed.hostname === "dev.hikka.io");
+	} catch {
+		return false;
+	}
+}
+
 let moduleDefinitionsCache: ModuleInfo[] | null = null;
 let cacheTimestamp: number = 0;
 const CACHE_DURATION = 5 * 60 * 1000;
@@ -70,7 +86,7 @@ class BackgroundManager {
 		browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 			if (
 				changeInfo.status === "complete" &&
-				tab.url?.startsWith("https://dev.hikka.io/")
+				isHikkaUrl(tab.url)
 			) {
 				this.syncTabIfNeeded(tabId);
 			}
@@ -316,7 +332,7 @@ class BackgroundManager {
 
 	private async fetchModuleDefinitionsFromContentScript(): Promise<ModuleInfo[]> {
 		const tabs = await browser.tabs.query({
-			url: "https://dev.hikka.io/*",
+			url: HIKKA_TAB_URL_PATTERNS,
 			status: "complete",
 		});
 
@@ -393,7 +409,7 @@ class BackgroundManager {
 	private async syncAllTabs(): Promise<void> {
 		logger.log("[Hikka Forge] Syncing states with all Hikka tabs...");
 		try {
-		const tabs = await browser.tabs.query({ url: "https://dev.hikka.io/*" });
+		const tabs = await browser.tabs.query({ url: HIKKA_TAB_URL_PATTERNS });
 			const syncPromises = tabs
 				.filter((tab) => tab.id !== undefined)
 				.map((tab) => this.sendSyncMessageToTab(tab.id!));
@@ -445,7 +461,7 @@ class BackgroundManager {
 	private async refreshContentInAllTabs(): Promise<void> {
 		logger.log("[Hikka Forge] Sending REFRESH action to all Hikka tabs...");
 		try {
-			const tabs = await browser.tabs.query({ url: "https://dev.hikka.io/*" });
+			const tabs = await browser.tabs.query({ url: HIKKA_TAB_URL_PATTERNS });
 			const refreshPromises = tabs
 				.filter((tab) => tab.id !== undefined)
 				.map((tab) =>

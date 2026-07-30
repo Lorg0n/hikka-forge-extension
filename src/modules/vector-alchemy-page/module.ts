@@ -7,6 +7,8 @@ const vectorAlchemyPageModule: ForgeModuleDef = {
   description: "Інтерактивна дошка векторної алхімії.",
   dependsOn: "vector-alchemy",
   urlPatterns: [
+    "https://hikka.io/#alchemy",
+    "https://hikka.io/?type=*#alchemy",
     "https://dev.hikka.io/#alchemy",
     "https://dev.hikka.io/?type=*#alchemy",
   ],

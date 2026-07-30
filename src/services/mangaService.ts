@@ -1,7 +1,7 @@
 import { logger } from "@/utils/logger";
 import { SimilarMangaApiResponse, ApiErrorResponse, ForgeMangaDetails } from '@/types';
 
-import { API_BACKEND_BASE } from '@/constants';
+import { API_BACKEND_BASE, MAX_SIMILAR_PAGES } from '@/constants';
 
 interface FetchSimilarMangaParams {
     slug: string;
@@ -17,7 +17,8 @@ export const fetchSimilarManga = async ({
     const url = new URL(`${API_BACKEND_BASE}/manga/${slug}/similar`);
 
     if (page !== undefined) {
-        url.searchParams.append('page', page.toString());
+        const boundedPage = Math.min(Math.max(page, 0), MAX_SIMILAR_PAGES - 1);
+        url.searchParams.append('page', boundedPage.toString());
     }
     if (size !== undefined) {
         url.searchParams.append('size', size.toString());

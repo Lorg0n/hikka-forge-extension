@@ -5,7 +5,7 @@ const vectorAlchemyModule: ForgeModuleDef = {
     name: 'Векторна алхімія',
     description: 'Поєднуйте елементи та тайтли у мапі відкриттів.',
     beta: true,
-    urlPatterns: ['https://dev.hikka.io/*'],
+    urlPatterns: ['https://hikka.io/*', 'https://dev.hikka.io/*'],
     enabledByDefault: true,
     authRequired: true,
     category: 'other',

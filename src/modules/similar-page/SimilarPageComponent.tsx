@@ -7,6 +7,7 @@ import { SimilarContentType } from '@/types';
 import { SimilarPageHeader } from './SimilarPageHeader';
 import { SimilarPageGrid } from './SimilarPageGrid';
 import { SimilarPageSkeleton } from './SimilarPageSkeleton';
+import { MAX_SIMILAR_PAGES } from '@/constants';
 
 interface SimilarContentRoute {
     contentType: SimilarContentType;
@@ -98,11 +99,11 @@ const SimilarPageComponent: React.FC = () => {
                         contentType={contentType}
                     />
 
-                    {data.totalPages > 1 && (
+                    {Math.min(data.totalPages, MAX_SIMILAR_PAGES) > 1 && (
                         <div className="mt-4">
                             <Pagination
                                 currentPage={currentPage + 1}
-                                totalPages={data.totalPages}
+                                totalPages={Math.min(data.totalPages, MAX_SIMILAR_PAGES)}
                                 onPageChange={(page) => setPage(page - 1)}
                             />
                         </div>

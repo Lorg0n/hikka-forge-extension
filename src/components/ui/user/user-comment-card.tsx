@@ -5,7 +5,7 @@ import Link from '@/components/typography/link';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@iconify/react';
 import { CommentItem } from '@/types'; 
-import { CONTENT_TYPE_URL, HIKKA_BASE } from '@/constants'; 
+import { CONTENT_TYPE_URL, getHikkaBaseForUrl } from '@/constants';
 import { cn } from '@/lib/utils';
 
 interface UserCommentCardProps {
@@ -14,7 +14,7 @@ interface UserCommentCardProps {
 }
 
 const UserCommentCard: React.FC<UserCommentCardProps> = ({ comment, className }) => {
-  const contentUrl = `${HIKKA_BASE}/${CONTENT_TYPE_URL[comment.contentType]}/${comment.contentSlug}`;
+  const contentUrl = `${getHikkaBaseForUrl(window.location.href)}/${CONTENT_TYPE_URL[comment.contentType]}/${comment.contentSlug}`;
 
   const title =
         comment.contentType === 'edit' && !comment.contentTitle

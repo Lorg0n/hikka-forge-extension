@@ -64,7 +64,7 @@ const customColorsModule: ForgeModuleDef = {
 	name: "Розширені налаштування теми",
 	description:
 		"Дозволяє змінити візуальну тему сайту, включаючи кольори та заокруглення.",
-	urlPatterns: ["https://dev.hikka.io/*"],
+	urlPatterns: ["https://hikka.io/*", "https://dev.hikka.io/*"],
 	styles: (settings) => {
 		const getHslCssValue = (
 			settingId: string,

@@ -4,6 +4,7 @@ import {
     SimilarContentApiResponse,
     SimilarContentType,
 } from '@/types';
+import { MAX_SIMILAR_PAGES } from '@/constants';
 import { fetchForgeAnimeDetails, fetchSimilarAnime } from '@/services/animeService';
 import { fetchForgeMangaDetails, fetchSimilarManga } from '@/services/mangaService';
 
@@ -53,9 +54,10 @@ export const useSimilarContent = ({
         setSimilarError(null);
 
         try {
+            const boundedPage = Math.min(Math.max(pageToLoad, 0), MAX_SIMILAR_PAGES - 1);
             const result = contentType === 'anime'
-                ? await fetchSimilarAnime({ slug, page: pageToLoad, size: sizeToLoad })
-                : await fetchSimilarManga({ slug, page: pageToLoad, size: sizeToLoad });
+                ? await fetchSimilarAnime({ slug, page: boundedPage, size: sizeToLoad })
+                : await fetchSimilarManga({ slug, page: boundedPage, size: sizeToLoad });
             setData(result);
         } catch (err) {
             setSimilarError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -102,7 +104,9 @@ export const useSimilarContent = ({
     }, [loadDetails]);
 
     const setPage = (newPage: number) => {
-        if (newPage >= 0) setCurrentPage(newPage);
+        if (newPage >= 0) {
+            setCurrentPage(Math.min(newPage, MAX_SIMILAR_PAGES - 1));
+        }
     };
 
     const setSize = (newSize: number) => {

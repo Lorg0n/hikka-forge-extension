@@ -59,9 +59,20 @@ const AuthPageComponent: React.FC = () => {
     }, []);
 
     const goHome = useCallback(() => {
-        window.location.href = redirect.startsWith('http')
-            ? redirect
-            : `${HIKKA_BASE}${redirect}`;
+        if (!redirect.startsWith('http')) {
+            window.location.href = `${HIKKA_BASE}${redirect}`;
+            return;
+        }
+
+        try {
+            const target = new URL(redirect);
+            if (target.hostname === 'dev.hikka.io') {
+                target.hostname = 'hikka.io';
+            }
+            window.location.href = target.toString();
+        } catch {
+            window.location.href = `${HIKKA_BASE}/`;
+        }
     }, [redirect]);
 
     useEffect(() => {

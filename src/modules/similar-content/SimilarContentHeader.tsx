@@ -2,9 +2,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Button } from '@/components/ui/button';
 import logo from '@/assets/logo.svg';
 import Link from '@/components/typography/link';
-import { HIKKA_BASE } from '@/constants';
+import { getHikkaBaseForUrl } from '@/constants';
 
-export const SimilarContentHeader = () => (
+export const SimilarContentHeader = () => {
+    const hikkaBase = getHikkaBaseForUrl(window.location.href);
+
+    return (
     <div className="flex items-center justify-between gap-2">
         <div className="flex flex-1 items-center gap-4">
             <div className="flex items-center gap-4">
@@ -39,7 +42,7 @@ export const SimilarContentHeader = () => (
                             </p>
                             <p className="mt-2 text-sm">
                                 <Link
-                                    href={`${HIKKA_BASE}/articles?page=1&tags=embedding&tags=forge`}
+                                    href={`${hikkaBase}/articles?page=1&tags=embedding&tags=forge`}
                                     className="text-muted-foreground underline hover:muted-foreground/80"
                                 >
                                     Більш детально механізм розписаний в серії статей
@@ -59,4 +62,5 @@ export const SimilarContentHeader = () => (
             </a>
         </Button>
     </div>
-);
+    );
+};

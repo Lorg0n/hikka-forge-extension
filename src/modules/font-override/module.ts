@@ -17,7 +17,7 @@ const fontOverrideModule: ForgeModuleDef = {
   id: 'font-override',
   name: 'Шрифт',
   description: 'Замінює шрифт сайту на обраний.',
-  urlPatterns: ['https://dev.hikka.io/*'],
+  urlPatterns: ['https://hikka.io/*', 'https://dev.hikka.io/*'],
   styles: getFontStyles,
   persistentStyles: true,
   category: 'appearance',

@@ -16,7 +16,7 @@ import type {
 	ModuleSettings,
 	ModuleSettingValue,
 } from "@/types/module";
-import { GITHUB_REPO, HIKKA_BASE, POLICY_PAGE } from "@/constants";
+import { GITHUB_REPO, getHikkaBaseForUrl, HIKKA_BASE, POLICY_PAGE } from "@/constants";
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -73,7 +73,7 @@ function App() {
 
 	const checkPermissions = useCallback(async () => {
 		const has = await browser.permissions.contains({
-			origins: ["https://dev.hikka.io/*"],
+			origins: ["https://hikka.io/*", "https://dev.hikka.io/*"],
 		});
 		setHasPermission(has);
 		if (has) {
@@ -110,7 +110,7 @@ function App() {
 
 	const handleRequestPermission = useCallback(async () => {
 		const granted = await browser.permissions.request({
-			origins: ["https://dev.hikka.io/*"],
+			origins: ["https://hikka.io/*", "https://dev.hikka.io/*"],
 		});
 		if (granted) {
 			setHasPermission(true);
@@ -327,7 +327,9 @@ function App() {
 		try {
 			const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
 			if (!tab?.id) throw new Error("Active tab was not found.");
-			await browser.tabs.update(tab.id, { url: new URL(href, HIKKA_BASE).toString() });
+			await browser.tabs.update(tab.id, {
+				url: new URL(href, getHikkaBaseForUrl(tab.url)).toString(),
+			});
 			window.close();
 		} catch (err: unknown) {
 			setError(`Не вдалося відкрити сторінку: ${getErrorMessage(err)}`);
@@ -339,7 +341,7 @@ function App() {
 			<div className="flex w-full flex-col gap-4 bg-background p-4 text-foreground">
 				<h1 className="font-bold text-xl">Потрібен дозвіл</h1>
 				<p className="text-sm text-muted-foreground">
-					Hikka Forge потрібен дозвіл для роботи на сайті dev.hikka.io.
+					Hikka Forge потрібен дозвіл для роботи на сайті hikka.io.
 				</p>
 				<Button variant={"default"} onClick={handleRequestPermission}>
 					Надати дозвіл

@@ -7,7 +7,7 @@ const mobileUserRecommendationsModule: ForgeModuleDef = {
     name: 'Мобільні рекомендації',
     description: 'Показує персональні рекомендації у мобільному списку віджетів.',
     dependsOn: 'user-recommendations',
-    urlPatterns: ['https://dev.hikka.io/*', 'https://dev.hikka.io'],
+    urlPatterns: ['https://hikka.io/*', 'https://hikka.io', 'https://dev.hikka.io/*', 'https://dev.hikka.io'],
     enabledByDefault: true,
     hidden: true,
     authRequired: true,

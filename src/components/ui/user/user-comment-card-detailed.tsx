@@ -5,7 +5,7 @@ import Link from '@/components/typography/link';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@iconify/react';
 import { CommentItem } from '@/types';
-import { CONTENT_TYPE_URL, HIKKA_BASE } from '@/constants';
+import { CONTENT_TYPE_URL, getHikkaBaseForUrl } from '@/constants';
 import { cn, formatTimeAgo } from '@/lib/utils';
 import { AspectRatio } from '@radix-ui/react-aspect-ratio';
 import Image from '@/components/ui/image';
@@ -19,7 +19,7 @@ const UserCommentCardDetailed: React.FC<UserCommentCardDetailedProps> = ({
     comment,
     className,
 }) => {
-    const contentUrl = `${HIKKA_BASE}/${CONTENT_TYPE_URL[comment.contentType]}/${comment.contentSlug}`;
+    const contentUrl = `${getHikkaBaseForUrl(window.location.href)}/${CONTENT_TYPE_URL[comment.contentType]}/${comment.contentSlug}`;
     const isImageAvailable = !!comment.contentImageUrl;
 
     const title =

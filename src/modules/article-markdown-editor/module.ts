@@ -10,7 +10,7 @@ FUTURE MODULE
 // 	id: "article-markdown-editor",
 // 	name: "Markdown-редактор статей",
 // 	description: "Додає окремий редактор Markdown із живим переглядом на сторінці створення статті.",
-// 	urlPatterns: ["https://dev.hikka.io/articles/new", "https://dev.hikka.io/articles/*/update"],
+// 	urlPatterns: ["https://hikka.io/articles/new", "https://hikka.io/articles/*/update", "https://dev.hikka.io/articles/new", "https://dev.hikka.io/articles/*/update"],
 // 	enabledByDefault: true,
 // 	category: "content",
 // 	elementSelector: {

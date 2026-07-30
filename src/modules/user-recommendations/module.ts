@@ -5,7 +5,7 @@ const userRecommendationsModule: ForgeModuleDef = {
     id: 'user-recommendations',
     name: 'Персональні рекомендації',
     description: 'Відображає блок з рекомендаціями на основі вашого списку переглянутого.',
-    urlPatterns: ['https://dev.hikka.io/*', 'https://dev.hikka.io'],
+    urlPatterns: ['https://hikka.io/*', 'https://hikka.io', 'https://dev.hikka.io/*', 'https://dev.hikka.io'],
     enabledByDefault: false,
     authRequired: true,
     category: 'recommendations',

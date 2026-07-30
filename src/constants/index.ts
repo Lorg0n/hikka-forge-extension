@@ -81,9 +81,25 @@ export const MODULE_CATEGORIES = {
     "other": "Інше"
 } as const;
 
-export const HIKKA_BASE = "https://dev.hikka.io" as const;
+export const HIKKA_BASE = "https://hikka.io" as const;
 export const HIKKA_API_BASE = "https://api.hikka.io" as const;
 export const API_BACKEND_BASE = "https://hikka-forge.lorgon.dev" as const;
+export const MAX_SIMILAR_PAGES = 10 as const;
+
+export const getHikkaBaseForUrl = (url: string | undefined): string => {
+    if (!url) return HIKKA_BASE;
+
+    try {
+        const parsed = new URL(url);
+        if (parsed.hostname === "hikka.io" || parsed.hostname === "dev.hikka.io") {
+            return parsed.origin;
+        }
+    } catch {
+        // Fall back to the canonical host for malformed or non-Hikka URLs.
+    }
+
+    return HIKKA_BASE;
+};
 
 export const GITHUB_REPO = "https://github.com/Lorg0n/hikka-forge-extension" as const;
-export const POLICY_PAGE = "https://dev.hikka.io/articles/privacy-policy-for-hikka-forge-7c73e8" as const;
+export const POLICY_PAGE = "https://hikka.io/articles/privacy-policy-for-hikka-forge-7c73e8" as const;

@@ -7,6 +7,8 @@ const contentRelationsModule: ForgeModuleDef = {
     description: 'Додає кнопку для відкриття сторінки пов\'язаного контенту (#related) поруч із блоком "Пов\'язане".',
     beta: true,
     urlPatterns: [
+        'https://hikka.io/anime/*',
+        'https://hikka.io/manga/*',
         'https://dev.hikka.io/anime/*',
         'https://dev.hikka.io/manga/*',
     ],

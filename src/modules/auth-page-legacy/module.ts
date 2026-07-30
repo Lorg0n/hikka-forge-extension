@@ -4,8 +4,8 @@ import AuthPageLegacyComponent from './AuthPageLegacyComponent';
 const authPageLegacyModule: ForgeModuleDef = {
   id: 'auth-page-legacy',
   name: 'Сторінка авторизації (спадщина)',
-  description: 'Зворотно-сумісна сторінка авторизації на dev.hikka.io/forge для старих версій OAuth-редиректу.',
-  urlPatterns: ['https://dev.hikka.io/forge*'],
+  description: 'Зворотно-сумісна сторінка авторизації на hikka.io/forge для старих версій OAuth-редиректу.',
+  urlPatterns: ['https://hikka.io/forge*', 'https://dev.hikka.io/forge*'],
   enabledByDefault: true,
   hidden: true,
   elementSelector: {

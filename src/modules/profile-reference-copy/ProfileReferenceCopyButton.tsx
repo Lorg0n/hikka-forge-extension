@@ -1,6 +1,7 @@
 import { Icon } from "@iconify/react";
 import { useState } from "react";
 import { HIKKA_BASE } from "@/constants";
+import { Button } from "@/components/ui/button";
 import { fetchUserProfileReference } from "@/services/userService";
 
 function copyFallback(value: string): boolean {
@@ -55,19 +56,20 @@ export default function ProfileReferenceCopyButton() {
 
 	return (
 		<div>
-			<button
+			<Button
 				type="button"
 				onClick={copyProfileLink}
 				disabled={loading}
 				aria-label={label}
 				title={label}
-				className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md bg-secondary text-secondary-foreground transition-all hover:bg-secondary/80 disabled:cursor-wait disabled:opacity-70"
+				size="icon-sm"
+				variant="outline"
+				className="cursor-pointer text-muted-foreground disabled:cursor-wait"
 			>
 				<Icon
 					icon={status === "copied" ? "lucide:check" : "lucide:share"}
-					className="size-4"
 				/>
-			</button>
+			</Button>
 		</div>
 	);
 }

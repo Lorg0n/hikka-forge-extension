@@ -20,7 +20,7 @@ import type {
   Recipe,
 } from "./alchemy.types";
 import {
-  asIngredient,
+  asCraftIngredients,
   cardFromPalette,
   cardFromResult,
   mergeAlchemyHistory,
@@ -150,7 +150,7 @@ export function useAlchemyBoard({
 
   const craft = useCallback(
     async (first: BoardCard, second: BoardCard, x: number, y: number, consumedIds: string[]) => {
-      const ingredients = [asIngredient(first), asIngredient(second)];
+      const ingredients = asCraftIngredients(first, second);
       setCards((current) => current.filter((card) => !consumedIds.includes(card.instanceId)));
       setReactionNotice({ x, y, label: `${first.title} + ${second.title}` });
       setCrafting(true);

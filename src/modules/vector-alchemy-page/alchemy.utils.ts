@@ -4,6 +4,7 @@ import type {
   AlchemyHistoryItem,
   AlchemyIngredient,
   AlchemyResult,
+  AlchemySourceType,
 } from "@/services/alchemyService";
 import type { BoardCard, PaletteObject } from "./alchemy.types";
 
@@ -13,6 +14,42 @@ export const asIngredient = (card: BoardCard): AlchemyIngredient =>
   card.type === "element"
     ? { type: "element", id: Number(card.sourceId), weight: card.sign }
     : { type: card.type, slug: String(card.sourceId), weight: card.sign };
+
+type ContentSourceType = Extract<AlchemySourceType, "anime" | "manga">;
+
+const isContentCard = (
+  item: Pick<PaletteObject, "type">,
+): item is Pick<PaletteObject, "type"> & { type: ContentSourceType } =>
+  item.type === "anime" || item.type === "manga";
+
+export const historyForPaletteItem = (
+  item: PaletteObject,
+): AlchemyHistoryItem[] =>
+  isContentCard(item)
+    ? [{ type: item.type, slug: String(item.sourceId) }]
+    : [];
+
+export const asCraftIngredients = (
+  first: BoardCard,
+  second: BoardCard,
+): [AlchemyIngredient, AlchemyIngredient] => {
+  const firstIsContent = isContentCard(first);
+  const secondIsContent = isContentCard(second);
+  const isElementAndContent =
+    (first.type === "element" && secondIsContent) ||
+    (second.type === "element" && firstIsContent);
+
+  if (!isElementAndContent) return [asIngredient(first), asIngredient(second)];
+
+  return [
+    asIngredient(first),
+    asIngredient(second),
+  ].map((ingredient, index) => {
+    const card = index === 0 ? first : second;
+    const weight = isContentCard(card) ? 0.8 : 0.3;
+    return { ...ingredient, weight: card.sign * weight };
+  }) as [AlchemyIngredient, AlchemyIngredient];
+};
 
 export const paletteFromElement = (element: AlchemyElement): PaletteObject => ({
   id: element.id,
@@ -38,7 +75,11 @@ export const mergeAlchemyHistory = (
   ...histories: AlchemyHistoryItem[][]
 ): AlchemyHistoryItem[] => {
   const unique = new Map<string, AlchemyHistoryItem>();
-  histories.flat().forEach((item) => unique.set(`${item.type}:${item.slug}`, item));
+  histories.flat().forEach((item) => {
+    const key = `${item.type}:${item.slug}`;
+    unique.delete(key);
+    unique.set(key, item);
+  });
   return Array.from(unique.values()).slice(-200);
 };
 
@@ -58,12 +99,12 @@ export const cardFromPalette = (
   item: PaletteObject,
   x: number,
   y: number,
-  history: AlchemyHistoryItem[] = [],
+  history: AlchemyHistoryItem[] = historyForPaletteItem(item),
 ): BoardCard => ({ ...item, instanceId: makeId(), x, y, sign: 1, history });
 
 export const cardFromResult = (
   result: AlchemyResult,
   x: number,
   y: number,
-  history: AlchemyHistoryItem[] = [],
+  history = historyForPaletteItem(paletteFromResult(result)),
 ): BoardCard => cardFromPalette(paletteFromResult(result), x, y, history);

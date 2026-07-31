@@ -15,6 +15,23 @@ type ContentScriptRegistrationMessage = {
 };
 type IncomingMessage = BackgroundMessage | ContentScriptRegistrationMessage;
 
+function isIncomingMessage(message: unknown): message is IncomingMessage {
+	return (
+		typeof message === "object" &&
+		message !== null &&
+		"type" in message &&
+		typeof message.type === "string"
+	);
+}
+
+function isModuleSettingValue(value: unknown): value is ModuleSettingValue {
+	return (
+		typeof value === "string" ||
+		typeof value === "number" ||
+		typeof value === "boolean"
+	);
+}
+
 function isMissingContentScriptConnection(error: unknown): boolean {
 	if (!(error instanceof Error)) return false;
 
@@ -109,7 +126,8 @@ class BackgroundManager {
 
 	private initMessageListener(): void {
 		browser.runtime.onMessage.addListener(
-			(message: IncomingMessage, sender, sendResponse) => {
+			(message, sender, sendResponse) => {
+				if (!isIncomingMessage(message)) return true;
 				if (message.type === "REGISTER_CONTENT_SCRIPT") {
 					logger.log(`[Hikka Forge] Content script from tab ${sender.tab?.id} registered with ${message.modules.length} modules.`);
 					this.handleContentScriptRegistration(message.modules, sender.tab?.id)
@@ -307,9 +325,14 @@ class BackgroundManager {
 					def.settings.forEach((setting) => {
 						const settingKey = `module_setting_${def.id}_${setting.id}`;
 						const overrideKey = `${def.id}.${setting.id}`;
-						settings[setting.id] = this.moduleSettingOverrides.has(overrideKey)
-							? this.moduleSettingOverrides.get(overrideKey)
-							: allStoredData[settingKey] ?? setting.defaultValue;
+						const override = this.moduleSettingOverrides.get(overrideKey);
+						const stored = allStoredData[settingKey];
+						settings[setting.id] =
+							override !== undefined
+								? override
+								: isModuleSettingValue(stored)
+									? stored
+									: setting.defaultValue;
 					});
 				}
 				moduleSettings[def.id] = settings;

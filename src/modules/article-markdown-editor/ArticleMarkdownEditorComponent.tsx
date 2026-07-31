@@ -1,4 +1,9 @@
-import { type ClipboardEvent as ReactClipboardEvent, useRef, useState } from "react";
+import {
+	type ClipboardEvent as ReactClipboardEvent,
+	type ReactNode,
+	useRef,
+	useState,
+} from "react";
 import {
 	Bold,
 	ChevronDown,
@@ -511,7 +516,10 @@ export default function ArticleMarkdownEditorComponent() {
 						className="min-h-64 overflow-auto p-4 text-[0.9375rem] leading-6 [&_h1]:mb-3 [&_h1]:text-xl [&_h1]:font-bold [&_h2]:mb-2 [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:mb-2 [&_h3]:font-semibold [&_h4]:mb-2 [&_h4]:font-semibold [&_h5]:mb-2 [&_h5]:font-semibold [&_h6]:mb-2 [&_h6]:font-semibold"
 						preserveLineBreaks
 						components={{
-							"youtube-video": ({ id, children }) => (
+							"youtube-video": ({
+								id,
+								children,
+							}: { id?: string; children?: ReactNode }) => (
 								<iframe
 									title="YouTube відео"
 									src={`https://www.youtube.com/embed/${String(id ?? "")}`}

@@ -85,15 +85,26 @@ export function useAlchemyBoard({
   const [invalidCombination, setInvalidCombination] =
     useState<InvalidCombination | null>(null);
   const invalidDropTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draggedCloneId = useRef<string | null>(null);
+  const draggedCardRef = useRef<BoardCard | null>(null);
+  const cloneOfInstanceIdRef = useRef<string | null>(null);
+  const altPressedRef = useRef(false);
   const panRef = useRef<{ x: number; y: number; clientX: number; clientY: number } | null>(null);
   const viewRef = useRef({ pan, zoom });
   viewRef.current = { pan, zoom };
 
-  const clearDragState = useCallback(() => {
+  const clearDragState = useCallback((discardClone = false) => {
     if (invalidDropTimer.current) {
       clearTimeout(invalidDropTimer.current);
       invalidDropTimer.current = null;
     }
+    if (discardClone && draggedCloneId.current) {
+      const cloneId = draggedCloneId.current;
+      setCards((current) => current.filter((card) => card.instanceId !== cloneId));
+    }
+    draggedCloneId.current = null;
+    draggedCardRef.current = null;
+    cloneOfInstanceIdRef.current = null;
     setActiveCard(null);
     setActiveDragSource(null);
     setDeleteCandidate(false);
@@ -101,6 +112,26 @@ export function useAlchemyBoard({
   }, []);
 
   useEffect(() => () => clearDragState(), [clearDragState]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Alt") altPressedRef.current = true;
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.key === "Alt") altPressedRef.current = false;
+    };
+    const onWindowBlur = () => {
+      altPressedRef.current = false;
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onWindowBlur);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onWindowBlur);
+    };
+  }, []);
 
   const zoomAt = useCallback((requestedZoom: number, focalPoint?: BoardPoint) => {
     const viewport = viewportRef.current;
@@ -228,33 +259,69 @@ export function useAlchemyBoard({
 
   const onDragStart = (event: DragStartEvent) => {
     const data = event.active.data.current as DragData;
+    if (invalidDropTimer.current) {
+      clearTimeout(invalidDropTimer.current);
+      invalidDropTimer.current = null;
+    }
+    draggedCloneId.current = null;
+    draggedCardRef.current = null;
+    cloneOfInstanceIdRef.current = null;
     setActiveDragSource(data.source);
     setDeleteCandidate(false);
     setInvalidCombination(null);
-    if (data.card) setActiveCard(data.card);
-    else if (data.palette) setActiveCard(cardFromPalette(data.palette, 0, 0));
-    else if (data.catalog) {
-      setActiveCard(cardFromPalette(paletteFromCatalog(data.catalog), 0, 0));
+    const activatorEvent = event.activatorEvent as Event & { altKey?: boolean };
+    const shouldClone =
+      data.source === "board" &&
+      data.card &&
+      Boolean(activatorEvent.altKey || altPressedRef.current);
+    if (shouldClone && data.card) {
+      const original = data.card;
+      const duplicate = cardFromPalette(
+        original,
+        original.x,
+        original.y,
+        original.history,
+      );
+      draggedCloneId.current = duplicate.instanceId;
+      draggedCardRef.current = duplicate;
+      cloneOfInstanceIdRef.current = original.instanceId;
+      setCards((current) => [...current, duplicate]);
+      setActiveCard(duplicate);
+    } else {
+      const active = data.card
+        ? data.card
+        : data.palette
+          ? cardFromPalette(data.palette, 0, 0)
+          : data.catalog
+            ? cardFromPalette(paletteFromCatalog(data.catalog), 0, 0)
+            : null;
+      draggedCardRef.current = active;
+      setActiveCard(active);
     }
   };
 
   const onDragMove = (event: DragMoveEvent) => {
     const data = event.active.data.current as DragData;
     const hovered = event.over?.data.current?.card as BoardCard | undefined;
-    const dragged = data.card
-      ? data.card
-      : data.palette
-        ? cardFromPalette(data.palette, 0, 0)
-        : data.catalog
-          ? cardFromPalette(paletteFromCatalog(data.catalog), 0, 0)
-          : null;
+    const dragged =
+      draggedCardRef.current ??
+      (data.card
+        ? data.card
+        : data.palette
+          ? cardFromPalette(data.palette, 0, 0)
+          : data.catalog
+            ? cardFromPalette(paletteFromCatalog(data.catalog), 0, 0)
+            : null);
     const targetCard =
-      hovered?.instanceId === data.card?.instanceId ? undefined : hovered;
+      hovered?.instanceId === dragged?.instanceId ||
+      hovered?.instanceId === cloneOfInstanceIdRef.current
+        ? undefined
+        : hovered;
 
     setInvalidCombination(
       dragged && targetCard && isInvalidCombination(dragged, targetCard)
         ? {
-            draggedInstanceId: data.card?.instanceId,
+            draggedInstanceId: dragged.instanceId,
             targetInstanceId: targetCard.instanceId,
           }
         : null,
@@ -284,14 +351,20 @@ export function useAlchemyBoard({
     const data = event.active.data.current as DragData;
     const overId = String(event.over?.id ?? "");
     const hovered = event.over?.data.current?.card as BoardCard | undefined;
-    const targetCard = hovered?.instanceId === data.card?.instanceId ? undefined : hovered;
-    const dragged = data.card
-      ? data.card
-      : data.palette
-        ? cardFromPalette(data.palette, 0, 0)
-        : data.catalog
-          ? cardFromPalette(paletteFromCatalog(data.catalog), 0, 0)
-          : null;
+    const dragged =
+      draggedCardRef.current ??
+      (data.card
+        ? data.card
+        : data.palette
+          ? cardFromPalette(data.palette, 0, 0)
+          : data.catalog
+            ? cardFromPalette(paletteFromCatalog(data.catalog), 0, 0)
+            : null);
+    const targetCard =
+      hovered?.instanceId === dragged?.instanceId ||
+      hovered?.instanceId === cloneOfInstanceIdRef.current
+        ? undefined
+        : hovered;
     const invalidTarget =
       dragged && targetCard && isInvalidCombination(dragged, targetCard)
         ? targetCard
@@ -321,16 +394,17 @@ export function useAlchemyBoard({
     const isOutsideBoard = Boolean(
       activeRect && viewportRect && isRectOutside(activeRect, viewportRect),
     );
-    if (invalidTarget) {
+    if (invalidTarget && dragged) {
       setInvalidCombination({
-        draggedInstanceId: data.card?.instanceId,
+        draggedInstanceId: dragged.instanceId,
         targetInstanceId: invalidTarget.instanceId,
       });
       setActiveDragSource(null);
       setDeleteCandidate(false);
+      const isClone = Boolean(draggedCloneId.current);
       invalidDropTimer.current = setTimeout(() => {
         invalidDropTimer.current = null;
-        clearDragState();
+        clearDragState(isClone);
       }, INVALID_DROP_ANIMATION_DURATION);
       return;
     }
@@ -339,11 +413,11 @@ export function useAlchemyBoard({
 
     if (
       data.source === "board" &&
-      data.card &&
+      dragged &&
       (overId === "delete-zone" || touchesDeleteZone || isOutsideBoard || !isInsideBoard)
     ) {
       setCards((current) =>
-        current.filter((card) => card.instanceId !== data.card?.instanceId),
+        current.filter((card) => card.instanceId !== dragged.instanceId),
       );
       return;
     }
@@ -355,8 +429,8 @@ export function useAlchemyBoard({
       return;
     }
     if (!isInsideBoard) return;
-    if (data.source === "board" && data.card) {
-      const moved = { ...data.card, x: point.x, y: point.y };
+    if (data.source === "board" && dragged) {
+      const moved = { ...dragged, x: point.x, y: point.y };
       if (targetCard) {
         void craft(moved, targetCard, targetCard.x, targetCard.y, [
           moved.instanceId,
@@ -445,7 +519,7 @@ export function useAlchemyBoard({
       panRef.current = null;
     },
     clearActiveCard: () => {
-      clearDragState();
+      clearDragState(true);
     },
     activeDragSource,
     deleteCandidate,

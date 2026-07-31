@@ -69,10 +69,15 @@ export function SettingInput({
             {(() => {
                 switch (setting.type) {
                     case "slider":
+                        {
+                            const numericValue =
+                                typeof currentValue === "number"
+                                    ? currentValue
+                                    : setting.defaultValue;
                         return (
                             <div className="flex items-center gap-3">
                                 <Slider
-                                    value={[currentValue]}
+                                    value={[numericValue]}
                                     onValueChange={([value]) => handleInputChange(value)}
                                     min={setting.min}
                                     max={setting.max}
@@ -80,33 +85,51 @@ export function SettingInput({
                                     className="flex-1"
                                 />
                                 <span className="text-sm min-w-[3rem] text-right">
-                                    {currentValue}
+                                    {numericValue}
                                     {setting.unit || ""}
                                 </span>
                             </div>
                         );
+                        }
 
                     case "colorPicker":
+                        {
+                            const colorValue =
+                                typeof currentValue === "string"
+                                    ? currentValue
+                                    : setting.defaultValue;
                         return (
                             <ColorPicker
-                                value={currentValue}
+                                value={colorValue}
                                 onChange={handleInputChange}
                             />
                         );
+                        }
 
                     case "toggle":
+                        {
+                            const toggleValue =
+                                typeof currentValue === "boolean"
+                                    ? currentValue
+                                    : setting.defaultValue;
                         return (
                             <div className="flex flex-row items-center justify-between space-y-0 py-2">
                                 <Switch
-                                    checked={currentValue}
+                                    checked={toggleValue}
                                     onCheckedChange={handleInputChange}
                                 />
                             </div>
                         );
+                        }
 
                     case "select":
+                        {
+                            const selectValue =
+                                typeof currentValue === "string"
+                                    ? currentValue
+                                    : setting.defaultValue;
                         return (
-                            <Select value={currentValue} onValueChange={handleInputChange}>
+                            <Select value={selectValue} onValueChange={handleInputChange}>
                                 <SelectTrigger className="w-full">
                                     <SelectValue />
                                 </SelectTrigger>
@@ -119,17 +142,24 @@ export function SettingInput({
                                 </SelectContent>
                             </Select>
                         );
+                        }
 
                     case "text":
+                        {
+                            const textValue =
+                                typeof currentValue === "string"
+                                    ? currentValue
+                                    : setting.defaultValue;
                         return (
                             <Input
                                 type="text"
-                                value={currentValue}
+                                value={textValue}
                                 onChange={(e) => handleInputChange(e.target.value)}
                                 placeholder={setting.placeholder}
                                 className="w-full"
                             />
                         );
+                        }
 
                     default:
                         return null;

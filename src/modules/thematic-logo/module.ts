@@ -17,8 +17,8 @@ import independenceDayUaDarkFull from "@/assets/thematic-logos/ukraine/logo-dark
 interface ThematicEvent {
 	id: string;
 	name: string;
-	startDate: { month: number; day: number };
-	endDate: { month: number; day: number };
+	startDate?: { month: number; day: number };
+	endDate?: { month: number; day: number };
 
 	lightLogoFull: string;
 	darkLogoFull: string;
@@ -127,6 +127,7 @@ const ThematicLogoModule: ForgeModuleDef = {
 		const currentDay = now.getDate();
 
 		const isCurrentDateWithinRange = (event: ThematicEvent): boolean => {
+			if (!event.startDate || !event.endDate) return false;
 			const currentNumericalDate = currentMonth * 100 + currentDay;
 			const startNumericalDate =
 				event.startDate.month * 100 + event.startDate.day;

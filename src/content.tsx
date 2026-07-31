@@ -22,7 +22,6 @@ import {
 	getModuleExitAnimation,
 	MODULE_ANIMATION_DURATION_MS,
 } from "@/components/ui/module-animation";
-// @ts-expect-error - Vite transforms ?inline imports into the compiled stylesheet string.
 import extensionStyles from "@/index.css?inline";
 
 const moduleImports = import.meta.glob<{ default: ForgeModuleDef }>(

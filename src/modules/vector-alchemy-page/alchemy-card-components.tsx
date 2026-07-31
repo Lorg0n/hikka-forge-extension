@@ -1,4 +1,3 @@
-import React from "react";
 import { Icon } from "@iconify/react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { Button } from "@/components/ui/button";
@@ -93,7 +92,7 @@ export function BoardCardView({
                   : "border-border/80 hover:border-white/80 hover:shadow-[0_0_22px_rgba(255,255,255,.16)]"
       }`}
       style={{ left: card.x, top: card.y }}
-      title="Подвійний клік змінює знак інгредієнта"
+      title="Alt + перетягування дублює картку · подвійний клік змінює знак інгредієнта"
     >
       <CardBody card={card} />
       {card.sign < 0 && (

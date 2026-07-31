@@ -2,7 +2,12 @@ import React from "react";
 import { Icon } from "@iconify/react";
 import { Button } from "@/components/ui/button";
 import type { AlchemyCatalogItem, AlchemyElement } from "@/services/alchemyService";
-import type { BoardCard, PaletteObject, ReactionNotice } from "./alchemy.types";
+import type {
+  BoardCard,
+  InvalidCombination,
+  PaletteObject,
+  ReactionNotice,
+} from "./alchemy.types";
 import { BoardCardView } from "./alchemy-card-components";
 import { AlchemyIngredientDock } from "./AlchemyIngredientDock";
 
@@ -37,7 +42,7 @@ export function AlchemyBoard({
   deleteZoneDrop: { setNodeRef: (node: HTMLElement | null) => void; isOver: boolean };
   activeDragSource: "board" | "palette" | "catalog" | null;
   deleteCandidate: boolean;
-  invalidCombination: { targetInstanceId: string } | null;
+  invalidCombination: InvalidCombination | null;
   cards: BoardCard[];
   activeCard: BoardCard | null;
   pan: { x: number; y: number };
@@ -61,7 +66,8 @@ export function AlchemyBoard({
     <section
       ref={(node) => {
         if (viewportRef) {
-          (viewportRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+          (viewportRef as React.MutableRefObject<HTMLDivElement | null>).current =
+            node as HTMLDivElement | null;
         }
         boardDrop.setNodeRef(node);
       }}

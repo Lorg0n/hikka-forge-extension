@@ -17,7 +17,7 @@ import {
   type AlchemyElement,
 } from "@/services/alchemyService";
 import type { PaletteObject, Recipe, RecipeIngredient } from "./alchemy.types";
-import { catalogSuggestionItems } from "./alchemy.admin";
+import { catalogSuggestionItems, ingredientsToExpression } from "./alchemy.admin";
 import { typeIcon } from "./alchemy.icons";
 
 function HighlightedExpression({ value }: { value: string }) {

@@ -87,13 +87,6 @@ export function AlchemyBoard({
         onClearDiscovered={onClearDiscovered}
       />
       <div className="absolute inset-0 opacity-45 [background-image:radial-gradient(var(--border)_1px,transparent_1px)] [background-size:26px_26px]" />
-      <div className="pointer-events-none absolute bottom-3 left-1/2 z-10 hidden -translate-x-1/2 rounded-xl border border-border/60 bg-background/75 px-3 py-2 text-center text-xs text-muted-foreground backdrop-blur sm:block">
-        {boardDrop.isOver ? (
-          <span className="font-medium text-violet-400">Відпустіть, щоб додати</span>
-        ) : (
-          "Тягніть фон — рух · колесо — масштаб"
-        )}
-      </div>
       <div className="absolute right-2 top-2 z-10 flex items-center gap-0.5 rounded-xl border bg-background/80 p-1 backdrop-blur sm:right-3 sm:top-3 sm:gap-1">
         <Button
           size="icon-xs"

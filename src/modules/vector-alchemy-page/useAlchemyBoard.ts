@@ -182,23 +182,6 @@ export function useAlchemyBoard({
     });
   }, [cards]);
 
-  useEffect(() => {
-    const viewport = viewportRef.current;
-    if (!viewport) return;
-    const handleWheel = (event: WheelEvent) => {
-      if ((event.target as HTMLElement).closest("[data-ingredient-dock]")) return;
-      event.preventDefault();
-      const rect = viewport.getBoundingClientRect();
-      const current = viewRef.current;
-      zoomAt(current.zoom * (event.deltaY < 0 ? 1.12 : 0.9), {
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top,
-      });
-    };
-    viewport.addEventListener("wheel", handleWheel, { passive: false });
-    return () => viewport.removeEventListener("wheel", handleWheel);
-  }, [zoomAt]);
-
   const craft = useCallback(
     async (first: BoardCard, second: BoardCard, x: number, y: number, consumedIds: string[]) => {
       const ingredients = asCraftIngredients(first, second);

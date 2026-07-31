@@ -276,9 +276,6 @@ const VectorAlchemyPageComponent: React.FC = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <div className="hidden rounded-full border bg-card px-3 py-1.5 text-xs text-muted-foreground sm:block">
-                {board.crafting ? "Шукаємо реакцію…" : "Двічі клікніть картку, щоб змінити знак"}
-              </div>
               {isAdmin && (
                 <Button
                   size="sm"

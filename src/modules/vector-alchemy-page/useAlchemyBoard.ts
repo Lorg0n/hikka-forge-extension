@@ -27,6 +27,7 @@ import {
   isInvalidCombination,
   mergeAlchemyHistory,
   paletteFromCatalog,
+  paletteFromResult,
 } from "./alchemy.utils";
 import {
   CARD_HEIGHT,
@@ -201,6 +202,9 @@ export function useAlchemyBoard({
   const craft = useCallback(
     async (first: BoardCard, second: BoardCard, x: number, y: number, consumedIds: string[]) => {
       const ingredients = asCraftIngredients(first, second);
+      const consumedCards = [first, second].filter((card) =>
+        consumedIds.includes(card.instanceId),
+      );
       setCards((current) => current.filter((card) => !consumedIds.includes(card.instanceId)));
       setReactionNotice({ x, y, label: `${first.title} + ${second.title}` });
       setCrafting(true);
@@ -213,6 +217,8 @@ export function useAlchemyBoard({
         setLastRecipe({ ingredients, label: `${first.title} + ${second.title}` });
         if (response.content.length) {
           const chosen = response.content[0];
+          const discovered = paletteFromResult(chosen);
+          addToPalette(discovered);
           setCards((current) => [
             ...current,
             cardFromResult(
@@ -224,17 +230,31 @@ export function useAlchemyBoard({
               ]),
             ),
           ]);
+        } else {
+          setCards((current) => [
+            ...current,
+            ...consumedCards.filter(
+              (card) => !current.some((existing) => existing.instanceId === card.instanceId),
+            ),
+          ]);
+          setError("Реакція не дала нового інгредієнта.");
         }
         setReactionNotice(null);
-        setError("");
+        if (response.content.length) setError("");
       } catch (error) {
+        setCards((current) => [
+          ...current,
+          ...consumedCards.filter(
+            (card) => !current.some((existing) => existing.instanceId === card.instanceId),
+          ),
+        ]);
         setError(briefAlchemyError(error, "Алхімічна реакція не вдалася."));
         setReactionNotice(null);
       } finally {
         setCrafting(false);
       }
     },
-    [setError],
+    [addToPalette, setError],
   );
 
   const getDropClientPoint = (event: DragEndEvent) => {

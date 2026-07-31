@@ -8,6 +8,8 @@ import type {
 } from "@/services/alchemyService";
 import type { BoardCard, PaletteObject } from "./alchemy.types";
 
+const ALCHEMY_DISCOVERIES_STORAGE_KEY = "hikka-forge:alchemy:discoveries";
+
 const makeId = () => crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
 
 export const asIngredient = (card: BoardCard): AlchemyIngredient =>
@@ -68,6 +70,7 @@ export const paletteFromElement = (element: AlchemyElement): PaletteObject => ({
   id: element.id,
   paletteId: `element:${element.id}`,
   type: "element",
+  origin: "basic",
   sourceId: element.id,
   title: element.name,
   subtitle: element.description,
@@ -78,6 +81,7 @@ export const paletteFromResult = (result: AlchemyResult): PaletteObject => ({
   id: result.slug,
   paletteId: `${result.contentType}:${result.slug}`,
   type: result.contentType,
+  origin: "discovered",
   sourceId: result.slug,
   title: result.title,
   subtitle: [result.year, result.mediaType].filter(Boolean).join(" • "),
@@ -102,6 +106,7 @@ export const paletteFromCatalog = (
   id: item.slug,
   paletteId: `${item.type}:${item.slug}`,
   type: item.type,
+  origin: "catalog",
   sourceId: item.slug,
   title: item.titleEn || item.titleNative || item.slug,
   subtitle: [item.year, item.mediaType].filter(Boolean).join(" • "),
@@ -121,3 +126,69 @@ export const cardFromResult = (
   y: number,
   history = historyForPaletteItem(paletteFromResult(result)),
 ): BoardCard => cardFromPalette(paletteFromResult(result), x, y, history);
+
+export function loadAlchemyDiscoveries(): PaletteObject[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const value: unknown = JSON.parse(
+      window.sessionStorage.getItem(ALCHEMY_DISCOVERIES_STORAGE_KEY) || "[]",
+    );
+    if (!Array.isArray(value)) return [];
+    const discoveries = value.flatMap((item): PaletteObject[] => {
+      if (!item || typeof item !== "object") return [];
+      const candidate = item as Partial<PaletteObject>;
+      if (
+        (candidate.type !== "anime" && candidate.type !== "manga") ||
+        typeof candidate.sourceId !== "string" ||
+        typeof candidate.title !== "string"
+      ) {
+        return [];
+      }
+      const slug = candidate.sourceId;
+      return [{
+        id: slug,
+        paletteId: `${candidate.type}:${slug}`,
+        type: candidate.type,
+        origin: "discovered",
+        sourceId: slug,
+        title: candidate.title,
+        subtitle: typeof candidate.subtitle === "string" ? candidate.subtitle : null,
+        imageUrl: typeof candidate.imageUrl === "string" ? candidate.imageUrl : null,
+      }];
+    });
+    return Array.from(
+      new Map(discoveries.map((item) => [item.paletteId, item])).values(),
+    );
+  } catch {
+    return [];
+  }
+}
+
+export function saveAlchemyDiscoveries(items: PaletteObject[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(
+      ALCHEMY_DISCOVERIES_STORAGE_KEY,
+      JSON.stringify(
+        items
+          .filter(
+            (item) =>
+              item.origin === "discovered" &&
+              (item.type === "anime" || item.type === "manga"),
+          )
+          .map(({ id, paletteId, type, origin, sourceId, title, subtitle, imageUrl }) => ({
+            id,
+            paletteId,
+            type,
+            origin,
+            sourceId,
+            title,
+            subtitle,
+            imageUrl,
+          })),
+      ),
+    );
+  } catch {
+    // Session storage can be unavailable in restricted browser contexts.
+  }
+}

@@ -3,15 +3,11 @@ import { Icon } from "@iconify/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import type {
-  AlchemyCatalogItem,
-  AlchemyElement,
-} from "@/services/alchemyService";
+import type { AlchemyCatalogItem } from "@/services/alchemyService";
 import type { PaletteObject } from "./alchemy.types";
 import { CatalogItem, PaletteItem } from "./alchemy-card-components";
 
 export function AlchemyIngredientDock({
-  elements,
   palette,
   query,
   onQuery,
@@ -19,7 +15,6 @@ export function AlchemyIngredientDock({
   catalogSearching,
   onRemove,
 }: {
-  elements: AlchemyElement[];
   palette: PaletteObject[];
   query: string;
   onQuery: (value: string) => void;
@@ -95,7 +90,7 @@ export function AlchemyIngredientDock({
           <p className="text-[11px] leading-4 text-muted-foreground">Перетягніть на мапу</p>
         </div>
         <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-          {elements.length}
+          {palette.length}
         </span>
       </Button>
       {open && <div className="flex min-h-0 flex-1 flex-col overflow-hidden">

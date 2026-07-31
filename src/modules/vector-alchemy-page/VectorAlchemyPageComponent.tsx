@@ -57,11 +57,16 @@ const VectorAlchemyPageComponent: React.FC = () => {
 
   const addToPalette = useCallback(
     (item: PaletteObject) =>
-      setPalette((current) =>
-        current.some((existing) => existing.paletteId === item.paletteId)
-          ? current
-          : [...current, item],
-      ),
+      setPalette((current) => {
+        const existing = current.find((entry) => entry.paletteId === item.paletteId);
+        if (!existing) return [...current, item];
+        if (item.origin !== "discovered" || existing.origin === "discovered") {
+          return current;
+        }
+        return current.map((entry) =>
+          entry.paletteId === item.paletteId ? { ...entry, ...item } : entry,
+        );
+      }),
     [setPalette],
   );
   const removeFromPalette = useCallback(
@@ -328,7 +333,6 @@ const VectorAlchemyPageComponent: React.FC = () => {
               pan={board.pan}
               zoom={board.zoom}
               reactionNotice={board.reactionNotice}
-              elements={elements}
               palette={palette}
               ingredientQuery={catalogQuery}
               catalogResults={catalogResults}

@@ -1,7 +1,7 @@
 import React from "react";
 import { Icon } from "@iconify/react";
 import { Button } from "@/components/ui/button";
-import type { AlchemyCatalogItem, AlchemyElement } from "@/services/alchemyService";
+import type { AlchemyCatalogItem } from "@/services/alchemyService";
 import type {
   BoardCard,
   InvalidCombination,
@@ -23,7 +23,6 @@ export function AlchemyBoard({
   pan,
   zoom,
   reactionNotice,
-  elements,
   palette,
   ingredientQuery,
   catalogResults,
@@ -48,7 +47,6 @@ export function AlchemyBoard({
   pan: { x: number; y: number };
   zoom: number;
   reactionNotice: ReactionNotice | null;
-  elements: AlchemyElement[];
   palette: PaletteObject[];
   ingredientQuery: string;
   catalogResults: AlchemyCatalogItem[];
@@ -78,7 +76,6 @@ export function AlchemyBoard({
       onPointerCancel={onPointerStop}
     >
       <AlchemyIngredientDock
-        elements={elements}
         palette={palette}
         query={ingredientQuery}
         onQuery={onIngredientQuery}

@@ -5,10 +5,13 @@ import type {
   AlchemySourceType,
 } from "@/services/alchemyService";
 
+export type PaletteOrigin = "basic" | "catalog" | "discovered";
+
 export type PaletteObject = {
   id: string | number;
   paletteId: string;
   type: AlchemySourceType;
+  origin?: PaletteOrigin;
   sourceId: number | string;
   title: string;
   subtitle?: string | null;

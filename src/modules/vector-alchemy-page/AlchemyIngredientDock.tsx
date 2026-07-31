@@ -3,6 +3,17 @@ import { Icon } from "@iconify/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import type { AlchemyCatalogItem } from "@/services/alchemyService";
 import type { PaletteObject } from "./alchemy.types";
 import { CatalogItem, PaletteItem } from "./alchemy-card-components";
@@ -14,6 +25,7 @@ export function AlchemyIngredientDock({
   catalogResults,
   catalogSearching,
   onRemove,
+  onClearDiscovered,
 }: {
   palette: PaletteObject[];
   query: string;
@@ -21,6 +33,7 @@ export function AlchemyIngredientDock({
   catalogResults: AlchemyCatalogItem[];
   catalogSearching: boolean;
   onRemove: (id: string) => void;
+  onClearDiscovered: () => void;
 }) {
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== "undefined" &&
@@ -30,6 +43,7 @@ export function AlchemyIngredientDock({
     !(typeof window !== "undefined" &&
       window.matchMedia("(max-width: 767px)").matches),
   );
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 767px)");
@@ -50,6 +64,7 @@ export function AlchemyIngredientDock({
   const basicElements = filtered.filter((item) => item.type === "element");
   const otherIngredients = filtered.filter((item) => item.type !== "element");
   const basicElementsExpanded = basicElementsOpen;
+  const discoveredCount = palette.filter((item) => item.origin === "discovered").length;
   const showCatalog = query.trim().length >= 2;
   const toggleLabel = open ? "Згорнути інгредієнти" : "Розгорнути інгредієнти";
   const toggleIcon = isMobile
@@ -65,49 +80,89 @@ export function AlchemyIngredientDock({
       data-ingredient-dock
       className={`surface absolute left-3 z-30 flex flex-col overflow-hidden rounded-2xl border shadow-2xl shadow-black/20 backdrop-blur-md ${isMobile ? "right-3 bottom-3" : "top-3"} ${open ? "max-h-[58%] w-[calc(100%-1.5rem)] p-2.5 md:bottom-3 md:right-auto md:max-h-none md:w-64" : "w-[calc(100%-1.5rem)] p-2.5 md:bottom-auto md:w-64"}`}
     >
-      <Button
-        type="button"
-        variant="ghost"
-        className="h-10 min-h-10 w-full shrink-0 justify-start rounded-xl px-1.5 py-0 text-left transition-none hover:bg-transparent"
-        onClick={() => setOpen((value) => !value)}
-        aria-expanded={open}
-        aria-controls="alchemy-ingredient-list"
-        aria-label={toggleLabel}
-      >
-        <span className="flex size-8 shrink-0 items-center justify-center text-muted-foreground">
-          <Icon
-            icon={toggleIcon}
-          />
-        </span>
-        <span className="flex size-8 items-center justify-center rounded-lg bg-violet-500/12 text-violet-400">
-          <Icon icon="material-symbols:inventory-2-outline" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold leading-4">Інгредієнти</p>
-          <p className="text-[11px] leading-4 text-muted-foreground">Перетягніть на мапу</p>
-        </div>
-        <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-          {palette.length}
-        </span>
-      </Button>
-      {open && <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="relative mt-3 shrink-0">
-          <Icon
-            icon="material-symbols:search"
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-          />
-          <Input
-            value={query}
-            onChange={(event) => onQuery(event.target.value)}
-            placeholder="Знайти елемент, аніме або манґу…"
-            className="h-10 rounded-xl pl-9 pr-9"
-            aria-label="Пошук інгредієнтів"
-          />
-          {catalogSearching && (
+      <div className="flex w-full items-center gap-1">
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-10 min-h-10 min-w-0 flex-1 shrink-0 justify-start rounded-xl px-1.5 py-0 text-left transition-none hover:bg-transparent"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          aria-controls="alchemy-ingredient-list"
+          aria-label={toggleLabel}
+        >
+          <span className="flex size-8 shrink-0 items-center justify-center text-muted-foreground">
             <Icon
-              icon="svg-spinners:90-ring-with-bg"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-violet-400"
+              icon={toggleIcon}
             />
+          </span>
+          <span className="flex size-8 items-center justify-center rounded-lg bg-violet-500/12 text-violet-400">
+            <Icon icon="material-symbols:inventory-2-outline" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold leading-4">Інгредієнти</p>
+            <p className="text-[11px] leading-4 text-muted-foreground">Перетягніть на мапу</p>
+          </div>
+          <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+            {palette.length}
+          </span>
+        </Button>
+      </div>
+      {open && <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="mt-3 flex shrink-0 gap-1.5">
+          <div className="relative min-w-0 flex-1">
+            <Icon
+              icon="material-symbols:search"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            />
+            <Input
+              value={query}
+              onChange={(event) => onQuery(event.target.value)}
+              placeholder="Знайти елемент, аніме або манґу…"
+              className="h-10 rounded-xl pl-9 pr-9"
+              aria-label="Пошук інгредієнтів"
+            />
+            {catalogSearching && (
+              <Icon
+                icon="svg-spinners:90-ring-with-bg"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-violet-400"
+              />
+            )}
+          </div>
+          {discoveredCount > 0 && (
+            <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  className="size-10 shrink-0 text-muted-foreground hover:border-red-400/50 hover:text-red-300"
+                  title="Очистити відкриті інгредієнти"
+                  aria-label="Очистити відкриті інгредієнти"
+                >
+                  <Icon icon="lucide:trash-2" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Очистити відкриті інгредієнти?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Усі відкриті аніме та манґа будуть видалені з панелі, мапи й поточної сесії. Цю дію неможливо скасувати.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Скасувати</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={() => {
+                      onClearDiscovered();
+                      setClearDialogOpen(false);
+                    }}
+                  >
+                    Очистити
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
         </div>
         <div id="alchemy-ingredient-list" className="mt-3 min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">

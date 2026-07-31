@@ -29,6 +29,7 @@ export function AlchemyBoard({
   catalogSearching,
   onIngredientQuery,
   onRemovePalette,
+  onClearDiscovered,
   onZoom,
   onFit,
   onToggleSign,
@@ -53,6 +54,7 @@ export function AlchemyBoard({
   catalogSearching: boolean;
   onIngredientQuery: (value: string) => void;
   onRemovePalette: (id: string) => void;
+  onClearDiscovered: () => void;
   onZoom: (value: number) => void;
   onFit: () => void;
   onToggleSign: (id: string) => void;
@@ -82,6 +84,7 @@ export function AlchemyBoard({
         catalogResults={catalogResults}
         catalogSearching={catalogSearching}
         onRemove={onRemovePalette}
+        onClearDiscovered={onClearDiscovered}
       />
       <div className="absolute inset-0 opacity-45 [background-image:radial-gradient(var(--border)_1px,transparent_1px)] [background-size:26px_26px]" />
       <div className="pointer-events-none absolute bottom-3 left-1/2 z-10 hidden -translate-x-1/2 rounded-xl border border-border/60 bg-background/75 px-3 py-2 text-center text-xs text-muted-foreground backdrop-blur sm:block">

@@ -92,6 +92,11 @@ const VectorAlchemyPageComponent: React.FC = () => {
     addToPalette,
     clearCatalog,
   });
+  const { clearDiscoveredCards } = board;
+  const clearDiscoveredIngredients = useCallback(() => {
+    setPalette((current) => current.filter((item) => item.origin !== "discovered"));
+    clearDiscoveredCards();
+  }, [clearDiscoveredCards, setPalette]);
 
   const prepareCreate = useCallback(() => {
     setAdminElement(null);
@@ -339,6 +344,7 @@ const VectorAlchemyPageComponent: React.FC = () => {
               catalogSearching={catalogSearching}
               onIngredientQuery={onIngredientQuery}
               onRemovePalette={removeFromPalette}
+              onClearDiscovered={clearDiscoveredIngredients}
               onZoom={board.zoomAt}
               onFit={board.fitCards}
               onToggleSign={board.toggleCardSign}

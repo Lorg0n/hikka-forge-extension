@@ -494,6 +494,10 @@ export function useAlchemyBoard({
     );
   };
 
+  const clearDiscoveredCards = useCallback(() => {
+    setCards((current) => current.filter((card) => card.origin !== "discovered"));
+  }, []);
+
   const onBoardPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (
       (event.target as HTMLElement).closest(
@@ -549,5 +553,6 @@ export function useAlchemyBoard({
     onDragMove,
     toggleCardSign,
     removeCardsForElement,
+    clearDiscoveredCards,
   };
 }

@@ -143,7 +143,7 @@ export function PaletteItem({
         <span className="block truncate text-sm font-medium">{item.title}</span>
         <span className="block truncate text-[11px] text-muted-foreground">
           {item.origin === "discovered"
-            ? `Відкритий інгредієнт${item.subtitle ? ` • ${item.subtitle}` : ""}`
+            ? item.type === "anime" ? "Аніме" : "Манґа"
             : item.subtitle || "Елемент"}
         </span>
       </span>

@@ -47,9 +47,6 @@ export function AlchemyIngredientDock({
     );
   }, [palette, query]);
   const [basicElementsOpen, setBasicElementsOpen] = useState(false);
-  useEffect(() => {
-    if (query.trim()) setBasicElementsOpen(true);
-  }, [query]);
   const basicElements = filtered.filter((item) => item.type === "element");
   const otherIngredients = filtered.filter((item) => item.type !== "element");
   const basicElementsExpanded = basicElementsOpen;

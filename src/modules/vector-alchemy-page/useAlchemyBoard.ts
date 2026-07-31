@@ -402,7 +402,13 @@ export function useAlchemyBoard({
           client.y >= rect.top &&
           client.y <= rect.bottom,
       );
-    const point = toBoardPoint(event);
+    const point =
+      data.source === "board" && dragged
+        ? {
+            x: Math.max(0, dragged.x + event.delta.x / zoom),
+            y: Math.max(0, dragged.y + event.delta.y / zoom),
+          }
+        : toBoardPoint(event);
     const activeRect = event.active.rect.current.translated;
     const deleteRect = deleteZoneDrop.rect.current;
     const viewportRect = viewportRef.current?.getBoundingClientRect();

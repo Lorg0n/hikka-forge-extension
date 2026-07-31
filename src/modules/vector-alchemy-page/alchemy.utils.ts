@@ -48,7 +48,7 @@ export const asCraftIngredients = (
     asIngredient(second),
   ].map((ingredient, index) => {
     const card = index === 0 ? first : second;
-    const weight = isContentCard(card) ? 0.8 : 0.25;
+    const weight = isContentCard(card) ? 0.7 : 0.3;
     return { ...ingredient, weight: card.sign * weight };
   }) as [AlchemyIngredient, AlchemyIngredient];
 };

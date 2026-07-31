@@ -55,7 +55,12 @@ export class AuthService {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            return await response.json();
+            const profile = await response.json() as UserProfile;
+
+            return {
+                ...profile,
+                roles: Array.isArray(profile.roles) ? profile.roles : [],
+            };
         } catch (error) {
             logger.error('Failed to fetch user profile:', error);
             return null;

@@ -30,7 +30,7 @@ import { CardBody } from "./alchemy-card-components";
 
 const VectorAlchemyPageComponent: React.FC = () => {
   const { user, isLoading: authLoading } = useAuth();
-  const isAdmin = Boolean(user?.roles.includes("ADMIN"));
+  const isAdmin = Boolean(user?.roles?.includes("ADMIN"));
   const [error, setError] = useState<string | null>(null);
   const setCatalogError = useCallback((message: string) => setError(message), []);
   const { elements, setElements, palette, setPalette, isLoading: loading } =

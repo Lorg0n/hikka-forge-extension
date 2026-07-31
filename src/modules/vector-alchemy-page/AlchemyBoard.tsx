@@ -79,16 +79,16 @@ export function AlchemyBoard({
         onRemove={onRemovePalette}
       />
       <div className="absolute inset-0 opacity-45 [background-image:radial-gradient(var(--border)_1px,transparent_1px)] [background-size:26px_26px]" />
-      <div className="pointer-events-none absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-xl border border-border/60 bg-background/75 px-3 py-2 text-center text-xs text-muted-foreground backdrop-blur">
+      <div className="pointer-events-none absolute bottom-3 left-1/2 z-10 hidden -translate-x-1/2 rounded-xl border border-border/60 bg-background/75 px-3 py-2 text-center text-xs text-muted-foreground backdrop-blur sm:block">
         {boardDrop.isOver ? (
           <span className="font-medium text-violet-400">Відпустіть, щоб додати</span>
         ) : (
           "Тягніть фон — рух · колесо — масштаб"
         )}
       </div>
-      <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-xl border bg-background/80 p-1 backdrop-blur">
+      <div className="absolute right-2 top-2 z-10 flex items-center gap-0.5 rounded-xl border bg-background/80 p-1 backdrop-blur sm:right-3 sm:top-3 sm:gap-1">
         <Button
-          size="icon-sm"
+          size="icon-xs"
           variant="ghost"
           onClick={() => onZoom(zoom * 1.2)}
           title="Збільшити"
@@ -96,11 +96,11 @@ export function AlchemyBoard({
         >
           <Icon icon="material-symbols:add" />
         </Button>
-        <span className="min-w-10 text-center text-[11px] text-muted-foreground">
+        <span className="min-w-9 text-center text-[10px] text-muted-foreground sm:min-w-10 sm:text-[11px]">
           {Math.round(zoom * 100)}%
         </span>
         <Button
-          size="icon-sm"
+          size="icon-xs"
           variant="ghost"
           onClick={() => onZoom(zoom * 0.8)}
           title="Зменшити"
@@ -109,7 +109,7 @@ export function AlchemyBoard({
           <Icon icon="material-symbols:remove" />
         </Button>
         <Button
-          size="icon-sm"
+          size="icon-xs"
           variant="ghost"
           onClick={onFit}
           title="Вмістити картки"
@@ -124,7 +124,7 @@ export function AlchemyBoard({
           data-alchemy-delete-zone
           role="button"
           aria-label="Видалити картку"
-          className={`absolute bottom-3 right-3 z-20 flex h-16 w-44 items-center justify-center gap-2 rounded-xl border-2 border-dashed px-3 text-sm font-medium shadow-xl backdrop-blur transition-colors ${deleteCandidate || deleteZoneDrop.isOver ? "border-red-300 bg-red-500/30 text-red-100 ring-2 ring-red-400/50" : "border-red-400/60 bg-background/85 text-red-300"}`}
+          className={`absolute bottom-3 right-3 z-40 flex h-14 w-[min(11rem,calc(100%-1.5rem))] items-center justify-center gap-2 rounded-xl border-2 border-dashed px-3 text-center text-xs font-medium shadow-xl backdrop-blur transition-colors sm:h-16 sm:text-sm ${deleteCandidate || deleteZoneDrop.isOver ? "border-red-300 bg-red-500/30 text-red-100 ring-2 ring-red-400/50" : "border-red-400/60 bg-background/85 text-red-300"}`}
         >
           <Icon icon="material-symbols:delete-outline" />
           {deleteCandidate || deleteZoneDrop.isOver ? "Відпустіть для видалення" : "Видалити картку"}

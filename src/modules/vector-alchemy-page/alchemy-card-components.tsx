@@ -49,10 +49,14 @@ export function CardBody({ card }: { card: BoardCard }) {
 export function BoardCardView({
   card,
   draggingSign,
+  invalidDropTarget = false,
+  invalidDropSource = false,
   onToggleSign,
 }: {
   card: BoardCard;
   draggingSign?: 1 | -1;
+  invalidDropTarget?: boolean;
+  invalidDropSource?: boolean;
   onToggleSign: (id: string) => void;
 }) {
   const draggable = useDraggable({
@@ -76,15 +80,17 @@ export function BoardCardView({
       {...draggable.listeners}
       {...draggable.attributes}
       className={`absolute z-[1] flex h-[112px] w-[220px] cursor-grab touch-none select-none gap-2.5 overflow-hidden rounded-xl border bg-card/95 p-2.5 shadow-xl backdrop-blur transition-[box-shadow,border-color] active:cursor-grabbing ${
-        draggable.isDragging
+        draggable.isDragging || invalidDropSource
           ? "opacity-0"
-          : droppable.isOver && draggingSign === -1
-            ? "z-[3] border-2 border-red-400 ring-2 ring-red-400/45 shadow-[0_0_0_4px_rgba(248,113,113,.12),0_0_28px_rgba(248,113,113,.45)]"
-            : droppable.isOver && draggingSign === 1
-              ? "z-[3] border-2 border-white ring-2 ring-white/35 shadow-[0_0_0_4px_rgba(255,255,255,.1),0_0_26px_rgba(255,255,255,.22)]"
-              : card.sign < 0
-                ? "border-red-400/80 shadow-[0_0_20px_rgba(248,113,113,.2)] hover:border-red-300"
-                : "border-border/80 hover:border-white/80 hover:shadow-[0_0_22px_rgba(255,255,255,.16)]"
+          : invalidDropTarget
+            ? "z-[3] animate-[hikka-alchemy-invalid-pulse_1s_ease-in-out_infinite] border-2 border-yellow-300 ring-2 ring-yellow-300/70 shadow-[0_0_0_4px_rgba(250,204,21,.14),0_0_28px_rgba(250,204,21,.5)]"
+            : droppable.isOver && draggingSign === -1
+              ? "z-[3] border-2 border-red-400 ring-2 ring-red-400/45 shadow-[0_0_0_4px_rgba(248,113,113,.12),0_0_28px_rgba(248,113,113,.45)]"
+              : droppable.isOver && draggingSign === 1
+                ? "z-[3] border-2 border-white ring-2 ring-white/35 shadow-[0_0_0_4px_rgba(255,255,255,.1),0_0_26px_rgba(255,255,255,.22)]"
+                : card.sign < 0
+                  ? "border-red-400/80 shadow-[0_0_20px_rgba(248,113,113,.2)] hover:border-red-300"
+                  : "border-border/80 hover:border-white/80 hover:shadow-[0_0_22px_rgba(255,255,255,.16)]"
       }`}
       style={{ left: card.x, top: card.y }}
       title="Подвійний клік змінює знак інгредієнта"

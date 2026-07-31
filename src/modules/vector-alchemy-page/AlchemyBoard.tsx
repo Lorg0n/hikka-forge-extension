@@ -12,6 +12,7 @@ export function AlchemyBoard({
   deleteZoneDrop,
   activeDragSource,
   deleteCandidate,
+  invalidCombination,
   cards,
   activeCard,
   pan,
@@ -36,6 +37,7 @@ export function AlchemyBoard({
   deleteZoneDrop: { setNodeRef: (node: HTMLElement | null) => void; isOver: boolean };
   activeDragSource: "board" | "palette" | "catalog" | null;
   deleteCandidate: boolean;
+  invalidCombination: { targetInstanceId: string } | null;
   cards: BoardCard[];
   activeCard: BoardCard | null;
   pan: { x: number; y: number };
@@ -142,6 +144,8 @@ export function AlchemyBoard({
             key={card.instanceId}
             card={card}
             draggingSign={activeCard?.sign}
+            invalidDropTarget={invalidCombination?.targetInstanceId === card.instanceId}
+            invalidDropSource={invalidCombination?.draggedInstanceId === card.instanceId}
             onToggleSign={onToggleSign}
           />
         ))}

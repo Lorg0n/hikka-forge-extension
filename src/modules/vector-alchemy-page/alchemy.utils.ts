@@ -51,6 +51,19 @@ export const asCraftIngredients = (
   }) as [AlchemyIngredient, AlchemyIngredient];
 };
 
+export const isInvalidCombination = (
+  first: BoardCard,
+  second: BoardCard,
+): boolean => {
+  const isSameIngredient =
+    first.type === second.type &&
+    String(first.sourceId) === String(second.sourceId);
+
+  if (!isSameIngredient) return false;
+
+  return first.sign !== second.sign || first.type === "element";
+};
+
 export const paletteFromElement = (element: AlchemyElement): PaletteObject => ({
   id: element.id,
   paletteId: `element:${element.id}`,

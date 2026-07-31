@@ -29,6 +29,11 @@ export type RecipeIngredient = PaletteObject & { weight: 1 | -1 };
 
 export type ReactionNotice = { x: number; y: number; label: string };
 
+export type InvalidCombination = {
+  draggedInstanceId?: string;
+  targetInstanceId: string;
+};
+
 export type DragData = {
   source: "board" | "palette" | "catalog";
   card?: BoardCard;

@@ -19,7 +19,10 @@ import {
 } from "./alchemy.recipe";
 import { useAlchemyCatalogSearch } from "./useAlchemyCatalogSearch";
 import { useAlchemyPalette } from "./useAlchemyPalette";
-import { useAlchemyBoard } from "./useAlchemyBoard";
+import {
+  INVALID_DROP_ANIMATION_DURATION,
+  useAlchemyBoard,
+} from "./useAlchemyBoard";
 import { AlchemyAdminWorkspace } from "./AlchemyAdminWorkspace";
 import {
   ingredientsToExpression,
@@ -319,6 +322,7 @@ const VectorAlchemyPageComponent: React.FC = () => {
               deleteZoneDrop={board.deleteZoneDrop}
               activeDragSource={board.activeDragSource}
               deleteCandidate={board.deleteCandidate}
+              invalidCombination={board.invalidCombination}
               cards={board.cards}
               activeCard={board.activeCard}
               pan={board.pan}
@@ -341,10 +345,19 @@ const VectorAlchemyPageComponent: React.FC = () => {
           )}
         </main>
       </ModulePageTransition>
-      <DragOverlay dropAnimation={null}>
+      <DragOverlay
+        dropAnimation={
+          board.invalidDropAnimation
+            ? {
+                duration: INVALID_DROP_ANIMATION_DURATION,
+                easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+              }
+            : null
+        }
+      >
         {board.activeCard && (
           <article
-            className={`pointer-events-none flex h-[112px] w-[220px] gap-2.5 overflow-hidden rounded-xl border-2 p-2.5 opacity-100 shadow-xl ${board.deleteCandidate ? "border-red-300 bg-red-500/25 text-red-50 ring-2 ring-red-400/70 shadow-[0_0_24px_rgba(248,113,113,.55)]" : board.activeCard.sign < 0 ? "bg-card border-red-400 shadow-[0_0_22px_rgba(248,113,113,.35)]" : "bg-card border-white shadow-[0_0_18px_rgba(255,255,255,.22)]"}`}
+            className={`pointer-events-none flex h-[112px] w-[220px] gap-2.5 overflow-hidden rounded-xl border-2 p-2.5 opacity-100 shadow-xl ${board.deleteCandidate ? "border-red-300 bg-red-500/25 text-red-50 ring-2 ring-red-400/70 shadow-[0_0_24px_rgba(248,113,113,.55)]" : board.invalidDropAnimation ? "animate-[hikka-alchemy-invalid-pulse_1s_ease-in-out_infinite] border-yellow-300 bg-yellow-400/15 text-yellow-50 ring-2 ring-yellow-300/70 shadow-[0_0_24px_rgba(250,204,21,.55)]" : board.activeCard.sign < 0 ? "bg-card border-red-400 shadow-[0_0_22px_rgba(248,113,113,.35)]" : "bg-card border-white shadow-[0_0_18px_rgba(255,255,255,.22)]"}`}
           >
             <CardBody card={board.activeCard} />
           </article>

@@ -15,6 +15,7 @@ import {
 import type {
   BoardCard,
   DragData,
+  InvalidCombination,
   PaletteObject,
   ReactionNotice,
   Recipe,
@@ -23,6 +24,7 @@ import {
   asCraftIngredients,
   cardFromPalette,
   cardFromResult,
+  isInvalidCombination,
   mergeAlchemyHistory,
   paletteFromCatalog,
 } from "./alchemy.utils";
@@ -35,6 +37,7 @@ import {
 
 type BoardPoint = { x: number; y: number };
 const DELETE_ZONE_PADDING = 24;
+export const INVALID_DROP_ANIMATION_DURATION = 240;
 
 const rectsTouch = (
   first: Pick<DOMRect, "left" | "right" | "top" | "bottom">,
@@ -79,9 +82,25 @@ export function useAlchemyBoard({
   const [crafting, setCrafting] = useState(false);
   const [reactionNotice, setReactionNotice] = useState<ReactionNotice | null>(null);
   const [lastRecipe, setLastRecipe] = useState<Recipe | null>(null);
+  const [invalidCombination, setInvalidCombination] =
+    useState<InvalidCombination | null>(null);
+  const invalidDropTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const panRef = useRef<{ x: number; y: number; clientX: number; clientY: number } | null>(null);
   const viewRef = useRef({ pan, zoom });
   viewRef.current = { pan, zoom };
+
+  const clearDragState = useCallback(() => {
+    if (invalidDropTimer.current) {
+      clearTimeout(invalidDropTimer.current);
+      invalidDropTimer.current = null;
+    }
+    setActiveCard(null);
+    setActiveDragSource(null);
+    setDeleteCandidate(false);
+    setInvalidCombination(null);
+  }, []);
+
+  useEffect(() => () => clearDragState(), [clearDragState]);
 
   const zoomAt = useCallback((requestedZoom: number, focalPoint?: BoardPoint) => {
     const viewport = viewportRef.current;
@@ -211,6 +230,7 @@ export function useAlchemyBoard({
     const data = event.active.data.current as DragData;
     setActiveDragSource(data.source);
     setDeleteCandidate(false);
+    setInvalidCombination(null);
     if (data.card) setActiveCard(data.card);
     else if (data.palette) setActiveCard(cardFromPalette(data.palette, 0, 0));
     else if (data.catalog) {
@@ -220,6 +240,26 @@ export function useAlchemyBoard({
 
   const onDragMove = (event: DragMoveEvent) => {
     const data = event.active.data.current as DragData;
+    const hovered = event.over?.data.current?.card as BoardCard | undefined;
+    const dragged = data.card
+      ? data.card
+      : data.palette
+        ? cardFromPalette(data.palette, 0, 0)
+        : data.catalog
+          ? cardFromPalette(paletteFromCatalog(data.catalog), 0, 0)
+          : null;
+    const targetCard =
+      hovered?.instanceId === data.card?.instanceId ? undefined : hovered;
+
+    setInvalidCombination(
+      dragged && targetCard && isInvalidCombination(dragged, targetCard)
+        ? {
+            draggedInstanceId: data.card?.instanceId,
+            targetInstanceId: targetCard.instanceId,
+          }
+        : null,
+    );
+
     if (data.source !== "board" || !data.card) {
       setDeleteCandidate(false);
       return;
@@ -245,6 +285,17 @@ export function useAlchemyBoard({
     const overId = String(event.over?.id ?? "");
     const hovered = event.over?.data.current?.card as BoardCard | undefined;
     const targetCard = hovered?.instanceId === data.card?.instanceId ? undefined : hovered;
+    const dragged = data.card
+      ? data.card
+      : data.palette
+        ? cardFromPalette(data.palette, 0, 0)
+        : data.catalog
+          ? cardFromPalette(paletteFromCatalog(data.catalog), 0, 0)
+          : null;
+    const invalidTarget =
+      dragged && targetCard && isInvalidCombination(dragged, targetCard)
+        ? targetCard
+        : null;
     const client = getDropClientPoint(event);
     const rect = viewportRef.current?.getBoundingClientRect();
     const isInsideBoard =
@@ -270,9 +321,21 @@ export function useAlchemyBoard({
     const isOutsideBoard = Boolean(
       activeRect && viewportRect && isRectOutside(activeRect, viewportRect),
     );
-    setActiveCard(null);
-    setActiveDragSource(null);
-    setDeleteCandidate(false);
+    if (invalidTarget) {
+      setInvalidCombination({
+        draggedInstanceId: data.card?.instanceId,
+        targetInstanceId: invalidTarget.instanceId,
+      });
+      setActiveDragSource(null);
+      setDeleteCandidate(false);
+      invalidDropTimer.current = setTimeout(() => {
+        invalidDropTimer.current = null;
+        clearDragState();
+      }, INVALID_DROP_ANIMATION_DURATION);
+      return;
+    }
+
+    clearDragState();
 
     if (
       data.source === "board" &&
@@ -382,12 +445,12 @@ export function useAlchemyBoard({
       panRef.current = null;
     },
     clearActiveCard: () => {
-      setActiveCard(null);
-      setActiveDragSource(null);
-      setDeleteCandidate(false);
+      clearDragState();
     },
     activeDragSource,
     deleteCandidate,
+    invalidCombination,
+    invalidDropAnimation: Boolean(invalidCombination && activeCard),
     deleteZoneDrop,
     onDragMove,
     toggleCardSign,

@@ -1,6 +1,23 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@keyframes hikka-alchemy-invalid-pulse {
+  0%,
+  100% {
+    border-color: rgb(250 204 21 / 0.82);
+    box-shadow:
+      0 0 0 4px rgb(250 204 21 / 0.12),
+      0 0 22px rgb(250 204 21 / 0.36);
+  }
+
+  50% {
+    border-color: rgb(254 240 138 / 1);
+    box-shadow:
+      0 0 0 5px rgb(250 204 21 / 0.2),
+      0 0 32px rgb(250 204 21 / 0.62);
+  }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

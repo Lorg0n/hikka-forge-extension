@@ -51,6 +51,13 @@ export function AlchemyIngredientDock({
       `${item.title} ${item.subtitle || ""}`.toLowerCase().includes(value),
     );
   }, [palette, query]);
+  const [basicElementsOpen, setBasicElementsOpen] = useState(false);
+  useEffect(() => {
+    if (query.trim()) setBasicElementsOpen(true);
+  }, [query]);
+  const basicElements = filtered.filter((item) => item.type === "element");
+  const otherIngredients = filtered.filter((item) => item.type !== "element");
+  const basicElementsExpanded = basicElementsOpen;
   const showCatalog = query.trim().length >= 2;
   const toggleLabel = open ? "Згорнути інгредієнти" : "Розгорнути інгредієнти";
   const toggleIcon = isMobile
@@ -127,7 +134,37 @@ export function AlchemyIngredientDock({
             ))
           ) : (
             <>
-              {filtered.map((item) => (
+              {basicElements.length > 0 && (
+                <div className="space-y-1.5">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-8 w-full justify-start rounded-lg px-2 text-xs transition-none hover:bg-accent/60"
+                    onClick={() => setBasicElementsOpen((value) => !value)}
+                    aria-expanded={basicElementsExpanded}
+                    aria-controls="alchemy-basic-elements"
+                  >
+                    <Icon
+                      icon={basicElementsExpanded
+                        ? "material-symbols:keyboard-arrow-down"
+                        : "material-symbols:chevron-right"}
+                      className="text-muted-foreground"
+                    />
+                    <span className="flex-1 text-left font-semibold">Базові елементи</span>
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                      {basicElements.length}
+                    </span>
+                  </Button>
+                  {basicElementsExpanded && (
+                    <div id="alchemy-basic-elements" className="space-y-1.5">
+                      {basicElements.map((item) => (
+                        <PaletteItem key={item.paletteId} item={item} onRemove={onRemove} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {otherIngredients.map((item) => (
                 <PaletteItem key={item.paletteId} item={item} onRemove={onRemove} />
               ))}
               {showCatalog &&

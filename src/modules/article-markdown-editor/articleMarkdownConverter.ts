@@ -88,6 +88,10 @@ function paragraphBlocks(node: MarkdownNode): EditorElementNode[] {
 
 	const flushInline = () => {
 		if (inline.length === 0) return;
+		if (inline.every((child) => textContent(child).trim().length === 0)) {
+			inline = [];
+			return;
+		}
 		result.push(paragraph(inlineNodes(inline)));
 		inline = [];
 	};
@@ -225,11 +229,36 @@ function blockNodes(nodes: MarkdownNode[]): EditorElementNode[] {
 	});
 }
 
+function normalizeFakeMarkdown(markdown: string): string {
+	const lines = markdown.split(/\r?\n/);
+	const normalized: string[] = [];
+
+	for (let index = 0; index < lines.length; index += 1) {
+		const line = lines[index];
+		const nextLine = lines[index + 1];
+		normalized.push(line);
+
+		if (
+			/^ {0,3}>/.test(line) &&
+			nextLine !== undefined &&
+			nextLine.trim().length > 0 &&
+			!/^ {0,3}>/.test(nextLine)
+		) {
+			// CommonMark treats an unprefixed line as a lazy continuation of the
+			// blockquote. Hikka's fake Markdown treats only `>`-prefixed lines as
+			// quoted, so make that boundary explicit for Remark.
+			normalized.push("");
+		}
+	}
+
+	return normalized.join("\n");
+}
+
 export function markdownToPlate(markdown: string): EditorValue {
 	const tree = unified()
 		.use(remarkParse)
 		.use(remarkDirective)
-		.parse(markdown) as MarkdownNode;
+		.parse(normalizeFakeMarkdown(markdown)) as MarkdownNode;
 	const value = blockNodes(tree.children ?? []);
 	return value.length > 0 ? value : [paragraph()];
 }
@@ -241,16 +270,52 @@ function escapeInline(value: string): string {
 const isEditorTextNode = (node: EditorNode): node is EditorTextNode =>
 	"text" in node && typeof node.text === "string";
 
+const textMarksKey = (node: EditorTextNode): string =>
+	`${Boolean(node.bold)}:${Boolean(node.italic)}:${Boolean(node.strikethrough)}`;
+
+function serializeText(node: EditorTextNode): string {
+	const hasMarks = Boolean(node.bold || node.italic || node.strikethrough);
+	if (!hasMarks) return escapeInline(node.text);
+
+	// CommonMark does not recognise emphasis when a closing delimiter is
+	// preceded by whitespace (for example, `**text **`). Plate, however, often
+	// keeps the space typed after a formatted word in the same text leaf. Keep
+	// that whitespace outside the delimiters so converting the result back to
+	// Plate restores the same marked text and the same spacing.
+	const leadingWhitespace = node.text.match(/^\s*/)?.[0] ?? "";
+	const trailingWhitespace = node.text.match(/\s*$/)?.[0] ?? "";
+	const end = node.text.length - trailingWhitespace.length;
+	const content = node.text.slice(leadingWhitespace.length, end);
+
+	if (!content) return escapeInline(node.text);
+
+	let value = escapeInline(content);
+	if (node.bold) value = `**${value}**`;
+	if (node.italic) value = `*${value}*`;
+	if (node.strikethrough) value = `~~${value}~~`;
+	return `${escapeInline(leadingWhitespace)}${value}${escapeInline(trailingWhitespace)}`;
+}
+
 function serializeInline(nodes: EditorNode[]): string {
-	return nodes
+	const mergedNodes: EditorNode[] = [];
+
+	for (const node of nodes) {
+		const previous = mergedNodes.at(-1);
+		if (
+			previous &&
+			isEditorTextNode(previous) &&
+			isEditorTextNode(node) &&
+			textMarksKey(previous) === textMarksKey(node)
+		) {
+			previous.text += node.text;
+			continue;
+		}
+		mergedNodes.push(isEditorTextNode(node) ? { ...node } : node);
+	}
+
+	return mergedNodes
 		.map((node) => {
-			if (isEditorTextNode(node)) {
-				let value = escapeInline(node.text);
-				if (node.bold) value = `**${value}**`;
-				if (node.italic) value = `*${value}*`;
-				if (node.strikethrough) value = `~~${value}~~`;
-				return value;
-			}
+			if (isEditorTextNode(node)) return serializeText(node);
 
 			const value = serializeInline(node.children);
 			if (node.type === "a") return `[${value}](${String(node.url ?? "")})`;
@@ -322,8 +387,8 @@ function serializeBlock(node: EditorElementNode): string {
 				.map((child) =>
 					"text" in child ? serializeInline([child]) : serializeBlock(child),
 				)
-				.filter(Boolean)
-				.join("\n\n");
+				.filter((child) => child.trim().length > 0)
+				.join("\n");
 		case "video":
 			return `::youtube-video[YouTube відео]{#${getYouTubeId(String(node.url ?? ""))}}`;
 		default:
@@ -331,6 +396,26 @@ function serializeBlock(node: EditorElementNode): string {
 	}
 }
 
+const isMediaBlock = (node: EditorElementNode): boolean =>
+	node.type === "image" || node.type === "image_group" || node.type === "video";
+
+function blockSeparator(
+	previous: EditorElementNode,
+	current: EditorElementNode,
+): string {
+	if (isMediaBlock(previous) && isMediaBlock(current)) return "\n";
+	if (previous.type === "p" && /^h[1-6]$/.test(current.type)) return "\n";
+	if (previous.type === "blockquote" && current.type !== "blockquote") return "\n";
+	return "\n\n";
+}
+
 export function plateToMarkdown(value: EditorValue): string {
-	return value.map(serializeBlock).join("\n\n").trim();
+	return value
+		.map((node, index) => {
+			const markdown = serializeBlock(node);
+			if (index === 0) return markdown;
+			return `${blockSeparator(value[index - 1], node)}${markdown}`;
+		})
+		.join("")
+		.trim();
 }

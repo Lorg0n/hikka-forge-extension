@@ -41,6 +41,9 @@ const MENU_ACTIONS: Record<string, MarkdownAction> = {
 	"Нумерований список": "orderedList",
 };
 
+const ARTICLE_EDITOR_SELECTOR =
+	'div.flex.flex-col.gap-4:has(> div > [data-slate-editor="true"])';
+
 function getYouTubeVideoId(value: string): string | null {
 	try {
 		const url = new URL(value);
@@ -185,14 +188,60 @@ export default function ArticleMarkdownEditorComponent({
 		return () => observer.disconnect();
 	}, [fitMarkdownEditorHeight, markdownTarget, mode]);
 
+	useEffect(() => {
+		if (
+			mode !== "markdown" ||
+			!markdownTarget?.closest(
+				'[role="dialog"][data-slot="page-sheet-content"]',
+			)
+		)
+			return;
+
+		const previousOverflowX = markdownTarget.style.overflowX;
+		const previousOverflowY = markdownTarget.style.overflowY;
+		markdownTarget.style.overflowX = "hidden";
+		markdownTarget.style.overflowY = "auto";
+
+		return () => {
+			markdownTarget.style.overflowX = previousOverflowX;
+			markdownTarget.style.overflowY = previousOverflowY;
+		};
+	}, [markdownTarget, mode]);
+
 	const getOriginalEditor = useCallback(() => {
-		if (originalEditorRef.current?.isConnected)
+		if (
+			originalEditorRef.current?.isConnected &&
+			originalEditorRef.current.querySelector('[data-slate-editor="true"]')
+		)
 			return originalEditorRef.current;
+		const target = contentUI?.targetElement;
+		if (
+			target instanceof HTMLElement &&
+			target.isConnected &&
+			target.querySelector('[data-slate-editor="true"]')
+		) {
+			originalEditorRef.current = target;
+			originalDisplayRef.current = target.style.display;
+			return target;
+		}
 		const sibling = contentUI?.host.previousElementSibling;
-		if (!(sibling instanceof HTMLElement)) return null;
-		originalEditorRef.current = sibling;
-		originalDisplayRef.current = sibling.style.display;
-		return sibling;
+		if (
+			sibling instanceof HTMLElement &&
+			sibling.querySelector('[data-slate-editor="true"]')
+		) {
+			originalEditorRef.current = sibling;
+			originalDisplayRef.current = sibling.style.display;
+			return sibling;
+		}
+
+		const visibleEditor = Array.from(
+			document.querySelectorAll<HTMLElement>(ARTICLE_EDITOR_SELECTOR),
+		).find((element) => element.getClientRects().length > 0);
+		if (!visibleEditor) return null;
+		originalEditorRef.current = visibleEditor;
+		if (contentUI) contentUI.targetElement = visibleEditor;
+		originalDisplayRef.current = visibleEditor.style.display;
+		return visibleEditor;
 	}, [contentUI]);
 
 	const getOriginalEditorBody = useCallback(() => {
@@ -220,10 +269,23 @@ export default function ArticleMarkdownEditorComponent({
 	);
 
 	useEffect(() => {
-		const original = getOriginalEditor();
-		if (!original) return;
-
 		const updateToolbarTarget = () => {
+			const original = getOriginalEditor();
+			if (!original) {
+				setToolbarTarget(null);
+				return;
+			}
+			const editable = original.querySelector<HTMLElement>(
+				'[data-slate-editor="true"]',
+			);
+			if (editable) {
+				if (originalEditorBodyRef.current !== editable) {
+					originalDisplayRef.current = editable.style.display;
+				}
+				originalEditorBodyRef.current = editable;
+				if (mode === "markdown") editable.style.display = "none";
+				setMarkdownTarget(editable.parentElement);
+			}
 			const toolbar = original.querySelector<HTMLElement>(
 				'[role="toolbar"][variant="top"], [role="toolbar"][aria-orientation="horizontal"]',
 			);
@@ -232,10 +294,20 @@ export default function ArticleMarkdownEditorComponent({
 		};
 
 		updateToolbarTarget();
-		const observer = new MutationObserver(updateToolbarTarget);
-		observer.observe(original, { childList: true, subtree: true });
-		return () => observer.disconnect();
-	}, [getOriginalEditor]);
+		let frame: number | null = null;
+		const observer = new MutationObserver(() => {
+			if (frame !== null) return;
+			frame = window.requestAnimationFrame(() => {
+				frame = null;
+				updateToolbarTarget();
+			});
+		});
+		observer.observe(document.documentElement, { childList: true, subtree: true });
+		return () => {
+			observer.disconnect();
+			if (frame !== null) window.cancelAnimationFrame(frame);
+		};
+	}, [getOriginalEditor, mode]);
 
 	const syncToOriginal = useCallback(
 		async (value: string) => {
@@ -623,7 +695,7 @@ export default function ArticleMarkdownEditorComponent({
 						stateKey="markdown-mode-button"
 						animateOnMount
 						present={!exiting}
-						className="group/toolbar-group relative flex"
+						className="group/toolbar-group relative flex max-md:order-first max-md:sticky max-md:left-0 max-md:z-10 max-md:bg-background"
 					>
 						<div className="flex items-center">{modeButton}</div>
 					</ModuleTransition>,
@@ -639,7 +711,7 @@ export default function ArticleMarkdownEditorComponent({
 						value={markdown}
 						onChange={(event) => updateMarkdown(event.target.value)}
 						onPaste={handlePaste}
-						className="min-h-44 w-full resize-none overflow-hidden rounded-md bg-transparent p-4 font-mono text-sm leading-6 text-foreground ring-offset-background outline-none placeholder:text-muted-foreground/80"
+						className="min-h-44 w-full flex-1 resize-none overflow-hidden rounded-md bg-transparent p-4 font-mono text-sm leading-6 text-foreground ring-offset-background outline-none placeholder:text-muted-foreground/80 md:flex-none"
 						placeholder="Напишіть Markdown..."
 						aria-label="Markdown текст статті"
 					/>,

@@ -420,6 +420,7 @@ class ModuleManager {
 						disconnectedTarget,
 						moduleDef.elementSelector!.position
 					);
+					active.ui.targetElement = disconnectedTarget;
 					logger.log(`${DEBUG_PREFIX} module host reattached`, {
 						moduleId: moduleDef.id,
 						hostId: active.host.id,
@@ -555,7 +556,12 @@ class ModuleManager {
 		portalContainer.className = "hikka-forge-portal-root";
 		shadowRoot.append(appRoot, portalContainer);
 
-		const ui: ContentUIContextValue = { host, shadowRoot, portalContainer };
+		const ui: ContentUIContextValue = {
+			host,
+			targetElement,
+			shadowRoot,
+			portalContainer,
+		};
 		const root = createRoot(appRoot);
 		const instance: ModuleInstance = {
 			id: moduleDef.id,
@@ -769,6 +775,21 @@ class ModuleManager {
 			this.reconciliationFrame = null;
 			const reloadIds = new Set(this.pendingReloadIds);
 			this.pendingReloadIds.clear();
+
+			// Page-side history calls are isolated from extension content scripts in
+			// Firefox. DOM mutations still cross that boundary, so synchronize the
+			// URL immediately before every mutation-driven reconciliation instead of
+			// waiting for the fallback URL poll.
+			const nextUrl = window.location.href;
+			if (nextUrl !== this.currentUrl) {
+				this.currentUrl = nextUrl;
+				for (const [id, instance] of this.activeModuleRoots) {
+					if (!instance.exiting) reloadIds.add(id);
+				}
+				for (const moduleDef of this.moduleDefinitions.values()) {
+					if (typeof moduleDef.styles === "function") reloadIds.add(moduleDef.id);
+				}
+			}
 			this.evaluateModulesForCurrentUrl(reloadIds);
 		});
 	}
@@ -875,7 +896,11 @@ class ModuleManager {
 			if (!(element instanceof HTMLElement)) return false;
 			if (element.hidden || element.style.display === "none") return false;
 			const style = getComputedStyle(element);
-			return style.display !== "none" && style.visibility !== "hidden" && element.offsetParent !== null;
+			return (
+				style.display !== "none" &&
+				style.visibility !== "hidden" &&
+				element.getClientRects().length > 0
+			);
 		});
 	}
 

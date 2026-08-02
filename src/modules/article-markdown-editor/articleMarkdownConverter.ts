@@ -399,12 +399,19 @@ function serializeBlock(node: EditorElementNode): string {
 const isMediaBlock = (node: EditorElementNode): boolean =>
 	node.type === "image" || node.type === "image_group" || node.type === "video";
 
+const isHeadingBlock = (node: EditorElementNode): boolean =>
+	/^h[1-6]$/.test(node.type);
+
 function blockSeparator(
 	previous: EditorElementNode,
 	current: EditorElementNode,
 ): string {
 	if (isMediaBlock(previous) && isMediaBlock(current)) return "\n";
-	if (previous.type === "p" && /^h[1-6]$/.test(current.type)) return "\n";
+	if (
+		(previous.type === "p" && isHeadingBlock(current)) ||
+		(isHeadingBlock(previous) && current.type === "p")
+	)
+		return "\n";
 	if (previous.type === "blockquote" && current.type !== "blockquote") return "\n";
 	return "\n\n";
 }

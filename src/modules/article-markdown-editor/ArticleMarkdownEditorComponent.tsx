@@ -623,17 +623,9 @@ export default function ArticleMarkdownEditorComponent() {
 
 	const toolbarModePortal = toolbarTarget && mode === "visual"
 		? createPortal(
-				<>
-					<div className="mx-1.5 py-0.5">
-						<div
-							className="h-full w-px shrink-0 bg-border"
-							aria-hidden="true"
-						/>
-					</div>
-					<div className="group/toolbar-group relative flex">
-						<div className="flex items-center">{modeButton}</div>
-					</div>
-				</>,
+				<div className="group/toolbar-group relative flex">
+					<div className="flex items-center">{modeButton}</div>
+				</div>,
 				toolbarTarget,
 			)
 		: null;

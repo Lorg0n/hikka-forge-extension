@@ -6,27 +6,7 @@ import {
 	useState,
 } from "react";
 import { createPortal } from "react-dom";
-import {
-	Bold,
-	ChevronDown,
-	Check,
-	Code2,
-	Copy,
-	EyeOff,
-	Film,
-	Heading2,
-	Image,
-	Italic,
-	Link2,
-	List,
-	ListOrdered,
-	Plus,
-	Redo2,
-	Quote,
-	RotateCcw,
-	Smile,
-	Undo2,
-} from "lucide-react";
+import { Code2, LoaderCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useContentUI } from "@/contexts/ContentUIContext";
@@ -38,8 +18,6 @@ import { markdownToPlate, plateToMarkdown } from "./articleMarkdownConverter";
 type MarkdownAction =
 	| "paragraph"
 	| "heading3"
-	| "heading4"
-	| "heading5"
 	| "bold"
 	| "italic"
 	| "quote"
@@ -48,18 +26,20 @@ type MarkdownAction =
 	| "list"
 	| "orderedList";
 
-const EMOJIS = [
-	"😀", "😃", "😄", "😁", "😂", "🤣", "😊", "😍",
-	"🤔", "😎", "😭", "😡", "👍", "👎", "👏", "🙏",
-	"🔥", "✨", "❤️", "💔", "🎉", "✅", "⭐", "💡",
-];
+const MENU_ACTIONS: Record<string, MarkdownAction> = {
+	"Параграф": "paragraph",
+	"Заголовок 3": "heading3",
+	"Цитата": "quote",
+	"Спойлер": "spoiler",
+	"Непозначений список": "list",
+	"Маркований список": "list",
+	"Нумерований список": "orderedList",
+};
 
 function getYouTubeVideoId(value: string): string | null {
 	try {
 		const url = new URL(value);
-		if (url.hostname === "youtu.be") {
-			return url.pathname.slice(1) || null;
-		}
+		if (url.hostname === "youtu.be") return url.pathname.slice(1) || null;
 		if (!url.hostname.includes("youtube.com")) return null;
 		return url.searchParams.get("v") || url.pathname.split("/").pop() || null;
 	} catch {
@@ -67,41 +47,15 @@ function getYouTubeVideoId(value: string): string | null {
 	}
 }
 
-const INSERT_ACTIONS: Array<{
-	id: MarkdownAction;
-	label: string;
-	icon: typeof Heading2;
-}> = [
-	{ id: "paragraph", label: "Параграф", icon: Heading2 },
-	{ id: "heading3", label: "Заголовок 3", icon: Heading2 },
-	{ id: "heading4", label: "Заголовок 4", icon: Heading2 },
-	{ id: "heading5", label: "Заголовок 5", icon: Heading2 },
-	{ id: "quote", label: "Цитата", icon: Quote },
-	{ id: "spoiler", label: "Спойлер", icon: EyeOff },
-	{ id: "list", label: "Маркований список", icon: List },
-	{ id: "orderedList", label: "Нумерований список", icon: ListOrdered },
-];
-
-const MARK_ACTIONS: Array<{
-	id: MarkdownAction;
-	label: string;
-	icon: typeof Heading2;
-}> = [
-	{ id: "bold", label: "Жирний", icon: Bold },
-	{ id: "italic", label: "Курсив", icon: Italic },
-	{ id: "link", label: "Посилання", icon: Link2 },
-];
-
 function applyMarkdownAction(
 	textarea: HTMLTextAreaElement,
 	action: MarkdownAction,
-): { value: string; selectionStart: number; selectionEnd: number } {
+	argument?: string,
+) {
 	const value = textarea.value;
 	const start = textarea.selectionStart;
 	const end = textarea.selectionEnd;
 	const selected = value.slice(start, end);
-	const lineStart = value.lastIndexOf("\n", start - 1) + 1;
-
 	let insertion = selected;
 	let selectionStart = start;
 	let selectionEnd = end;
@@ -109,22 +63,11 @@ function applyMarkdownAction(
 	switch (action) {
 		case "paragraph":
 			insertion = selected || "Текст параграфа";
-			selectionStart = start;
 			selectionEnd = start + insertion.length;
 			break;
 		case "heading3":
 			insertion = `### ${selected || "Заголовок"}`;
 			selectionStart = start + 4;
-			selectionEnd = selectionStart + (selected || "Заголовок").length;
-			break;
-		case "heading4":
-			insertion = `#### ${selected || "Заголовок"}`;
-			selectionStart = start + 5;
-			selectionEnd = selectionStart + (selected || "Заголовок").length;
-			break;
-		case "heading5":
-			insertion = `##### ${selected || "Заголовок"}`;
-			selectionStart = start + 6;
 			selectionEnd = selectionStart + (selected || "Заголовок").length;
 			break;
 		case "bold":
@@ -138,44 +81,40 @@ function applyMarkdownAction(
 			selectionEnd = selectionStart + (selected || "курсив").length;
 			break;
 		case "quote":
-			insertion = selected
-				? selected
-					.split("\n")
-					.map((line) => `> ${line}`)
-					.join("\n")
-				: "> Цитата";
+			insertion = (selected || "Цитата")
+				.split("\n")
+				.map((line) => `> ${line}`)
+				.join("\n");
 			selectionStart = start + 2;
-			selectionEnd = selectionStart + insertion.length - 2;
+			selectionEnd = start + insertion.length;
 			break;
 		case "spoiler":
 			insertion = `:::spoiler\n${selected || "Текст спойлера"}\n:::`;
 			selectionStart = start + 11;
 			selectionEnd = selectionStart + (selected || "Текст спойлера").length;
 			break;
-		case "link":
-			insertion = `[${selected || "текст посилання"}](https://)`;
+		case "link": {
+			const text = selected || "текст посилання";
+			insertion = `[${text}](${argument || "https://"})`;
 			selectionStart = start + 1;
-			selectionEnd = selectionStart + (selected || "текст посилання").length;
+			selectionEnd = selectionStart + text.length;
 			break;
+		}
 		case "list":
-			insertion = selected
-				? selected
-					.split("\n")
-					.map((line) => `- ${line}`)
-					.join("\n")
-				: "- Елемент списку";
-			selectionStart = lineStart + 2;
-			selectionEnd = selectionStart + insertion.length - 2;
+			insertion = (selected || "Елемент списку")
+				.split("\n")
+				.map((line) => `- ${line}`)
+				.join("\n");
+			selectionStart = start + 2;
+			selectionEnd = start + insertion.length;
 			break;
 		case "orderedList":
-			insertion = selected
-				? selected
-					.split("\n")
-					.map((line, index) => `${index + 1}. ${line}`)
-					.join("\n")
-				: "1. Елемент списку";
-			selectionStart = lineStart + 3;
-			selectionEnd = selectionStart + insertion.length - 3;
+			insertion = (selected || "Елемент списку")
+				.split("\n")
+				.map((line, index) => `${index + 1}. ${line}`)
+				.join("\n");
+			selectionStart = start + 3;
+			selectionEnd = start + insertion.length;
 			break;
 	}
 
@@ -186,92 +125,29 @@ function applyMarkdownAction(
 	};
 }
 
-function ToolbarButton({
-	label,
-	icon: Icon,
-	onClick,
-}: {
-	label: string;
-	icon: typeof Heading2;
-	onClick: () => void;
-}) {
-	return (
-		<button
-			type="button"
-			className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-			onClick={onClick}
-			title={label}
-			aria-label={label}
-		>
-			<Icon className="size-3.5" aria-hidden="true" />
-			<span className="hidden sm:inline">{label}</span>
-		</button>
-	);
-}
-
-function InsertMenu({ onAction }: { onAction: (action: MarkdownAction) => void }) {
-	const [open, setOpen] = useState(false);
-
-	return (
-		<div className="relative">
-			<button
-				type="button"
-				className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-				onClick={() => setOpen((current) => !current)}
-				aria-expanded={open}
-				aria-haspopup="menu"
-				title="Вставити"
-			>
-				<Plus className="size-3.5" aria-hidden="true" />
-				<span className="hidden sm:inline">Вставити</span>
-				<ChevronDown className="size-3" aria-hidden="true" />
-			</button>
-			{open && (
-				<div className="absolute top-full left-0 z-20 mt-1 w-56 rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg">
-					{INSERT_ACTIONS.map(({ id, label, icon: Icon }) => (
-						<button
-							key={id}
-							type="button"
-							className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent hover:text-accent-foreground"
-							onClick={() => {
-								onAction(id);
-								setOpen(false);
-							}}
-						>
-							<Icon className="size-3.5" aria-hidden="true" />
-							{label}
-						</button>
-					))}
-				</div>
-			)}
-		</div>
-	);
-}
-
 export default function ArticleMarkdownEditorComponent() {
 	const contentUI = useContentUI();
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
-	const imageInputRef = useRef<HTMLInputElement>(null);
 	const editor = useRef(
 		editorApi(editorIds.article, { timeout: 2000 }),
 	).current;
 	const originalEditorRef = useRef<HTMLElement | null>(null);
 	const originalEditorBodyRef = useRef<HTMLElement | null>(null);
 	const originalDisplayRef = useRef("");
+	const insertMenuOpenRef = useRef(false);
 	const submitRetryRef = useRef(false);
 	const syncSequenceRef = useRef(0);
 	const [markdown, setMarkdown] = useState("");
-	const [copied, setCopied] = useState(false);
 	const [mode, setMode] = useState<"visual" | "markdown">("visual");
 	const [isSwitching, setIsSwitching] = useState(false);
 	const [isSyncing, setIsSyncing] = useState(false);
 	const [syncError, setSyncError] = useState<string | null>(null);
-	const [emojiOpen, setEmojiOpen] = useState(false);
 	const [history, setHistory] = useState<string[]>([]);
 	const [future, setFuture] = useState<string[]>([]);
-	const [uploadingImages, setUploadingImages] = useState(0);
-	const [uploadError, setUploadError] = useState<string | null>(null);
 	const [toolbarTarget, setToolbarTarget] = useState<HTMLElement | null>(null);
+	const [markdownTarget, setMarkdownTarget] = useState<HTMLElement | null>(
+		null,
+	);
 
 	const getOriginalEditor = useCallback(() => {
 		if (originalEditorRef.current?.isConnected)
@@ -292,13 +168,10 @@ export default function ArticleMarkdownEditorComponent() {
 		);
 		if (!original || !editable) return null;
 
-		let body = editable;
-		while (body.parentElement && body.parentElement !== original) {
-			body = body.parentElement;
-		}
-		originalEditorBodyRef.current = body;
-		originalDisplayRef.current = body.style.display;
-		return body;
+		originalEditorBodyRef.current = editable;
+		originalDisplayRef.current = editable.style.display;
+		setMarkdownTarget(editable.parentElement);
+		return editable;
 	}, [getOriginalEditor]);
 
 	const setOriginalEditorVisible = useCallback(
@@ -368,6 +241,8 @@ export default function ArticleMarkdownEditorComponent() {
 
 		const handleSubmit = (event: SubmitEvent) => {
 			if (!(event.target instanceof HTMLFormElement)) return;
+			const original = getOriginalEditor();
+			if (!original || !event.target.contains(original)) return;
 			if (submitRetryRef.current) {
 				submitRetryRef.current = false;
 				return;
@@ -393,7 +268,7 @@ export default function ArticleMarkdownEditorComponent() {
 
 		document.addEventListener("submit", handleSubmit, true);
 		return () => document.removeEventListener("submit", handleSubmit, true);
-	}, [markdown, mode, syncToOriginal]);
+	}, [getOriginalEditor, markdown, mode, syncToOriginal]);
 
 	const openMarkdownMode = async () => {
 		setIsSwitching(true);
@@ -404,6 +279,8 @@ export default function ArticleMarkdownEditorComponent() {
 			setMarkdown(nextMarkdown);
 			setHistory([]);
 			setFuture([]);
+			const editable = getOriginalEditorBody();
+			setMarkdownTarget(editable?.parentElement ?? null);
 			setOriginalEditorVisible(false);
 			setMode("markdown");
 			window.requestAnimationFrame(() => textareaRef.current?.focus());
@@ -444,16 +321,29 @@ export default function ArticleMarkdownEditorComponent() {
 		});
 	};
 
+	const runMarkdownAction = (action: MarkdownAction, argument?: string) => {
+		if (!textareaRef.current) return;
+		const result = applyMarkdownAction(textareaRef.current, action, argument);
+		updateMarkdown(result.value, result.selectionStart, result.selectionEnd);
+	};
+
+	const insertTextAtCursor = (text: string) => {
+		if (!textareaRef.current) return;
+		const { selectionStart, selectionEnd, value } = textareaRef.current;
+		updateMarkdown(
+			`${value.slice(0, selectionStart)}${text}${value.slice(selectionEnd)}`,
+			selectionStart + text.length,
+			selectionStart + text.length,
+		);
+	};
+
 	const undo = () => {
 		const previous = history[history.length - 1];
 		if (previous === undefined) return;
 		setHistory((current) => current.slice(0, -1));
 		setFuture((current) => [markdown, ...current]);
 		setMarkdown(previous);
-		window.requestAnimationFrame(() => {
-			textareaRef.current?.focus();
-			textareaRef.current?.setSelectionRange(previous.length, previous.length);
-		});
+		window.requestAnimationFrame(() => textareaRef.current?.focus());
 	};
 
 	const redo = () => {
@@ -462,63 +352,18 @@ export default function ArticleMarkdownEditorComponent() {
 		setFuture((current) => current.slice(1));
 		setHistory((current) => [...current, markdown]);
 		setMarkdown(next);
-		window.requestAnimationFrame(() => {
-			textareaRef.current?.focus();
-			textareaRef.current?.setSelectionRange(next.length, next.length);
-		});
-	};
-
-	const insertEmoji = (emoji: string) => {
-		if (!textareaRef.current) return;
-		const { selectionStart, selectionEnd, value } = textareaRef.current;
-		updateMarkdown(
-			`${value.slice(0, selectionStart)}${emoji}${value.slice(selectionEnd)}`,
-			selectionStart + emoji.length,
-			selectionStart + emoji.length,
-		);
-		setEmojiOpen(false);
-	};
-
-	const insertVideo = () => {
-		const url = window.prompt("Посилання на YouTube відео");
-		if (!url?.trim()) return;
-		const videoId = getYouTubeVideoId(url.trim());
-		if (!videoId) {
-			window.alert("Введіть коректне посилання на YouTube.");
-			return;
-		}
-		insertTextAtCursor(`\n::youtube-video[YouTube відео]{#${videoId}}\n`);
-	};
-
-	const insertImage = () => {
-		setUploadError(null);
-		imageInputRef.current?.click();
-	};
-
-	const insertUploadedImages = (
-		images: Array<{ alt: string; url: string }>,
-	) => {
-		if (images.length === 0 || !textareaRef.current) return;
-		const { selectionStart, selectionEnd, value } = textareaRef.current;
-		const markdownImages = images
-			.map(({ alt, url }) => `![${alt.replace(/\]|\[/g, "")}](${url})`)
-			.join("\n\n");
-		const nextValue = `${value.slice(0, selectionStart)}${markdownImages}${value.slice(selectionEnd)}`;
-		updateMarkdown(
-			nextValue,
-			selectionStart + markdownImages.length,
-			selectionStart + markdownImages.length,
-		);
+		window.requestAnimationFrame(() => textareaRef.current?.focus());
 	};
 
 	const insertImages = async (files: FileList | File[] | null) => {
 		const imageFiles = Array.from(files ?? []).filter((file) =>
 			file.type.startsWith("image/"),
 		);
-		if (imageFiles.length === 0) return;
+		if (imageFiles.length === 0 || !textareaRef.current) return;
 
-		setUploadError(null);
-		setUploadingImages(imageFiles.length);
+		const selectionStart = textareaRef.current.selectionStart;
+		const selectionEnd = textareaRef.current.selectionEnd;
+		const value = textareaRef.current.value;
 		const results = await Promise.allSettled(
 			imageFiles.map(async (file) => ({
 				alt: file.name.replace(/\.[^.]+$/, "") || "Зображення",
@@ -528,107 +373,199 @@ export default function ArticleMarkdownEditorComponent() {
 		const uploaded = results.flatMap((result) =>
 			result.status === "fulfilled" ? [result.value] : [],
 		);
-		const failed = results.find((result) => result.status === "rejected");
-		if (failed?.status === "rejected") {
-			setUploadError(
-				failed.reason instanceof Error
-					? failed.reason.message
-					: "Не вдалося завантажити зображення.",
-			);
-		}
-		insertUploadedImages(uploaded);
-		setUploadingImages(0);
-		if (imageInputRef.current) imageInputRef.current.value = "";
+		if (uploaded.length === 0) return;
+
+		const images = uploaded
+			.map(({ alt, url }) => `![${alt.replace(/\]|\[/g, "")}](${url})`)
+			.join("\n\n");
+		updateMarkdown(
+			`${value.slice(0, selectionStart)}${images}${value.slice(selectionEnd)}`,
+			selectionStart + images.length,
+			selectionStart + images.length,
+		);
 	};
 
 	const handlePaste = (event: ReactClipboardEvent<HTMLTextAreaElement>) => {
-		const clipboardItems = Array.from(event.clipboardData?.items ?? []);
-		const files = clipboardItems
+		const files = Array.from(event.clipboardData?.items ?? [])
 			.filter((item) => item.kind === "file" && item.type.startsWith("image/"))
 			.map((item) => item.getAsFile())
 			.filter((file): file is File => file !== null);
 		if (files.length === 0) return;
-
 		event.preventDefault();
 		void insertImages(files);
 	};
 
-	function insertTextAtCursor(text: string) {
-		if (!textareaRef.current) return;
-		const { selectionStart, selectionEnd, value } = textareaRef.current;
-		updateMarkdown(
-			`${value.slice(0, selectionStart)}${text}${value.slice(selectionEnd)}`,
-			selectionStart + text.length,
-			selectionStart + text.length,
+	useEffect(() => {
+		if (mode !== "markdown" || !toolbarTarget) return;
+
+		const historyButtons = Array.from(
+			toolbarTarget.querySelectorAll<HTMLButtonElement>("button"),
+		).filter(
+			(button) =>
+				button.querySelector("svg.lucide-undo-2, svg.lucide-undo2") ||
+				button.querySelector("svg.lucide-redo-2, svg.lucide-redo2"),
 		);
-	}
-
-	const handleAction = (action: MarkdownAction) => {
-		if (!textareaRef.current) return;
-		const result = applyMarkdownAction(textareaRef.current, action);
-		updateMarkdown(result.value, result.selectionStart, result.selectionEnd);
-	};
-
-	const copyMarkdown = async () => {
-		try {
-			await navigator.clipboard.writeText(markdown);
-			setCopied(true);
-			window.setTimeout(() => setCopied(false), 1600);
-		} catch {
-			// Clipboard access can be unavailable in a content-script context.
-			textareaRef.current?.focus();
-			textareaRef.current?.select();
+		const disabledStates = new Map(
+			historyButtons.map((button) => [button, button.disabled]),
+		);
+		const enableHistoryButtons = () => {
+			for (const button of historyButtons) button.disabled = false;
+		};
+		enableHistoryButtons();
+		const disabledObserver = new MutationObserver(enableHistoryButtons);
+		for (const button of historyButtons) {
+			disabledObserver.observe(button, {
+				attributes: true,
+				attributeFilter: ["disabled"],
+			});
 		}
-	};
 
-	const emojiMenu = (
-		<div className="absolute top-full right-0 z-20 mt-1 grid w-56 grid-cols-8 gap-1 rounded-lg border border-border bg-popover p-2 text-2xl shadow-lg">
-			{EMOJIS.map((emoji) => (
-				<button
-					key={emoji}
-					type="button"
-					className="flex size-6 items-center justify-center rounded hover:bg-accent"
-					onClick={() => insertEmoji(emoji)}
-					aria-label={`Вставити ${emoji}`}
-				>
-					{emoji}
-				</button>
-			))}
-		</div>
-	);
+		const handleToolbarClick = (event: MouseEvent) => {
+			const target = event.target;
+			if (!(target instanceof Element)) return;
+			const button = target.closest<HTMLButtonElement>("button");
+			if (!button || !toolbarTarget.contains(button)) return;
+
+			if (button.querySelector("svg.lucide-plus")) {
+				insertMenuOpenRef.current = true;
+				return;
+			}
+			if (button.querySelector("svg.lucide-smile")) return;
+			if (button.querySelector('input[type="file"]')) return;
+
+			let action: (() => void) | undefined;
+			if (button.querySelector("svg.lucide-bold")) {
+				action = () => runMarkdownAction("bold");
+			} else if (button.querySelector("svg.lucide-italic")) {
+				action = () => runMarkdownAction("italic");
+			} else if (button.querySelector("svg.lucide-link")) {
+				action = () => {
+					const url = window.prompt("Посилання", "https://");
+					if (url?.trim()) runMarkdownAction("link", url.trim());
+				};
+			} else if (button.querySelector("svg.lucide-film")) {
+				action = () => {
+					const url = window.prompt("Посилання на YouTube відео");
+					if (!url?.trim()) return;
+					const videoId = getYouTubeVideoId(url.trim());
+					if (videoId) {
+						insertTextAtCursor(`\n::youtube-video[YouTube відео]{#${videoId}}\n`);
+					}
+				};
+			} else if (
+				button.querySelector("svg.lucide-undo-2, svg.lucide-undo2")
+			) {
+				action = undo;
+			} else if (
+				button.querySelector("svg.lucide-redo-2, svg.lucide-redo2")
+			) {
+				action = redo;
+			}
+
+			if (!action) return;
+			event.preventDefault();
+			event.stopImmediatePropagation();
+			action();
+		};
+
+		const handleFileChange = (event: Event) => {
+			const input = event.target;
+			if (
+				!(input instanceof HTMLInputElement) ||
+				input.type !== "file" ||
+				!toolbarTarget.contains(input)
+			)
+				return;
+			event.stopImmediatePropagation();
+			void insertImages(input.files).finally(() => {
+				input.value = "";
+			});
+		};
+
+		const handlePortalClick = (event: MouseEvent) => {
+			const target = event.target;
+			if (!(target instanceof Element)) return;
+
+			const emojiButton = target.closest<HTMLButtonElement>("button[aria-label]");
+			if (emojiButton?.querySelector('[data-emoji-set="native"]')) {
+				const emoji = emojiButton.getAttribute("aria-label");
+				if (emoji) insertTextAtCursor(emoji);
+				return;
+			}
+
+			if (!insertMenuOpenRef.current) return;
+			const menuItem = target.closest<HTMLElement>('[role="menuitem"]');
+			if (!menuItem) return;
+			insertMenuOpenRef.current = false;
+			const action = MENU_ACTIONS[menuItem.textContent?.trim() ?? ""];
+			if (action) runMarkdownAction(action);
+		};
+
+		toolbarTarget.addEventListener("click", handleToolbarClick, true);
+		toolbarTarget.addEventListener("change", handleFileChange, true);
+		document.addEventListener("click", handlePortalClick, true);
+		return () => {
+			disabledObserver.disconnect();
+			for (const [button, disabled] of disabledStates) button.disabled = disabled;
+			toolbarTarget.removeEventListener("click", handleToolbarClick, true);
+			toolbarTarget.removeEventListener("change", handleFileChange, true);
+			document.removeEventListener("click", handlePortalClick, true);
+			insertMenuOpenRef.current = false;
+		};
+	}, [future, history, markdown, mode, toolbarTarget]);
 
 	const modeButton = (
 		<Button
 			type="button"
 			variant="ghost"
 			size="sm"
-			className="h-8 min-w-8 cursor-pointer gap-1 rounded-md bg-transparent px-1.5 transition-[color,box-shadow] outline-hidden hover:bg-muted hover:text-muted-foreground aria-pressed:bg-muted aria-pressed:text-accent-foreground"
+			className="h-8 min-w-8 cursor-pointer gap-1 rounded-md bg-transparent px-1.5 transition-[color,box-shadow] outline-hidden hover:bg-muted hover:text-muted-foreground data-[state=on]:bg-muted data-[state=on]:text-accent-foreground"
 			onClick={() =>
 				void (mode === "markdown" ? openVisualMode() : openMarkdownMode())
 			}
 			disabled={isSwitching}
 			aria-pressed={mode === "markdown"}
+			data-state={mode === "markdown" ? "on" : "off"}
 			title={
 				mode === "markdown"
 					? "Повернутися до візуального редактора"
 					: "Увімкнути Markdown режим"
 			}
-			data-state="closed"
 			data-orientation="horizontal"
 		>
-			<Code2 className="size-4" aria-hidden="true" />
+			{isSwitching || isSyncing ? (
+				<LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+			) : (
+				<Code2 className="size-4" aria-hidden="true" />
+			)}
 			<span>MD</span>
 		</Button>
 	);
 
-	const toolbarModePortal = toolbarTarget && mode === "visual"
+	const toolbarModePortal = toolbarTarget
 		? createPortal(
-				<div className="group/toolbar-group relative flex">
-					<div className="flex items-center">{modeButton}</div>
-				</div>,
-				toolbarTarget,
-			)
+					<div className="group/toolbar-group relative flex">
+						<div className="flex items-center">{modeButton}</div>
+					</div>,
+					toolbarTarget,
+				)
 		: null;
+
+	const markdownEditorPortal =
+		markdownTarget && mode === "markdown"
+			? createPortal(
+					<textarea
+						ref={textareaRef}
+						value={markdown}
+						onChange={(event) => updateMarkdown(event.target.value)}
+						onPaste={handlePaste}
+						className="min-h-44 flex-1 resize-y rounded-md bg-transparent p-4 font-mono text-sm leading-6 text-foreground ring-offset-background outline-none placeholder:text-muted-foreground/80"
+						placeholder="Напишіть Markdown..."
+						aria-label="Markdown текст статті"
+					/>,
+					markdownTarget,
+				)
+			: null;
 
 	if (mode === "visual") {
 		return (
@@ -648,105 +585,19 @@ export default function ArticleMarkdownEditorComponent() {
 
 	return (
 		<>
-			<section className="overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-sm">
-				<div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/35 px-3 py-2">
-					<div className="flex items-center gap-1">
-						{modeButton}
-						<div className="mx-1 h-6 w-px bg-border" aria-hidden="true" />
-						<button
-							type="button"
-							className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-							onClick={() => updateMarkdown("")}
-							title="Очистити редактор"
-						>
-							<RotateCcw className="size-3.5" aria-hidden="true" />
-							Очистити
-						</button>
-						<button
-							type="button"
-							className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-							onClick={copyMarkdown}
-							title="Скопіювати Markdown"
-						>
-							{copied ? (
-								<Check className="size-3.5" aria-hidden="true" />
-							) : (
-								<Copy className="size-3.5" aria-hidden="true" />
-							)}
-							{copied ? "Скопійовано" : "Копіювати"}
-						</button>
-					</div>
-					<span
-						className={`text-xs ${syncError ? "text-destructive" : "text-muted-foreground"}`}
-					>
-						{syncError ??
-							(isSyncing ? "Синхронізація..." : "Збережено в редакторі Hikka")}
-					</span>
-				</div>
-
-				<div className="flex flex-wrap items-center gap-0.5 border-b border-border px-2 py-1">
-					<InsertMenu onAction={handleAction} />
-					{MARK_ACTIONS.map(({ id, label, icon }) => (
-						<ToolbarButton
-							key={id}
-							label={label}
-							icon={icon}
-							onClick={() => handleAction(id)}
-						/>
-					))}
-					<div className="mx-1 h-6 w-px bg-border" />
-					<div className="relative">
-						<ToolbarButton
-							label="Емоджі"
-							icon={Smile}
-							onClick={() => setEmojiOpen((current) => !current)}
-						/>
-						{emojiOpen && emojiMenu}
-					</div>
-					<ToolbarButton label="Відео" icon={Film} onClick={insertVideo} />
-					<ToolbarButton
-						label="Зображення"
-						icon={Image}
-						onClick={insertImage}
-					/>
-					<input
-						ref={imageInputRef}
-						type="file"
-						accept="image/*"
-						multiple
-						className="hidden"
-						onChange={(event) => void insertImages(event.target.files)}
-					/>
-					<div className="mx-1 h-6 w-px bg-border" />
-					<ToolbarButton label="Назад" icon={Undo2} onClick={undo} />
-					<ToolbarButton label="Вперед" icon={Redo2} onClick={redo} />
-				</div>
-
-				<div className="flex min-h-72 min-w-0 flex-col">
-					<textarea
-						ref={textareaRef}
-						value={markdown}
-						onChange={(event) => updateMarkdown(event.target.value)}
-						onPaste={handlePaste}
-						className="min-h-72 flex-1 resize-y bg-transparent p-4 font-mono text-sm leading-6 text-foreground outline-none placeholder:text-muted-foreground"
-						placeholder="Напишіть Markdown..."
-						aria-label="Markdown текст статті"
-					/>
-				</div>
-				{(uploadingImages > 0 || uploadError) && (
-					<p
-						className={`border-t border-border px-4 py-2 text-xs ${uploadError ? "text-destructive" : "text-muted-foreground"}`}
-						role={uploadError ? "alert" : undefined}
-					>
-						{uploadError ?? `Завантаження зображень: ${uploadingImages}...`}
-					</p>
-				)}
-
-				<p className="border-t border-border px-4 py-2 text-xs text-muted-foreground">
-					Вставте зображення через Ctrl+V або кнопку «Зображення» — воно
-					завантажиться як вкладення Hikka та вставиться у Markdown.
+			{toolbarModePortal}
+			{!toolbarTarget && (
+				<div className="mt-2 flex justify-end">{modeButton}</div>
+			)}
+			{markdownEditorPortal}
+			{syncError && (
+				<p
+					className="mt-1 text-right text-xs text-destructive"
+					role="alert"
+				>
+					{syncError}
 				</p>
-			</section>
+			)}
 		</>
 	);
 }

@@ -5,7 +5,7 @@ import ArticleMarkdownEditorComponent from "./ArticleMarkdownEditorComponent";
 const articleMarkdownEditorModule: ForgeModuleDef = {
 	id: "article-markdown-editor",
 	name: "Markdown-редактор статей",
-	description: "Додає окремий редактор Markdown із живим переглядом на сторінці створення статті.",
+	description: "Додає Markdown-режим до редактора статей Hikka.",
 	urlPatterns: [
 		"https://hikka.io/articles/new",
 		"https://hikka.io/articles/*/update",

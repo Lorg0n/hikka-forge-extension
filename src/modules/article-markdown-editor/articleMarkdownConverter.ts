@@ -405,8 +405,15 @@ const isHeadingBlock = (node: EditorElementNode): boolean =>
 function blockSeparator(
 	previous: EditorElementNode,
 	current: EditorElementNode,
+	currentMarkdown: string,
 ): string {
 	if (isMediaBlock(previous) && isMediaBlock(current)) return "\n";
+	if (
+		isMediaBlock(previous) &&
+		current.type === "p" &&
+		currentMarkdown.startsWith("\n")
+	)
+		return "";
 	if (
 		(previous.type === "p" && isHeadingBlock(current)) ||
 		(isHeadingBlock(previous) && current.type === "p")
@@ -421,7 +428,7 @@ export function plateToMarkdown(value: EditorValue): string {
 		.map((node, index) => {
 			const markdown = serializeBlock(node);
 			if (index === 0) return markdown;
-			return `${blockSeparator(value[index - 1], node)}${markdown}`;
+			return `${blockSeparator(value[index - 1], node, markdown)}${markdown}`;
 		})
 		.join("")
 		.trim();

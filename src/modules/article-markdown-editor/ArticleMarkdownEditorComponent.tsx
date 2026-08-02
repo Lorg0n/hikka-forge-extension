@@ -137,6 +137,7 @@ export default function ArticleMarkdownEditorComponent() {
 	const insertMenuOpenRef = useRef(false);
 	const submitRetryRef = useRef(false);
 	const syncSequenceRef = useRef(0);
+	const uploadSequenceRef = useRef(0);
 	const [markdown, setMarkdown] = useState("");
 	const [mode, setMode] = useState<"visual" | "markdown">("visual");
 	const [isSwitching, setIsSwitching] = useState(false);
@@ -373,24 +374,44 @@ export default function ArticleMarkdownEditorComponent() {
 		const selectionStart = textareaRef.current.selectionStart;
 		const selectionEnd = textareaRef.current.selectionEnd;
 		const value = textareaRef.current.value;
-		const results = await Promise.allSettled(
-			imageFiles.map(async (file) => ({
-				alt: file.name.replace(/\.[^.]+$/, "") || "Зображення",
-				...(await uploadArticleImage(file)),
-			})),
-		);
-		const uploaded = results.flatMap((result) =>
-			result.status === "fulfilled" ? [result.value] : [],
-		);
-		if (uploaded.length === 0) return;
+		const pendingImages = imageFiles.map((file) => {
+			uploadSequenceRef.current += 1;
+			const alt = (file.name.replace(/\.[^.]+$/, "") || "Зображення").replace(
+				/\]|\[/g,
+				"",
+			);
+			const placeholderUrl = `loading...#${uploadSequenceRef.current}`;
+			return {
+				file,
+				placeholderUrl,
+				markdown: `![${alt}](${placeholderUrl})`,
+			};
+		});
 
-		const images = uploaded
-			.map(({ alt, url }) => `![${alt.replace(/\]|\[/g, "")}](${url})`)
-			.join("\n\n");
+		const images = pendingImages.map(({ markdown }) => markdown).join("\n");
 		updateMarkdown(
 			`${value.slice(0, selectionStart)}${images}${value.slice(selectionEnd)}`,
 			selectionStart + images.length,
 			selectionStart + images.length,
+		);
+
+		const replaceUploadUrl = (placeholderUrl: string, url: string) => {
+			const replace = (current: string) =>
+				current.replace(placeholderUrl, () => url);
+			setMarkdown(replace);
+			setHistory((current) => current.map(replace));
+			setFuture((current) => current.map(replace));
+		};
+
+		await Promise.all(
+			pendingImages.map(async ({ file, placeholderUrl }) => {
+				try {
+					const { url } = await uploadArticleImage(file);
+					replaceUploadUrl(placeholderUrl, url);
+				} catch {
+					replaceUploadUrl(placeholderUrl, "upload-failed...");
+				}
+			}),
 		);
 	}, [updateMarkdown]);
 

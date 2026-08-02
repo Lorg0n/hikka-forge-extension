@@ -5,7 +5,7 @@ import ArticleMarkdownEditorComponent from "./ArticleMarkdownEditorComponent";
 const articleMarkdownEditorModule: ForgeModuleDef = {
 	id: "article-markdown-editor",
 	name: "Markdown-редактор статей",
-	description: "Додає Markdown-режим до редактора статей Hikka.",
+	description: "Додає Markdown-режим до редактора статей.",
 	urlPatterns: [
 		"https://hikka.io/articles/new",
 		"https://hikka.io/articles/*/update",
@@ -14,6 +14,7 @@ const articleMarkdownEditorModule: ForgeModuleDef = {
 	],
 	enabledByDefault: true,
 	category: "content",
+	beta: true,
 	elementSelector: {
 		selector: 'div.flex.flex-col.gap-4:has(> div > [data-slate-editor="true"])',
 		position: "after",

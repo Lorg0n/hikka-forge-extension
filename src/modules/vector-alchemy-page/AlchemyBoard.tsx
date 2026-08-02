@@ -36,6 +36,7 @@ export function AlchemyBoard({
   onPointerDown,
   onPointerMove,
   onPointerStop,
+  dragOverlay,
 }: {
   viewportRef: React.RefObject<HTMLDivElement | null>;
   boardDrop: { setNodeRef: (node: HTMLElement | null) => void; isOver: boolean };
@@ -61,17 +62,48 @@ export function AlchemyBoard({
   onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
   onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => void;
   onPointerStop: () => void;
+  dragOverlay: React.ReactNode;
 }) {
+  const boardRef = React.useRef<HTMLElement | null>(null);
+  const [isFullscreen, setIsFullscreen] = React.useState(false);
+
+  React.useEffect(() => {
+    const syncFullscreenState = () => {
+      setIsFullscreen(Boolean(boardRef.current?.matches(":fullscreen")));
+    };
+
+    document.addEventListener("fullscreenchange", syncFullscreenState);
+    syncFullscreenState();
+    return () => document.removeEventListener("fullscreenchange", syncFullscreenState);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    const board = boardRef.current;
+    if (!board) return;
+
+    try {
+      if (board.matches(":fullscreen")) {
+        await document.exitFullscreen();
+      } else {
+        await board.requestFullscreen();
+      }
+    } catch {
+      // Browsers can reject fullscreen requests because of permissions or support.
+      setIsFullscreen(board.matches(":fullscreen"));
+    }
+  };
+
   return (
     <section
       ref={(node) => {
+        boardRef.current = node;
         if (viewportRef) {
           (viewportRef as React.MutableRefObject<HTMLDivElement | null>).current =
             node as HTMLDivElement | null;
         }
         boardDrop.setNodeRef(node);
       }}
-      className={`relative mt-3 h-[min(76svh,850px)] min-h-[430px] overflow-hidden rounded-2xl border bg-background shadow-2xl shadow-black/10 touch-none sm:min-h-[520px] ${boardDrop.isOver ? "ring-2 ring-violet-400/50" : ""}`}
+      className={`relative mt-3 h-[min(76svh,850px)] min-h-[430px] overflow-hidden rounded-2xl border bg-background shadow-2xl shadow-black/10 touch-none fullscreen:mt-0 fullscreen:h-screen fullscreen:min-h-0 fullscreen:w-screen fullscreen:rounded-none fullscreen:border-0 sm:min-h-[520px] ${boardDrop.isOver ? "ring-2 ring-violet-400/50" : ""}`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerStop}
@@ -117,6 +149,21 @@ export function AlchemyBoard({
           aria-label="Вмістити картки"
         >
           <Icon icon="material-symbols:fit-screen" />
+        </Button>
+        <Button
+          size="icon-xs"
+          variant="ghost"
+          onClick={() => void toggleFullscreen()}
+          title={isFullscreen ? "Вийти з повного екрана" : "На весь екран"}
+          aria-label={isFullscreen ? "Вийти з повного екрана" : "На весь екран"}
+        >
+          <Icon
+            icon={
+              isFullscreen
+                ? "material-symbols:fullscreen-exit"
+                : "material-symbols:fullscreen"
+            }
+          />
         </Button>
       </div>
       {activeDragSource === "board" && (
@@ -177,6 +224,7 @@ export function AlchemyBoard({
           </div>
         </div>
       )}
+      {dragOverlay}
     </section>
   );
 }

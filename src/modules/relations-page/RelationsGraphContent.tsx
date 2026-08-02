@@ -191,6 +191,7 @@ const createLayout = async (nodes: GraphNode[], edges: GraphEdge[]): Promise<Gra
 
 export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ nodes, edges, currentNodeId, relationTypes }) => {
     const viewportRef = useRef<HTMLDivElement>(null);
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const [layout, setLayout] = useState<GraphLayout | null>(null);
     const [pan, setPan] = useState({ x: 0, y: 0 });
     const [zoom, setZoom] = useState(1);
@@ -198,6 +199,31 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
     const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
     const stateRef = useRef({ pan, zoom });
     stateRef.current = { pan, zoom };
+
+    useEffect(() => {
+        const syncFullscreenState = () => {
+            setIsFullscreen(Boolean(viewportRef.current?.matches(':fullscreen')));
+        };
+
+        document.addEventListener('fullscreenchange', syncFullscreenState);
+        syncFullscreenState();
+        return () => document.removeEventListener('fullscreenchange', syncFullscreenState);
+    }, []);
+
+    const toggleFullscreen = async () => {
+        const viewport = viewportRef.current;
+        if (!viewport) return;
+
+        try {
+            if (viewport.matches(':fullscreen')) {
+                await document.exitFullscreen();
+            } else {
+                await viewport.requestFullscreen();
+            }
+        } catch {
+            setIsFullscreen(viewport.matches(':fullscreen'));
+        }
+    };
 
     useEffect(() => {
         let active = true;
@@ -400,7 +426,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
     return (
         <div
             ref={viewportRef}
-            className="relative size-full touch-none overflow-hidden bg-background/95"
+            className="relative size-full touch-none overflow-hidden bg-background/95 fullscreen:size-screen"
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -453,6 +479,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
                     <Button size="icon-sm" variant="ghost" onClick={() => zoomAt(viewportSize.width / 2, viewportSize.height / 2, zoom * 1.2)} title="Збільшити" aria-label="Збільшити"><Icon icon="material-symbols:add" /></Button>
                     <Button size="icon-sm" variant="ghost" onClick={() => zoomAt(viewportSize.width / 2, viewportSize.height / 2, zoom * 0.8)} title="Зменшити" aria-label="Зменшити"><Icon icon="material-symbols:remove" /></Button>
                     <Button size="icon-sm" variant="ghost" onClick={handleFit} title="Вмістити" aria-label="Вмістити"><Icon icon="material-symbols:fit-screen" /></Button>
+                    <Button size="icon-sm" variant="ghost" onClick={() => void toggleFullscreen()} title={isFullscreen ? 'Вийти з повного екрана' : 'На весь екран'} aria-label={isFullscreen ? 'Вийти з повного екрана' : 'На весь екран'}><Icon icon={isFullscreen ? 'material-symbols:fullscreen-exit' : 'material-symbols:fullscreen'} /></Button>
                 </div>
             </div>
             <div className="absolute inset-x-2 bottom-2 z-20 flex max-h-[35%] flex-col items-stretch gap-2 overflow-hidden sm:inset-x-4 sm:bottom-4 sm:max-h-none sm:flex-row sm:items-end sm:overflow-visible">

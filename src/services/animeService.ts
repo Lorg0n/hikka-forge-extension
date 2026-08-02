@@ -121,6 +121,13 @@ interface FetchFranchiseGraphParams {
     slug: string;
 }
 
+export class FranchiseGraphRequestError extends Error {
+    constructor(message: string, public readonly status: number) {
+        super(message);
+        this.name = 'FranchiseGraphRequestError';
+    }
+}
+
 export const fetchFranchiseGraph = async ({
     contentType,
     slug,
@@ -134,6 +141,9 @@ export const fetchFranchiseGraph = async ({
     });
 
     if (!response.ok) {
+        if (response.status === 404) {
+            throw new FranchiseGraphRequestError('Пов’язаний контент відсутній.', 404);
+        }
         let errorMessage = `HTTP error! status: ${response.status}`;
         try {
             const errorData: ApiErrorResponse = await response.json();
@@ -143,7 +153,7 @@ export const fetchFranchiseGraph = async ({
         } catch (e) {
             logger.error('Failed to parse error response:', e);
         }
-        throw new Error(errorMessage);
+        throw new FranchiseGraphRequestError(errorMessage, response.status);
     }
 
     return response.json() as Promise<FranchiseGraphResponse>;

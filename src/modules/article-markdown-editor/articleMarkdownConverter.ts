@@ -19,6 +19,10 @@ interface MarkdownNode {
 	name?: string;
 	attributes?: Record<string, string>;
 	children?: MarkdownNode[];
+	position?: {
+		start: { line: number };
+		end: { line: number };
+	};
 }
 
 type TextMarks = Omit<EditorTextNode, "text">;
@@ -229,9 +233,13 @@ function blockNodes(nodes: MarkdownNode[]): EditorElementNode[] {
 	});
 }
 
-function normalizeFakeMarkdown(markdown: string): string {
+function normalizeFakeMarkdown(markdown: string): {
+	value: string;
+	artificialBlankLines: Set<number>;
+} {
 	const lines = markdown.split(/\r?\n/);
 	const normalized: string[] = [];
+	const artificialBlankLines = new Set<number>();
 
 	for (let index = 0; index < lines.length; index += 1) {
 		const line = lines[index];
@@ -248,18 +256,51 @@ function normalizeFakeMarkdown(markdown: string): string {
 			// blockquote. Hikka's fake Markdown treats only `>`-prefixed lines as
 			// quoted, so make that boundary explicit for Remark.
 			normalized.push("");
+			artificialBlankLines.add(normalized.length);
 		}
 	}
 
-	return normalized.join("\n");
+	return { value: normalized.join("\n"), artificialBlankLines };
+}
+
+function blockNodesWithBlankLines(
+	nodes: MarkdownNode[],
+	artificialBlankLines: Set<number>,
+): EditorElementNode[] {
+	const result: EditorElementNode[] = [];
+	let previous: MarkdownNode | undefined;
+
+	for (const node of nodes) {
+		if (previous?.position && node.position) {
+			let blankLines = 0;
+			for (
+				let line = previous.position.end.line + 1;
+				line < node.position.start.line;
+				line += 1
+			) {
+				if (!artificialBlankLines.has(line)) blankLines += 1;
+			}
+			for (let index = 0; index < blankLines; index += 1) {
+				result.push(paragraph());
+			}
+		}
+		result.push(...blockNodes([node]));
+		previous = node;
+	}
+
+	return result;
 }
 
 export function markdownToPlate(markdown: string): EditorValue {
+	const normalized = normalizeFakeMarkdown(markdown);
 	const tree = unified()
 		.use(remarkParse)
 		.use(remarkDirective)
-		.parse(normalizeFakeMarkdown(markdown)) as MarkdownNode;
-	const value = blockNodes(tree.children ?? []);
+		.parse(normalized.value) as MarkdownNode;
+	const value = blockNodesWithBlankLines(
+		tree.children ?? [],
+		normalized.artificialBlankLines,
+	);
 	return value.length > 0 ? value : [paragraph()];
 }
 
@@ -407,7 +448,10 @@ function blockSeparator(
 	current: EditorElementNode,
 	currentMarkdown: string,
 ): string {
+	if (serializeBlock(previous).length === 0 || currentMarkdown.length === 0)
+		return "\n";
 	if (isMediaBlock(previous) && isMediaBlock(current)) return "\n";
+	if (isMediaBlock(previous) && isHeadingBlock(current)) return "\n";
 	if (
 		isMediaBlock(previous) &&
 		current.type === "p" &&

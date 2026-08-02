@@ -13,7 +13,10 @@ import { useContentUI } from "@/contexts/ContentUIContext";
 import { uploadArticleImage } from "@/services/articleImageUploadService";
 import { editorApi, editorIds } from "@/services/editorApiService";
 
-import { markdownToPlate, plateToMarkdown } from "./articleMarkdownConverter";
+import {
+	markdownToPlate,
+	plateToMarkdown,
+} from "./articleMarkdownConverter";
 
 type MarkdownAction =
 	| "paragraph"
@@ -138,6 +141,8 @@ export default function ArticleMarkdownEditorComponent() {
 	const submitRetryRef = useRef(false);
 	const syncSequenceRef = useRef(0);
 	const uploadSequenceRef = useRef(0);
+	const syncedMarkdownRef = useRef<string | null>(null);
+	const syncedPlateFingerprintRef = useRef<string | null>(null);
 	const [markdown, setMarkdown] = useState("");
 	const [mode, setMode] = useState<"visual" | "markdown">("visual");
 	const [isSwitching, setIsSwitching] = useState(false);
@@ -149,6 +154,32 @@ export default function ArticleMarkdownEditorComponent() {
 	const [markdownTarget, setMarkdownTarget] = useState<HTMLElement | null>(
 		null,
 	);
+
+	const fitMarkdownEditorHeight = useCallback(() => {
+		const textarea = textareaRef.current;
+		if (!textarea) return;
+		textarea.style.height = "auto";
+		textarea.style.height = `${textarea.scrollHeight}px`;
+	}, []);
+
+	useEffect(() => {
+		if (mode !== "markdown") return;
+		const frame = window.requestAnimationFrame(fitMarkdownEditorHeight);
+		return () => window.cancelAnimationFrame(frame);
+	}, [fitMarkdownEditorHeight, markdown, mode]);
+
+	useEffect(() => {
+		if (mode !== "markdown" || !markdownTarget || !textareaRef.current) return;
+		const textarea = textareaRef.current;
+		let width = textarea.getBoundingClientRect().width;
+		const observer = new ResizeObserver(([entry]) => {
+			if (!entry || entry.contentRect.width === width) return;
+			width = entry.contentRect.width;
+			fitMarkdownEditorHeight();
+		});
+		observer.observe(textarea);
+		return () => observer.disconnect();
+	}, [fitMarkdownEditorHeight, markdownTarget, mode]);
 
 	const getOriginalEditor = useCallback(() => {
 		if (originalEditorRef.current?.isConnected)
@@ -208,7 +239,12 @@ export default function ArticleMarkdownEditorComponent() {
 			setIsSyncing(true);
 			setSyncError(null);
 			try {
-				await editor.set(markdownToPlate(value));
+				const plateValue = markdownToPlate(value);
+				await editor.set(plateValue);
+				if (sequence === syncSequenceRef.current) {
+					syncedMarkdownRef.current = value;
+					syncedPlateFingerprintRef.current = plateToMarkdown(plateValue);
+				}
 			} catch (error) {
 				if (sequence === syncSequenceRef.current) {
 					setSyncError(
@@ -276,7 +312,12 @@ export default function ArticleMarkdownEditorComponent() {
 		setSyncError(null);
 		try {
 			const value = await editor.get();
-			const nextMarkdown = plateToMarkdown(value);
+			const plateMarkdown = plateToMarkdown(value);
+			const nextMarkdown =
+				syncedMarkdownRef.current !== null &&
+				syncedPlateFingerprintRef.current === plateMarkdown
+					? syncedMarkdownRef.current
+					: plateMarkdown;
 			setMarkdown(nextMarkdown);
 			setHistory([]);
 			setFuture([]);
@@ -589,7 +630,7 @@ export default function ArticleMarkdownEditorComponent() {
 						value={markdown}
 						onChange={(event) => updateMarkdown(event.target.value)}
 						onPaste={handlePaste}
-						className="min-h-44 flex-1 resize-y rounded-md bg-transparent p-4 font-mono text-sm leading-6 text-foreground ring-offset-background outline-none placeholder:text-muted-foreground/80"
+						className="min-h-44 w-full resize-none overflow-hidden rounded-md bg-transparent p-4 font-mono text-sm leading-6 text-foreground ring-offset-background outline-none placeholder:text-muted-foreground/80"
 						placeholder="Напишіть Markdown..."
 						aria-label="Markdown текст статті"
 					/>,

@@ -238,10 +238,13 @@ function escapeInline(value: string): string {
 	return value.replace(/([\\`*_[\]])/g, "\\$1");
 }
 
+const isEditorTextNode = (node: EditorNode): node is EditorTextNode =>
+	"text" in node && typeof node.text === "string";
+
 function serializeInline(nodes: EditorNode[]): string {
 	return nodes
 		.map((node) => {
-			if ("text" in node) {
+			if (isEditorTextNode(node)) {
 				let value = escapeInline(node.text);
 				if (node.bold) value = `**${value}**`;
 				if (node.italic) value = `*${value}*`;

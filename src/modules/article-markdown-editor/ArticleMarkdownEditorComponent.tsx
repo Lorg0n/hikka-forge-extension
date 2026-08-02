@@ -308,54 +308,63 @@ export default function ArticleMarkdownEditorComponent() {
 		}
 	};
 
-	const updateMarkdown = (nextValue: string, start?: number, end?: number) => {
-		if (nextValue === markdown) return;
-		setHistory((current) => [...current.slice(-49), markdown]);
-		setFuture([]);
-		setMarkdown(nextValue);
-		window.requestAnimationFrame(() => {
-			if (!textareaRef.current || start === undefined || end === undefined)
-				return;
-			textareaRef.current.focus();
-			textareaRef.current.setSelectionRange(start, end);
-		});
-	};
+	const updateMarkdown = useCallback(
+		(nextValue: string, start?: number, end?: number) => {
+			if (nextValue === markdown) return;
+			setHistory((current) => [...current.slice(-49), markdown]);
+			setFuture([]);
+			setMarkdown(nextValue);
+			window.requestAnimationFrame(() => {
+				if (!textareaRef.current || start === undefined || end === undefined)
+					return;
+				textareaRef.current.focus();
+				textareaRef.current.setSelectionRange(start, end);
+			});
+		},
+		[markdown],
+	);
 
-	const runMarkdownAction = (action: MarkdownAction, argument?: string) => {
-		if (!textareaRef.current) return;
-		const result = applyMarkdownAction(textareaRef.current, action, argument);
-		updateMarkdown(result.value, result.selectionStart, result.selectionEnd);
-	};
+	const runMarkdownAction = useCallback(
+		(action: MarkdownAction, argument?: string) => {
+			if (!textareaRef.current) return;
+			const result = applyMarkdownAction(textareaRef.current, action, argument);
+			updateMarkdown(result.value, result.selectionStart, result.selectionEnd);
+		},
+		[updateMarkdown],
+	);
 
-	const insertTextAtCursor = (text: string) => {
-		if (!textareaRef.current) return;
-		const { selectionStart, selectionEnd, value } = textareaRef.current;
-		updateMarkdown(
-			`${value.slice(0, selectionStart)}${text}${value.slice(selectionEnd)}`,
-			selectionStart + text.length,
-			selectionStart + text.length,
-		);
-	};
+	const insertTextAtCursor = useCallback(
+		(text: string) => {
+			if (!textareaRef.current) return;
+			const { selectionStart, selectionEnd, value } = textareaRef.current;
+			updateMarkdown(
+				`${value.slice(0, selectionStart)}${text}${value.slice(selectionEnd)}`,
+				selectionStart + text.length,
+				selectionStart + text.length,
+			);
+		},
+		[updateMarkdown],
+	);
 
-	const undo = () => {
+	const undo = useCallback(() => {
 		const previous = history[history.length - 1];
 		if (previous === undefined) return;
 		setHistory((current) => current.slice(0, -1));
 		setFuture((current) => [markdown, ...current]);
 		setMarkdown(previous);
 		window.requestAnimationFrame(() => textareaRef.current?.focus());
-	};
+	}, [history, markdown]);
 
-	const redo = () => {
+	const redo = useCallback(() => {
 		const next = future[0];
 		if (next === undefined) return;
 		setFuture((current) => current.slice(1));
 		setHistory((current) => [...current, markdown]);
 		setMarkdown(next);
 		window.requestAnimationFrame(() => textareaRef.current?.focus());
-	};
+	}, [future, markdown]);
 
-	const insertImages = async (files: FileList | File[] | null) => {
+	const insertImages = useCallback(async (files: FileList | File[] | null) => {
 		const imageFiles = Array.from(files ?? []).filter((file) =>
 			file.type.startsWith("image/"),
 		);
@@ -383,9 +392,9 @@ export default function ArticleMarkdownEditorComponent() {
 			selectionStart + images.length,
 			selectionStart + images.length,
 		);
-	};
+	}, [updateMarkdown]);
 
-	const handlePaste = (event: ReactClipboardEvent<HTMLTextAreaElement>) => {
+	const handlePaste = useCallback((event: ReactClipboardEvent<HTMLTextAreaElement>) => {
 		const files = Array.from(event.clipboardData?.items ?? [])
 			.filter((item) => item.kind === "file" && item.type.startsWith("image/"))
 			.map((item) => item.getAsFile())
@@ -393,7 +402,7 @@ export default function ArticleMarkdownEditorComponent() {
 		if (files.length === 0) return;
 		event.preventDefault();
 		void insertImages(files);
-	};
+	}, [insertImages]);
 
 	useEffect(() => {
 		if (mode !== "markdown" || !toolbarTarget) return;
@@ -512,7 +521,7 @@ export default function ArticleMarkdownEditorComponent() {
 			document.removeEventListener("click", handlePortalClick, true);
 			insertMenuOpenRef.current = false;
 		};
-	}, [future, history, markdown, mode, toolbarTarget]);
+	}, [insertImages, insertTextAtCursor, mode, redo, runMarkdownAction, toolbarTarget, undo]);
 
 	const modeButton = (
 		<Button

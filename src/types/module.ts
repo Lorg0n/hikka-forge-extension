@@ -8,6 +8,7 @@ export type ModuleSettings = Record<string, ModuleSettingValue>;
 
 export interface ModuleComponentProps {
 	settings: ModuleSettings;
+	exiting?: boolean;
 }
 
 export type InsertPosition =

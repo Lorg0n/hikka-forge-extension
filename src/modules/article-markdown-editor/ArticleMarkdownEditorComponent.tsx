@@ -9,9 +9,11 @@ import { createPortal } from "react-dom";
 import { Code2, LoaderCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { ModuleTransition } from "@/components/ui/module-transition";
 import { useContentUI } from "@/contexts/ContentUIContext";
 import { uploadArticleImage } from "@/services/articleImageUploadService";
 import { editorApi, editorIds } from "@/services/editorApiService";
+import type { ModuleComponentProps } from "@/types/module";
 
 import {
 	markdownToPlate,
@@ -128,7 +130,9 @@ function applyMarkdownAction(
 	};
 }
 
-export default function ArticleMarkdownEditorComponent() {
+export default function ArticleMarkdownEditorComponent({
+	exiting = false,
+}: ModuleComponentProps) {
 	const contentUI = useContentUI();
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const editor = useRef(
@@ -594,7 +598,7 @@ export default function ArticleMarkdownEditorComponent() {
 			onClick={() =>
 				void (mode === "markdown" ? openVisualMode() : openMarkdownMode())
 			}
-			disabled={isSwitching}
+			disabled={isSwitching || exiting}
 			aria-pressed={mode === "markdown"}
 			data-state={mode === "markdown" ? "on" : "off"}
 			title={
@@ -615,9 +619,14 @@ export default function ArticleMarkdownEditorComponent() {
 
 	const toolbarModePortal = toolbarTarget
 		? createPortal(
-					<div className="group/toolbar-group relative flex">
+					<ModuleTransition
+						stateKey="markdown-mode-button"
+						animateOnMount
+						present={!exiting}
+						className="group/toolbar-group relative flex"
+					>
 						<div className="flex items-center">{modeButton}</div>
-					</div>,
+					</ModuleTransition>,
 					toolbarTarget,
 				)
 		: null;

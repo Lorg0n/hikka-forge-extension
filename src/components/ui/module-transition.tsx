@@ -11,6 +11,9 @@ interface ModuleTransitionProps extends PropsWithChildren {
 	stateKey: string;
 	/** Keep the mounted wrapper stable when loading/content changes. */
 	animateStateChanges?: boolean;
+	/** Animate a portal when the module itself mounts or unmounts. */
+	animateOnMount?: boolean;
+	present?: boolean;
 	className?: string;
 	children: ReactNode;
 }
@@ -18,6 +21,8 @@ interface ModuleTransitionProps extends PropsWithChildren {
 export function ModuleTransition({
 	stateKey,
 	animateStateChanges = true,
+	animateOnMount = false,
+	present = true,
 	className,
 	children,
 }: ModuleTransitionProps) {
@@ -34,17 +39,19 @@ export function ModuleTransition({
 	}, [stateKey, transitionKey, animateStateChanges]);
 
 	return (
-		<AnimatePresence initial={false} mode="wait">
-			<motion.div
-				key={transitionKey}
-				initial={getModuleEnterInitial(Boolean(reducedMotion))}
-				animate={{ opacity: 1, y: 0 }}
-				exit={getModuleExitAnimation(Boolean(reducedMotion))}
-				transition={motionTransition}
-				className={className}
-			>
-				{children}
-			</motion.div>
+		<AnimatePresence initial={animateOnMount} mode="wait">
+			{present && (
+				<motion.div
+					key={transitionKey}
+					initial={getModuleEnterInitial(Boolean(reducedMotion))}
+					animate={{ opacity: 1, y: 0 }}
+					exit={getModuleExitAnimation(Boolean(reducedMotion))}
+					transition={motionTransition}
+					className={className}
+				>
+					{children}
+				</motion.div>
+			)}
 		</AnimatePresence>
 	);
 }

@@ -1,7 +1,7 @@
 import { logger } from "@/utils/logger";
 import browser from "@/utils/browser";
 import React from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { createRoot, Root } from "react-dom/client";
 import type {
 	ForgeModuleDef,
@@ -105,20 +105,18 @@ export function ModuleRuntime({
 	return (
 		<ContentUIProvider value={ui}>
 			<ModuleAuthProvider>
-				<AnimatePresence initial={true} mode="wait">
-					{!exiting && (
-						<motion.div
-							key="module"
-							initial={getModuleEnterInitial(Boolean(reducedMotion))}
-							animate={{ opacity: 1, y: 0 }}
-							exit={getModuleExitAnimation(Boolean(reducedMotion))}
-							transition={transition}
-							className="hikka-forge-module-wrapper"
-						>
-							<Component settings={settings} />
-						</motion.div>
-					)}
-				</AnimatePresence>
+				<motion.div
+					initial={getModuleEnterInitial(Boolean(reducedMotion))}
+					animate={
+						exiting
+							? getModuleExitAnimation(Boolean(reducedMotion))
+							: { opacity: 1, y: 0 }
+					}
+					transition={transition}
+					className="hikka-forge-module-wrapper"
+				>
+					<Component settings={settings} exiting={exiting} />
+				</motion.div>
 			</ModuleAuthProvider>
 		</ContentUIProvider>
 	);

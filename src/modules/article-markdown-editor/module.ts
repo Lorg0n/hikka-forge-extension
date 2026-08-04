@@ -12,7 +12,7 @@ const articleMarkdownEditorModule: ForgeModuleDef = {
 		"https://dev.hikka.io/articles/new",
 		"https://dev.hikka.io/articles/*/update",
 	],
-	enabledByDefault: true,
+	enabledByDefault: false,
 	category: "content",
 	beta: true,
 	elementSelector: {

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,9 +13,16 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  briefAlchemyError,
   type AlchemyCatalogItem,
   type AlchemyElement,
 } from "@/services/alchemyService";
+import {
+  MEDIA_IMAGE_ACCEPT,
+  MEDIA_IMAGE_MAX_SIZE,
+  MediaImageService,
+  type MediaImage,
+} from "@/services/mediaImageService";
 import type { PaletteObject, Recipe, RecipeIngredient } from "./alchemy.types";
 import { catalogSuggestionItems, ingredientsToExpression } from "./alchemy.admin";
 import { typeIcon } from "./alchemy.icons";
@@ -49,6 +56,19 @@ function expressionLookup(value: string, cursor: number) {
   const match = before.match(/((?:element|anime|manga)\(\s*["'])([^"']*)$/);
   if (!match) return null;
   return { start: cursor - match[0].length, prefix: match[1], query: match[2] };
+}
+
+const MEDIA_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
+
+function formatImageSize(size: number) {
+  if (size < 1024) return `${size} Б`;
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} КБ`;
+  return `${(size / (1024 * 1024)).toFixed(1)} МБ`;
 }
 
 function RecipeChip({
@@ -143,6 +163,13 @@ export function AlchemyAdminWorkspace({
   const [advanced, setAdvanced] = useState(false);
   const [cursor, setCursor] = useState(adminExpression.length);
   const [deleteTarget, setDeleteTarget] = useState<AlchemyElement | null>(null);
+  const [mediaImages, setMediaImages] = useState<MediaImage[]>([]);
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const [mediaUploading, setMediaUploading] = useState(false);
+  const [mediaDeletingId, setMediaDeletingId] = useState<string | null>(null);
+  const [mediaDeleteTarget, setMediaDeleteTarget] = useState<MediaImage | null>(null);
+  const [mediaError, setMediaError] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const adminExpressionRef = useRef(adminExpression);
   const adminElementRef = useRef(adminElement);
@@ -156,6 +183,74 @@ export function AlchemyAdminWorkspace({
     () => catalogSuggestionItems(palette, catalogResults, lookup?.query || searchQuery),
     [catalogResults, lookup?.query, palette, searchQuery],
   );
+
+  const loadMediaImages = useCallback(async () => {
+    setMediaLoading(true);
+    try {
+      const response = await MediaImageService.list({ size: 100 });
+      setMediaImages(response.content);
+      setMediaError(null);
+    } catch (loadError) {
+      setMediaError(
+        briefAlchemyError(loadError, "Не вдалося завантажити бібліотеку зображень."),
+      );
+    } finally {
+      setMediaLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadMediaImages();
+  }, [loadMediaImages]);
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (file.size > MEDIA_IMAGE_MAX_SIZE) {
+      setMediaError("Зображення завелике. Максимальний розмір — 10 МБ.");
+      return;
+    }
+    if (file.type && !MEDIA_IMAGE_TYPES.has(file.type)) {
+      setMediaError("Підтримуються лише JPEG, PNG, WebP або GIF.");
+      return;
+    }
+
+    setMediaUploading(true);
+    setMediaError(null);
+    try {
+      const uploaded = await MediaImageService.upload(file);
+      setMediaImages((current) => [
+        uploaded,
+        ...current.filter((image) => image.id !== uploaded.id),
+      ]);
+      onImage(uploaded.url);
+    } catch (uploadError) {
+      setMediaError(briefAlchemyError(uploadError, "Не вдалося завантажити зображення."));
+    } finally {
+      setMediaUploading(false);
+    }
+  };
+
+  const deleteMediaImage = async (image: MediaImage) => {
+    setMediaDeletingId(image.id);
+    setMediaError(null);
+    try {
+      await MediaImageService.delete(image.id);
+      setMediaImages((current) => current.filter((item) => item.id !== image.id));
+      if (adminImageUrl === image.url) onImage("");
+    } catch (deleteError) {
+      setMediaError(
+        briefAlchemyError(
+          deleteError,
+          "Не вдалося видалити зображення. Можливо, воно вже використовується.",
+        ),
+      );
+    } finally {
+      setMediaDeletingId(null);
+    }
+  };
 
   const chooseSuggestion = (item: PaletteObject) => {
     if (advanced && lookup) {
@@ -248,8 +343,133 @@ export function AlchemyAdminWorkspace({
           <div className="mb-5 flex items-start justify-between gap-3"><div><p className="font-medium">{adminElement ? `Редагування: ${adminElement.name}` : "Новий базовий елемент"}</p><p className="mt-1 text-xs text-muted-foreground">{adminElement ? "Змініть метадані або замініть вектор рецептом." : "Сформуйте вектор із вибраного рецепту."}</p></div></div>
           <div className="grid gap-3 md:grid-cols-2">
             <label className="grid gap-1.5 text-sm font-medium">Назва<Input value={adminName} onChange={(event) => onName(event.target.value)} placeholder="Наприклад, Світло" /></label>
-            <label className="grid gap-1.5 text-sm font-medium">URL зображення<Input value={adminImageUrl} onChange={(event) => onImage(event.target.value)} placeholder="https://…" /></label>
+            <div className="grid gap-1.5 text-sm font-medium">
+              <label htmlFor="alchemy-image-url">Зображення</label>
+              <div className="flex gap-2">
+                <Input
+                  id="alchemy-image-url"
+                  value={adminImageUrl}
+                  onChange={(event) => onImage(event.target.value)}
+                  placeholder="https://…"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                  disabled={mediaUploading}
+                  onClick={() => imageInputRef.current?.click()}
+                >
+                  <Icon icon={mediaUploading ? "svg-spinners:90-ring-with-bg" : "material-symbols:upload"} />
+                  {mediaUploading ? "Завантаження…" : "Завантажити"}
+                </Button>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept={MEDIA_IMAGE_ACCEPT}
+                  className="hidden"
+                  onChange={(event) => void handleImageUpload(event)}
+                />
+              </div>
+              <p className="text-[11px] font-normal text-muted-foreground">
+                JPEG, PNG, WebP або GIF до 10 МБ. Також можна вставити зовнішній URL.
+              </p>
+              {adminImageUrl && (
+                <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/25 p-2">
+                  <img
+                    src={adminImageUrl}
+                    alt=""
+                    className="size-10 shrink-0 rounded-lg bg-muted object-cover"
+                  />
+                  <span className="min-w-0 flex-1 truncate text-xs font-normal text-muted-foreground">
+                    {adminImageUrl}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={() => onImage("")}
+                    aria-label="Очистити зображення"
+                  >
+                    <Icon icon="material-symbols:close" />
+                  </Button>
+                </div>
+              )}
+            </div>
             <label className="grid gap-1.5 text-sm font-medium md:col-span-2">Опис<Input value={adminDescription} onChange={(event) => onDescription(event.target.value)} placeholder="Коротке пояснення елемента" /></label>
+          </div>
+          <div className="mt-4 rounded-2xl border border-border bg-muted/15 p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-medium">Бібліотека зображень</p>
+                <p className="text-[11px] font-normal text-muted-foreground">
+                  Виберіть вже завантажене зображення або видаліть непотрібне.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => void loadMediaImages()}
+                disabled={mediaLoading}
+                title="Оновити бібліотеку"
+                aria-label="Оновити бібліотеку"
+              >
+                <Icon icon={mediaLoading ? "svg-spinners:90-ring-with-bg" : "material-symbols:refresh"} />
+              </Button>
+            </div>
+            {mediaError && (
+              <p className="mb-2 rounded-lg border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs text-destructive">
+                {mediaError}
+              </p>
+            )}
+            {mediaLoading && !mediaImages.length ? (
+              <p className="py-4 text-center text-xs text-muted-foreground">Завантаження бібліотеки…</p>
+            ) : mediaImages.length ? (
+              <div className="grid max-h-56 grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3">
+                {mediaImages.map((image) => {
+                  const selected = adminImageUrl === image.url;
+                  return (
+                    <div
+                      key={image.id}
+                      className={`group relative overflow-hidden rounded-xl border ${selected ? "border-violet-400 ring-2 ring-violet-400/30" : "border-border"}`}
+                    >
+                      <button
+                        type="button"
+                        className="block w-full text-left hover:bg-accent/50"
+                        onClick={() => onImage(image.url)}
+                        title={`Вибрати ${image.originalFilename}`}
+                      >
+                        <img
+                          src={image.url}
+                          alt=""
+                          className="aspect-square w-full bg-muted object-cover"
+                        />
+                        <span className="block truncate px-2 pt-1.5 text-xs font-medium">
+                          {image.originalFilename}
+                        </span>
+                        <span className="block px-2 pb-1.5 text-[10px] font-normal text-muted-foreground">
+                          {image.contentType.replace("image/", "").toUpperCase()} · {formatImageSize(image.size)}
+                        </span>
+                      </button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon-xs"
+                        className="absolute right-1 top-1 opacity-0 shadow transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                        disabled={mediaDeletingId === image.id}
+                        onClick={() => setMediaDeleteTarget(image)}
+                        aria-label={`Видалити ${image.originalFilename}`}
+                      >
+                        <Icon icon={mediaDeletingId === image.id ? "svg-spinners:90-ring-with-bg" : "material-symbols:delete-outline"} />
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="py-4 text-center text-xs text-muted-foreground">Завантажених зображень ще немає.</p>
+            )}
           </div>
             <div className={`mt-5 rounded-2xl border p-4 ${replaceVector ? "border-violet-400/50 bg-violet-500/8" : "bg-muted/25"}`}>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><p className="font-medium">Рецепт вектора</p><p className="mt-1 text-xs text-muted-foreground">+ і − поєднують вектори; normalize() масштабує вектор; * / ^ працюють із числами.</p></div>{adminElement && <Button size="sm" variant={replaceVector ? "default" : "outline"} onClick={() => onReplace(!replaceVector)}>{replaceVector ? "Зберігати рецепт" : "Замінити вектор"}</Button>}</div>
@@ -280,6 +500,28 @@ export function AlchemyAdminWorkspace({
           <AlertDialogFooter>
             <AlertDialogCancel>Скасувати</AlertDialogCancel>
             <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { if (deleteTarget) onDelete(deleteTarget); setDeleteTarget(null); }}>Видалити</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={Boolean(mediaDeleteTarget)} onOpenChange={(open) => !open && setMediaDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Видалити зображення?</AlertDialogTitle>
+            <AlertDialogDescription>
+              «{mediaDeleteTarget?.originalFilename}» буде видалено з бібліотеки. Якщо зображення використовується елементом алхімії, backend відхилить операцію.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Скасувати</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (mediaDeleteTarget) void deleteMediaImage(mediaDeleteTarget);
+                setMediaDeleteTarget(null);
+              }}
+            >
+              Видалити
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

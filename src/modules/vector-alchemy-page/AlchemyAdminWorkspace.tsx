@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +13,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   briefAlchemyError,
-  type AlchemyCatalogItem,
   type AlchemyElement,
 } from "@/services/alchemyService";
 import {
@@ -23,40 +29,7 @@ import {
   MediaImageService,
   type MediaImage,
 } from "@/services/mediaImageService";
-import type { PaletteObject, Recipe, RecipeIngredient } from "./alchemy.types";
-import { catalogSuggestionItems, ingredientsToExpression } from "./alchemy.admin";
-import { typeIcon } from "./alchemy.icons";
-
-function HighlightedExpression({ value }: { value: string }) {
-  const parts = value.split(/(normalize|element|anime|manga|[+*^()/-]|[()"])/g);
-  return (
-    <>
-      {parts.map((part, index) => {
-        const className = /^(normalize|element|anime|manga)$/.test(part)
-          ? "text-sky-400"
-          : /^[+*^/-]$/.test(part)
-            ? "text-amber-300"
-            : /^[()]$/.test(part)
-              ? "text-violet-300"
-              : part === '"'
-                ? "text-emerald-300"
-                : "text-foreground";
-        return (
-          <span className={className} key={`${part}-${index}`}>
-            {part}
-          </span>
-        );
-      })}
-    </>
-  );
-}
-
-function expressionLookup(value: string, cursor: number) {
-  const before = value.slice(0, cursor);
-  const match = before.match(/((?:element|anime|manga)\(\s*["'])([^"']*)$/);
-  if (!match) return null;
-  return { start: cursor - match[0].length, prefix: match[1], query: match[2] };
-}
+import type { Recipe } from "./alchemy.types";
 
 const MEDIA_IMAGE_TYPES = new Set([
   "image/jpeg",
@@ -71,97 +44,351 @@ function formatImageSize(size: number) {
   return `${(size / (1024 * 1024)).toFixed(1)} МБ`;
 }
 
-function RecipeChip({
-  ingredient,
-  onWeight,
-  onRemove,
+function HighlightedExpression({ value }: { value: string }) {
+  const parts = value.split(
+    /(\b(?:normalize|element|anime|manga)\b|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\b\d+(?:\.\d+)?\b|[+\-*/^()]|\s+)/g,
+  );
+
+  return (
+    <>
+      {parts.map((part, index) => {
+        let className = "text-foreground";
+        if (/^(normalize|element|anime|manga)$/.test(part)) {
+          className = "text-sky-300";
+        } else if (/^[+\-*/^()]$/.test(part)) {
+          className = "text-amber-300";
+        } else if (/^(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')$/.test(part)) {
+          className = "text-emerald-300";
+        } else if (/^\d+(?:\.\d+)?$/.test(part)) {
+          className = "text-violet-300";
+        } else if (/^\s+$/.test(part)) {
+          className = "text-foreground";
+        }
+
+        return (
+          <span className={className} key={`${part}-${index}`}>
+            {part}
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
+function RecipeCodeEditor({
+  value,
+  onChange,
 }: {
-  ingredient: RecipeIngredient;
-  onWeight: () => void;
-  onRemove: () => void;
+  value: string;
+  onChange: (value: string, cursor: number) => void;
+}) {
+  const [cursor, setCursor] = useState(value.length);
+  const editorRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    setCursor(value.length);
+  }, [value]);
+
+  const updateExpression = (nextValue: string, nextCursor: number) => {
+    setCursor(nextCursor);
+    onChange(nextValue, nextCursor);
+  };
+
+  const insertAtCursor = (snippet: string, cursorOffset = snippet.length) => {
+    const start = editorRef.current?.selectionStart ?? cursor;
+    const end = editorRef.current?.selectionEnd ?? start;
+    const next = value.slice(0, start) + snippet + value.slice(end);
+    const nextCursor = start + cursorOffset;
+    updateExpression(next, nextCursor);
+    window.requestAnimationFrame(() => {
+      editorRef.current?.focus();
+      editorRef.current?.setSelectionRange(nextCursor, nextCursor);
+    });
+  };
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border bg-[#10131a] shadow-inner">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-3 py-2.5">
+        <div className="flex items-center gap-2">
+          <Icon icon="material-symbols:code-rounded" className="text-sky-300" />
+          <span className="font-mono text-xs font-semibold text-slate-200">
+            vector.expression
+          </span>
+        </div>
+        <span className="font-mono text-[10px] text-slate-500">
+          {value.length} символів
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center gap-1 border-b border-white/10 px-3 py-2">
+        <span className="mr-1 text-[10px] uppercase tracking-wider text-slate-500">
+          Вставити
+        </span>
+        {[" + ", " - ", " * ", " / ", " ^ ", "(", ")"].map((operator) => (
+          <button
+            type="button"
+            key={operator}
+            onClick={() => insertAtCursor(operator)}
+            className="rounded-md px-2 py-1 font-mono text-xs font-semibold text-amber-300 transition-colors hover:bg-white/10"
+          >
+            {operator.trim()}
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => insertAtCursor("normalize()", "normalize(".length)}
+          className="rounded-md px-2 py-1 font-mono text-xs font-semibold text-sky-300 transition-colors hover:bg-white/10"
+        >
+          normalize()
+        </button>
+      </div>
+      <div className="relative min-h-44 font-mono text-[13px] leading-6">
+        <pre
+          aria-hidden
+          className="pointer-events-none m-0 min-h-44 whitespace-pre-wrap break-words p-4 text-slate-200"
+        >
+          {value ? (
+            <HighlightedExpression value={value} />
+          ) : (
+            <span className="text-slate-600">
+              normalize((anime(&quot;frieren-123&quot;) - anime(&quot;one-piece&quot;))) / 2
+            </span>
+          )}
+        </pre>
+        <textarea
+          ref={editorRef}
+          value={value}
+          onChange={(event) => {
+            const nextCursor = event.target.selectionStart;
+            updateExpression(event.target.value, nextCursor);
+          }}
+          onSelect={(event) => setCursor(event.currentTarget.selectionStart)}
+          onClick={(event) => setCursor(event.currentTarget.selectionStart)}
+          spellCheck={false}
+          aria-label="Векторний вираз"
+          className="absolute inset-0 min-h-44 w-full resize-y bg-transparent p-4 font-mono text-[13px] leading-6 text-transparent caret-sky-200 outline-none selection:bg-sky-400/25"
+        />
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-white/10 px-4 py-2.5 font-mono text-[10px] text-slate-500">
+        <span><i className="mr-1 inline-block size-2 rounded-full bg-sky-300" />функція</span>
+        <span><i className="mr-1 inline-block size-2 rounded-full bg-emerald-300" />ідентифікатор</span>
+        <span><i className="mr-1 inline-block size-2 rounded-full bg-amber-300" />оператор</span>
+        <span><i className="mr-1 inline-block size-2 rounded-full bg-violet-300" />число</span>
+      </div>
+    </div>
+  );
+}
+
+function ImagePreview({ url }: { url: string }) {
+  if (!url) {
+    return (
+      <div className="flex size-20 shrink-0 items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 text-muted-foreground">
+        <Icon icon="material-symbols:image-outline" className="text-2xl" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={url}
+      alt=""
+      className="size-20 shrink-0 rounded-2xl border border-border bg-muted object-cover"
+    />
+  );
+}
+
+function MediaPicker({
+  open,
+  onOpenChange,
+  images,
+  selectedUrl,
+  loading,
+  uploading,
+  deletingId,
+  error,
+  imageInputRef,
+  onRefresh,
+  onUpload,
+  onSelect,
+  onDelete,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  images: MediaImage[];
+  selectedUrl: string;
+  loading: boolean;
+  uploading: boolean;
+  deletingId: string | null;
+  error: string | null;
+  imageInputRef: React.RefObject<HTMLInputElement | null>;
+  onRefresh: () => void;
+  onUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onSelect: (url: string) => void;
+  onDelete: (image: MediaImage) => void;
 }) {
   return (
-    <div
-      className={`group flex items-center gap-1.5 rounded-xl border px-2 py-1.5 ${ingredient.weight < 0 ? "border-red-400/50 bg-red-500/8" : "border-border bg-muted/35"}`}
-    >
-      <button
-        type="button"
-        onClick={onWeight}
-        className={`text-sm font-bold ${ingredient.weight < 0 ? "text-red-300" : "text-emerald-300"}`}
-        aria-label="Змінити знак"
-      >
-        {ingredient.weight < 0 ? "−" : "+"}
-      </button>
-      <Icon icon={typeIcon(ingredient.type)} className="shrink-0 text-violet-400" />
-      <span className="max-w-[12rem] truncate text-sm">{ingredient.title}</span>
-      <button
-        type="button"
-        onClick={onRemove}
-        className="ml-1 text-muted-foreground opacity-60 hover:text-foreground hover:opacity-100"
-        aria-label={`Видалити ${ingredient.title}`}
-      >
-        <Icon icon="material-symbols:close" className="text-base" />
-      </button>
-    </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl gap-0 overflow-hidden p-0">
+        <DialogHeader className="border-b px-5 py-4 pr-12 text-left sm:px-6">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <DialogTitle>Медіатека</DialogTitle>
+              <DialogDescription className="mt-1">
+                Виберіть обкладинку для елемента або завантажте нову.
+              </DialogDescription>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={uploading}
+              onClick={() => imageInputRef.current?.click()}
+            >
+              <Icon icon={uploading ? "svg-spinners:90-ring-with-bg" : "material-symbols:upload"} />
+              {uploading ? "Завантаження…" : "Завантажити"}
+            </Button>
+          </div>
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept={MEDIA_IMAGE_ACCEPT}
+            className="hidden"
+            onChange={onUpload}
+          />
+        </DialogHeader>
+        <div className="p-5 sm:p-6">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground">
+              {images.length ? `${images.length} зображень` : "Зображень ще немає"}
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={loading}
+              onClick={onRefresh}
+            >
+              <Icon icon={loading ? "svg-spinners:90-ring-with-bg" : "material-symbols:refresh"} />
+              Оновити
+            </Button>
+          </div>
+          {error && (
+            <p className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </p>
+          )}
+          {loading && !images.length ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <div key={index} className="aspect-square animate-pulse rounded-2xl bg-muted" />
+              ))}
+            </div>
+          ) : images.length ? (
+            <div className="grid max-h-[min(55vh,34rem)] grid-cols-2 gap-3 overflow-y-auto pr-1 sm:grid-cols-3 lg:grid-cols-4">
+              {images.map((image) => {
+                const selected = selectedUrl === image.url;
+                return (
+                  <div
+                    key={image.id}
+                    className={`group relative overflow-hidden rounded-2xl border bg-muted/20 transition ${selected ? "border-violet-400 ring-2 ring-violet-400/35" : "border-border hover:border-violet-400/50"}`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSelect(image.url);
+                        onOpenChange(false);
+                      }}
+                      className="block w-full text-left"
+                      title={`Вибрати ${image.originalFilename}`}
+                    >
+                      <img src={image.url} alt="" className="aspect-square w-full object-cover" />
+                      <span className="block truncate px-2.5 pt-2 text-xs font-medium">
+                        {image.originalFilename}
+                      </span>
+                      <span className="block px-2.5 pb-2.5 text-[10px] text-muted-foreground">
+                        {image.contentType.replace("image/", "").toUpperCase()} · {formatImageSize(image.size)}
+                      </span>
+                    </button>
+                    {selected && (
+                      <span className="absolute left-2 top-2 flex size-6 items-center justify-center rounded-full bg-violet-500 text-white shadow-lg">
+                        <Icon icon="material-symbols:check" className="text-sm" />
+                      </span>
+                    )}
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon-xs"
+                      className="absolute right-2 top-2 shadow-lg sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
+                      disabled={deletingId === image.id}
+                      onClick={() => onDelete(image)}
+                      aria-label={`Видалити ${image.originalFilename}`}
+                    >
+                      <Icon icon={deletingId === image.id ? "svg-spinners:90-ring-with-bg" : "material-symbols:delete-outline"} />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex min-h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/20 px-6 text-center">
+              <Icon icon="material-symbols:photo-library-outline" className="mb-3 text-3xl text-muted-foreground" />
+              <p className="font-medium">Медіатека порожня</p>
+              <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                Завантажте перше зображення, щоб використовувати його в елементах алхімії.
+              </p>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
 export function AlchemyAdminWorkspace({
   elements,
-  palette,
   adminElement,
   adminName,
   adminDescription,
   adminImageUrl,
   adminExpression,
-  recipeIngredients,
   replaceVector,
   lastRecipe,
   saving,
-  searchQuery,
-  catalogResults,
-  onSearch,
-  onSelectIngredient,
   onNew,
   onEdit,
   onName,
   onDescription,
   onImage,
   onExpression,
-  onIngredients,
   onReplace,
   onSave,
   onDelete,
+  onDirtyChange,
 }: {
   elements: AlchemyElement[];
-  palette: PaletteObject[];
   adminElement: AlchemyElement | null;
   adminName: string;
   adminDescription: string;
   adminImageUrl: string;
   adminExpression: string;
-  recipeIngredients: RecipeIngredient[];
   replaceVector: boolean;
   lastRecipe: Recipe | null;
   saving: boolean;
-  searchQuery: string;
-  catalogResults: AlchemyCatalogItem[];
-  onSearch: (value: string) => void;
-  onSelectIngredient: (item: PaletteObject) => void;
   onNew: () => void;
-  onEdit: (element: AlchemyElement) => void;
+  onEdit: (element: AlchemyElement) => Promise<void> | void;
   onName: (value: string) => void;
   onDescription: (value: string) => void;
   onImage: (value: string) => void;
   onExpression: (value: string, cursor: number) => void;
-  onIngredients: (value: RecipeIngredient[]) => void;
   onReplace: (value: boolean) => void;
-  onSave: () => void;
+  onSave: () => Promise<boolean> | boolean | void;
   onDelete: (element: AlchemyElement) => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
   const [listQuery, setListQuery] = useState("");
-  const [advanced, setAdvanced] = useState(false);
-  const [cursor, setCursor] = useState(adminExpression.length);
+  const [mobileEditorOpen, setMobileEditorOpen] = useState(Boolean(adminElement));
+  const [dirty, setDirty] = useState(false);
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+  const [mediaOpen, setMediaOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<AlchemyElement | null>(null);
   const [mediaImages, setMediaImages] = useState<MediaImage[]>([]);
   const [mediaLoading, setMediaLoading] = useState(false);
@@ -170,18 +397,9 @@ export function AlchemyAdminWorkspace({
   const [mediaDeleteTarget, setMediaDeleteTarget] = useState<MediaImage | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const editorRef = useRef<HTMLTextAreaElement>(null);
-  const adminExpressionRef = useRef(adminExpression);
-  const adminElementRef = useRef(adminElement);
-  adminExpressionRef.current = adminExpression;
-  adminElementRef.current = adminElement;
-  const lookup = expressionLookup(adminExpression, cursor);
+
   const filteredElements = elements.filter((item) =>
     item.name.toLowerCase().includes(listQuery.trim().toLowerCase()),
-  );
-  const suggestions = useMemo(
-    () => catalogSuggestionItems(palette, catalogResults, lookup?.query || searchQuery),
-    [catalogResults, lookup?.query, palette, searchQuery],
   );
 
   const loadMediaImages = useCallback(async () => {
@@ -192,7 +410,7 @@ export function AlchemyAdminWorkspace({
       setMediaError(null);
     } catch (loadError) {
       setMediaError(
-        briefAlchemyError(loadError, "Не вдалося завантажити бібліотеку зображень."),
+        briefAlchemyError(loadError, "Не вдалося завантажити медіатеку."),
       );
     } finally {
       setMediaLoading(false);
@@ -202,6 +420,48 @@ export function AlchemyAdminWorkspace({
   useEffect(() => {
     void loadMediaImages();
   }, [loadMediaImages]);
+
+  useEffect(() => {
+    setMobileEditorOpen(Boolean(adminElement));
+    setDirty(false);
+  }, [adminElement?.id]);
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+
+  const runOrConfirm = (action: () => void) => {
+    if (dirty) {
+      setPendingAction(() => action);
+      return;
+    }
+    action();
+  };
+
+  const selectElement = async (element: AlchemyElement) => {
+    await onEdit(element);
+    setMobileEditorOpen(true);
+    setDirty(false);
+  };
+
+  const handleEdit = (element: AlchemyElement) => {
+    runOrConfirm(() => {
+      void selectElement(element);
+    });
+  };
+
+  const handleNew = () => {
+    runOrConfirm(() => {
+      onNew();
+      setMobileEditorOpen(true);
+      setDirty(false);
+    });
+  };
+
+  const handleSave = async () => {
+    const saved = await onSave();
+    if (saved !== false) setDirty(false);
+  };
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -226,6 +486,7 @@ export function AlchemyAdminWorkspace({
         ...current.filter((image) => image.id !== uploaded.id),
       ]);
       onImage(uploaded.url);
+      setDirty(true);
     } catch (uploadError) {
       setMediaError(briefAlchemyError(uploadError, "Не вдалося завантажити зображення."));
     } finally {
@@ -239,7 +500,10 @@ export function AlchemyAdminWorkspace({
     try {
       await MediaImageService.delete(image.id);
       setMediaImages((current) => current.filter((item) => item.id !== image.id));
-      if (adminImageUrl === image.url) onImage("");
+      if (adminImageUrl === image.url) {
+        onImage("");
+        setDirty(true);
+      }
     } catch (deleteError) {
       setMediaError(
         briefAlchemyError(
@@ -252,250 +516,245 @@ export function AlchemyAdminWorkspace({
     }
   };
 
-  const chooseSuggestion = (item: PaletteObject) => {
-    if (advanced && lookup) {
-      const next = `${adminExpression.slice(0, lookup.start)}${lookup.prefix}${item.sourceId}")${adminExpression.slice(cursor)}`;
-      onExpression(next, lookup.start + lookup.prefix.length + String(item.sourceId).length + 2);
-    } else {
-      onSelectIngredient(item);
-    }
-    onSearch("");
-  };
-
-  const handleExpressionChange = (
-    event: React.ChangeEvent<HTMLTextAreaElement>,
-  ) => {
-    const nextCursor = event.target.selectionStart;
-    setCursor(nextCursor);
-    onExpression(event.target.value, nextCursor);
-    const nextLookup = expressionLookup(event.target.value, nextCursor);
-    onSearch(nextLookup?.query || "");
-  };
-
-  const insertOperator = (operator: string) => {
-    const start = editorRef.current?.selectionStart ?? cursor;
-    const end = editorRef.current?.selectionEnd ?? start;
-    const next = adminExpression.slice(0, start) + operator + adminExpression.slice(end);
-    const nextCursor = start + operator.length;
-    onExpression(next, nextCursor);
-    setCursor(nextCursor);
-    window.requestAnimationFrame(() => {
-      editorRef.current?.focus();
-      editorRef.current?.setSelectionRange(nextCursor, nextCursor);
-    });
-  };
-
-  const insertNormalize = () => {
-    const start = editorRef.current?.selectionStart ?? cursor;
-    const end = editorRef.current?.selectionEnd ?? start;
-    const value = "normalize()";
-    const next = adminExpression.slice(0, start) + value + adminExpression.slice(end);
-    const nextCursor = start + "normalize(".length;
-    onExpression(next, nextCursor);
-    setCursor(nextCursor);
-    window.requestAnimationFrame(() => {
-      editorRef.current?.focus();
-      editorRef.current?.setSelectionRange(nextCursor, nextCursor);
-    });
-  };
-
-  useEffect(() => {
-    setCursor(adminExpressionRef.current.length);
-    setAdvanced(Boolean(adminElementRef.current && adminExpressionRef.current.trim()));
-  }, [adminElement?.id]);
-
   return (
-    <section className="surface overflow-hidden rounded-2xl border shadow-xl shadow-black/5">
-      <div className="flex flex-col gap-3 border-b px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <div className="flex items-center gap-3">
-          <span className="flex size-9 items-center justify-center rounded-xl bg-violet-500/12 text-violet-400">
-            <Icon icon="material-symbols:admin-panel-settings-outline" />
-          </span>
-          <div>
-            <h2 className="font-semibold">Керування елементами</h2>
-            <p className="text-xs text-muted-foreground">Створюйте та редагуйте базові елементи алхімії.</p>
+    <section className="overflow-hidden rounded-3xl border border-border bg-card shadow-xl shadow-black/5">
+      <div className="border-b border-border bg-muted/15 px-4 py-5 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-violet-500/12 text-violet-400">
+              <Icon icon="material-symbols:science-outline" className="text-2xl" />
+            </span>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-lg font-semibold tracking-tight sm:text-xl">Alchemy studio</h2>
+                <span className="rounded-full border border-violet-400/20 bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-violet-300">
+                  Admin
+                </span>
+              </div>
+              <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+                Керуйте базовими елементами та їхніми векторними рецептами.
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:flex">
+            <div className="rounded-xl border border-border bg-background/60 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Елементи</p>
+              <p className="mt-0.5 text-sm font-semibold">{elements.length}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-background/60 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Стан</p>
+              <p className={`mt-0.5 text-sm font-semibold ${dirty ? "text-amber-300" : "text-emerald-300"}`}>
+                {dirty ? "Є зміни" : "Синхронізовано"}
+              </p>
+            </div>
           </div>
         </div>
       </div>
-      <div className="grid lg:items-stretch lg:grid-cols-[15rem_minmax(0,1fr)]">
-        <aside className="border-b p-3 lg:flex lg:min-h-0 lg:flex-col lg:border-b-0 lg:border-r">
-          <div className="mb-2 flex items-center justify-between px-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Каталог</p>
-            <span className="text-xs text-muted-foreground">{elements.length}</span>
+
+      <div className="grid min-h-[min(70svh,780px)] lg:grid-cols-[18rem_minmax(0,1fr)]">
+        <aside className={`${mobileEditorOpen ? "hidden lg:flex" : "flex"} min-h-0 flex-col border-b border-border p-4 lg:border-b-0 lg:border-r lg:p-5`}>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Каталог</p>
+              <p className="mt-1 text-xs text-muted-foreground">Оберіть елемент для редагування</p>
+            </div>
+            <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">{elements.length}</span>
           </div>
-          <p className="mb-2 px-2 text-[11px] text-muted-foreground">Видалення елемента незворотне.</p>
-          <div className="mb-2 flex items-center gap-2">
-            <Input value={listQuery} onChange={(event) => setListQuery(event.target.value)} placeholder="Знайти елемент" className="h-9 min-w-0 flex-1" />
-            <Button type="button" variant="outline" size="icon-sm" onClick={onNew} title="Новий елемент" aria-label="Створити новий елемент">
+          <div className="mb-4 flex gap-2">
+            <div className="relative min-w-0 flex-1">
+              <Icon icon="material-symbols:search" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={listQuery}
+                onChange={(event) => setListQuery(event.target.value)}
+                placeholder="Знайти елемент"
+                className="h-10 rounded-xl pl-9"
+                aria-label="Пошук елементів"
+              />
+            </div>
+            <Button type="button" size="icon-md" onClick={handleNew} title="Створити елемент" aria-label="Створити елемент">
               <Icon icon="material-symbols:add" />
             </Button>
           </div>
-          <div className="max-h-72 min-h-0 space-y-1 overflow-y-auto lg:flex-1 lg:max-h-none">
-            {filteredElements.map((element) => (
-              <div key={element.id} className={`group flex items-center gap-1 rounded-lg p-1 ${adminElement?.id === element.id ? "bg-violet-500/12" : "hover:bg-muted/60"}`}>
-                <button type="button" className="min-w-0 flex-1 truncate px-2 py-1.5 text-left text-sm" onClick={() => void onEdit(element)}>{element.name}</button>
-                <Button type="button" size="icon-xs" variant="ghost" className="text-red-400 opacity-0 transition-opacity hover:bg-red-500/15 hover:text-red-300 focus-visible:opacity-100 group-hover:opacity-100" onClick={() => setDeleteTarget(element)} aria-label={`Видалити ${element.name}`}><Icon icon="material-symbols:delete-outline" /></Button>
-              </div>
-            ))}
-          </div>
-        </aside>
-        <div className="p-4 sm:p-6">
-          <div className="mb-5 flex items-start justify-between gap-3"><div><p className="font-medium">{adminElement ? `Редагування: ${adminElement.name}` : "Новий базовий елемент"}</p><p className="mt-1 text-xs text-muted-foreground">{adminElement ? "Змініть метадані або замініть вектор рецептом." : "Сформуйте вектор із вибраного рецепту."}</p></div></div>
-          <div className="grid gap-3 md:grid-cols-2">
-            <label className="grid gap-1.5 text-sm font-medium">Назва<Input value={adminName} onChange={(event) => onName(event.target.value)} placeholder="Наприклад, Світло" /></label>
-            <div className="grid gap-1.5 text-sm font-medium">
-              <label htmlFor="alchemy-image-url">Зображення</label>
-              <div className="flex gap-2">
-                <Input
-                  id="alchemy-image-url"
-                  value={adminImageUrl}
-                  onChange={(event) => onImage(event.target.value)}
-                  placeholder="https://…"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0"
-                  disabled={mediaUploading}
-                  onClick={() => imageInputRef.current?.click()}
-                >
-                  <Icon icon={mediaUploading ? "svg-spinners:90-ring-with-bg" : "material-symbols:upload"} />
-                  {mediaUploading ? "Завантаження…" : "Завантажити"}
-                </Button>
-                <input
-                  ref={imageInputRef}
-                  type="file"
-                  accept={MEDIA_IMAGE_ACCEPT}
-                  className="hidden"
-                  onChange={(event) => void handleImageUpload(event)}
-                />
-              </div>
-              <p className="text-[11px] font-normal text-muted-foreground">
-                JPEG, PNG, WebP або GIF до 10 МБ. Також можна вставити зовнішній URL.
-              </p>
-              {adminImageUrl && (
-                <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/25 p-2">
-                  <img
-                    src={adminImageUrl}
-                    alt=""
-                    className="size-10 shrink-0 rounded-lg bg-muted object-cover"
-                  />
-                  <span className="min-w-0 flex-1 truncate text-xs font-normal text-muted-foreground">
-                    {adminImageUrl}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => onImage("")}
-                    aria-label="Очистити зображення"
-                  >
-                    <Icon icon="material-symbols:close" />
+          <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
+            {filteredElements.length ? filteredElements.map((element) => {
+              const selected = adminElement?.id === element.id;
+              return (
+                <div key={element.id} className={`group flex items-center gap-1 rounded-xl border p-1 transition-colors ${selected ? "border-violet-400/30 bg-violet-500/10" : "border-transparent hover:border-border hover:bg-muted/50"}`}>
+                  <button type="button" onClick={() => handleEdit(element)} className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2 py-2 text-left">
+                    {element.imageUrl ? (
+                      <img src={element.imageUrl} alt="" className="size-9 shrink-0 rounded-lg object-cover" />
+                    ) : (
+                      <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${selected ? "bg-violet-500/20 text-violet-300" : "bg-muted text-muted-foreground"}`}>
+                        <Icon icon="material-symbols:deployed-code-outline" />
+                      </span>
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">{element.name}</span>
+                      <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">{element.description || "Без опису"}</span>
+                    </span>
+                    {selected && <Icon icon="material-symbols:chevron-right" className="shrink-0 text-violet-300" />}
+                  </button>
+                  <Button type="button" size="icon-xs" variant="ghost" className="text-muted-foreground hover:bg-red-500/10 hover:text-red-300" onClick={() => setDeleteTarget(element)} aria-label={`Видалити ${element.name}`}>
+                    <Icon icon="material-symbols:delete-outline" />
                   </Button>
                 </div>
-              )}
-            </div>
-            <label className="grid gap-1.5 text-sm font-medium md:col-span-2">Опис<Input value={adminDescription} onChange={(event) => onDescription(event.target.value)} placeholder="Коротке пояснення елемента" /></label>
-          </div>
-          <div className="mt-4 rounded-2xl border border-border bg-muted/15 p-3">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <div>
-                <p className="text-sm font-medium">Бібліотека зображень</p>
-                <p className="text-[11px] font-normal text-muted-foreground">
-                  Виберіть вже завантажене зображення або видаліть непотрібне.
-                </p>
+              );
+            }) : (
+              <div className="rounded-2xl border border-dashed border-border px-4 py-8 text-center">
+                <Icon icon="material-symbols:search-off" className="mb-2 text-2xl text-muted-foreground" />
+                <p className="text-sm font-medium">Нічого не знайдено</p>
+                <p className="mt-1 text-xs text-muted-foreground">Спробуйте інший запит.</p>
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => void loadMediaImages()}
-                disabled={mediaLoading}
-                title="Оновити бібліотеку"
-                aria-label="Оновити бібліотеку"
-              >
-                <Icon icon={mediaLoading ? "svg-spinners:90-ring-with-bg" : "material-symbols:refresh"} />
+            )}
+          </div>
+          <div className="mt-4 rounded-xl bg-muted/35 px-3 py-2.5 text-[11px] leading-4 text-muted-foreground">
+            Видалення елемента також прибирає його з поточної алхімічної мапи.
+          </div>
+        </aside>
+
+        <div className={`${mobileEditorOpen ? "flex" : "hidden lg:flex"} min-w-0 flex-col`}>
+          <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-6 lg:px-8">
+            <div className="flex min-w-0 items-center gap-3">
+              <Button type="button" size="icon-sm" variant="ghost" className="lg:hidden" onClick={() => setMobileEditorOpen(false)} aria-label="Повернутися до каталогу">
+                <Icon icon="material-symbols:arrow-back" />
+              </Button>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">{adminElement ? adminElement.name : "Новий елемент"}</p>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">{adminElement ? "Редагування базового елемента" : "Створіть новий елемент алхімії"}</p>
+              </div>
+            </div>
+            {dirty && <span className="shrink-0 rounded-full bg-amber-400/12 px-2.5 py-1 text-[11px] font-medium text-amber-300">Не збережено</span>}
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-4xl space-y-5">
+              <section className="rounded-2xl border border-border bg-background/45 p-4 sm:p-5">
+                <div className="mb-4 flex items-start gap-3">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/12 text-violet-400"><Icon icon="material-symbols:badge-outline" /></span>
+                  <div>
+                    <h3 className="text-sm font-semibold">Ідентифікація</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">Основні дані, які бачать користувачі.</p>
+                  </div>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="grid gap-1.5 text-sm font-medium">
+                    Назва <span className="text-destructive">*</span>
+                    <Input value={adminName} onChange={(event) => { onName(event.target.value); setDirty(true); }} placeholder="Наприклад, Світло" className="h-11 rounded-xl" />
+                  </label>
+                  <label className="grid gap-1.5 text-sm font-medium">
+                    Опис
+                    <Input value={adminDescription} onChange={(event) => { onDescription(event.target.value); setDirty(true); }} placeholder="Коротке пояснення елемента" className="h-11 rounded-xl" />
+                  </label>
+                </div>
+              </section>
+
+              <section className="rounded-2xl border border-border bg-background/45 p-4 sm:p-5">
+                <div className="mb-4 flex items-start gap-3">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/12 text-sky-300"><Icon icon="material-symbols:image-outline" /></span>
+                  <div>
+                    <h3 className="text-sm font-semibold">Зображення</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">Виберіть з медіатеки, завантажте файл або вставте URL.</p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <ImagePreview url={adminImageUrl} />
+                  <div className="min-w-0 flex-1 space-y-2.5">
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={() => setMediaOpen(true)}>
+                        <Icon icon="material-symbols:photo-library-outline" />
+                        Медіатека
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" disabled={mediaUploading} onClick={() => imageInputRef.current?.click()}>
+                        <Icon icon={mediaUploading ? "svg-spinners:90-ring-with-bg" : "material-symbols:upload"} />
+                        Завантажити
+                      </Button>
+                      {adminImageUrl && <Button type="button" variant="ghost" size="sm" onClick={() => { onImage(""); setDirty(true); }}><Icon icon="material-symbols:close" />Прибрати</Button>}
+                    </div>
+                    <Input value={adminImageUrl} onChange={(event) => { onImage(event.target.value); setDirty(true); }} placeholder="https://…" className="h-10 rounded-xl" aria-label="URL зображення" />
+                    <p className="text-[11px] text-muted-foreground">JPEG, PNG, WebP або GIF до 10 МБ.</p>
+                  </div>
+                </div>
+              </section>
+
+              <section className={`rounded-2xl border p-4 sm:p-5 ${replaceVector ? "border-violet-400/35 bg-violet-500/[0.04]" : "border-border bg-background/45"}`}>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex items-start gap-3">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/12 text-amber-300"><Icon icon="material-symbols:account-tree-outline" /></span>
+                    <div>
+                      <h3 className="text-sm font-semibold">Векторний рецепт</h3>
+                      <p className="mt-1 max-w-xl text-xs leading-5 text-muted-foreground">Опишіть формулу вручну. Пошук і autocomplete вимкнені, щоб рецепт залишався прозорим і контрольованим.</p>
+                    </div>
+                  </div>
+                  {adminElement && (
+                    <Button type="button" size="sm" variant={replaceVector ? "default" : "outline"} onClick={() => { onReplace(!replaceVector); setDirty(true); }}>
+                      <Icon icon={replaceVector ? "material-symbols:edit-note" : "material-symbols:lock-reset"} />
+                      {replaceVector ? "Зберігати рецепт" : "Замінити вектор"}
+                    </Button>
+                  )}
+                </div>
+                {replaceVector ? (
+                  <div className="mt-5 space-y-3">
+                    <RecipeCodeEditor value={adminExpression} onChange={(value, cursor) => { onExpression(value, cursor); setDirty(true); }} />
+                    <p className="text-xs leading-5 text-muted-foreground">Функції: <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px] text-sky-300">element()</code>, <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px] text-sky-300">anime()</code>, <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px] text-sky-300">manga()</code>, <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px] text-sky-300">normalize()</code>. Оператори: <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px] text-amber-300">+ - * / ^</code>.</p>
+                  </div>
+                ) : (
+                  <div className="mt-5 flex items-center gap-3 rounded-xl border border-border bg-muted/25 px-3 py-3 text-sm text-muted-foreground">
+                    <Icon icon="material-symbols:check-circle-outline" className="shrink-0 text-emerald-300" />
+                    Поточний 256-вимірний вектор буде збережено без змін.
+                  </div>
+                )}
+                {lastRecipe && <div className="mt-4 flex items-center gap-2 rounded-xl border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground"><Icon icon="material-symbols:history" />Остання реакція: <span className="truncate font-medium text-foreground">{lastRecipe.label}</span></div>}
+              </section>
+            </div>
+          </div>
+
+          <div className="flex flex-col-reverse gap-2 border-t border-border bg-card/95 px-4 py-3 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+            <Button type="button" variant="ghost" onClick={handleNew} disabled={saving}>Скинути форму</Button>
+            <div className="flex items-center gap-3">
+              {dirty && <span className="hidden text-xs text-muted-foreground sm:inline">Зміни ще не збережені</span>}
+              <Button type="button" onClick={() => void handleSave()} disabled={saving || !adminName.trim() || (!adminElement && !replaceVector)}>
+                <Icon icon={saving ? "svg-spinners:90-ring-with-bg" : "material-symbols:save-outline"} />
+                {saving ? "Збереження…" : adminElement ? "Зберегти зміни" : "Створити елемент"}
               </Button>
             </div>
-            {mediaError && (
-              <p className="mb-2 rounded-lg border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs text-destructive">
-                {mediaError}
-              </p>
-            )}
-            {mediaLoading && !mediaImages.length ? (
-              <p className="py-4 text-center text-xs text-muted-foreground">Завантаження бібліотеки…</p>
-            ) : mediaImages.length ? (
-              <div className="grid max-h-56 grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3">
-                {mediaImages.map((image) => {
-                  const selected = adminImageUrl === image.url;
-                  return (
-                    <div
-                      key={image.id}
-                      className={`group relative overflow-hidden rounded-xl border ${selected ? "border-violet-400 ring-2 ring-violet-400/30" : "border-border"}`}
-                    >
-                      <button
-                        type="button"
-                        className="block w-full text-left hover:bg-accent/50"
-                        onClick={() => onImage(image.url)}
-                        title={`Вибрати ${image.originalFilename}`}
-                      >
-                        <img
-                          src={image.url}
-                          alt=""
-                          className="aspect-square w-full bg-muted object-cover"
-                        />
-                        <span className="block truncate px-2 pt-1.5 text-xs font-medium">
-                          {image.originalFilename}
-                        </span>
-                        <span className="block px-2 pb-1.5 text-[10px] font-normal text-muted-foreground">
-                          {image.contentType.replace("image/", "").toUpperCase()} · {formatImageSize(image.size)}
-                        </span>
-                      </button>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon-xs"
-                        className="absolute right-1 top-1 opacity-0 shadow transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-                        disabled={mediaDeletingId === image.id}
-                        onClick={() => setMediaDeleteTarget(image)}
-                        aria-label={`Видалити ${image.originalFilename}`}
-                      >
-                        <Icon icon={mediaDeletingId === image.id ? "svg-spinners:90-ring-with-bg" : "material-symbols:delete-outline"} />
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="py-4 text-center text-xs text-muted-foreground">Завантажених зображень ще немає.</p>
-            )}
           </div>
-            <div className={`mt-5 rounded-2xl border p-4 ${replaceVector ? "border-violet-400/50 bg-violet-500/8" : "bg-muted/25"}`}>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><p className="font-medium">Рецепт вектора</p><p className="mt-1 text-xs text-muted-foreground">+ і − поєднують вектори; normalize() масштабує вектор; * / ^ працюють із числами.</p></div>{adminElement && <Button size="sm" variant={replaceVector ? "default" : "outline"} onClick={() => onReplace(!replaceVector)}>{replaceVector ? "Зберігати рецепт" : "Замінити вектор"}</Button>}</div>
-            {replaceVector && <>
-              <div className="relative mt-4">
-                <Icon icon="material-symbols:add-circle-outline" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-violet-400" />
-                <Input value={searchQuery} onChange={(event) => onSearch(event.target.value)} placeholder="Додати інгредієнт до рецепту…" className="h-10 rounded-xl pl-9" />
-                {(searchQuery.trim() || lookup) && suggestions.length > 0 && <div className="absolute left-0 right-0 top-full z-20 mt-1 rounded-xl border bg-popover p-1 shadow-2xl">{suggestions.map((item) => <button type="button" key={item.paletteId} onClick={() => chooseSuggestion(item)} className="flex w-full items-center gap-2 rounded-lg p-2 text-left hover:bg-accent"><Icon icon={typeIcon(item.type)} className="text-violet-400" /><span className="min-w-0 flex-1 truncate text-sm">{item.title}</span><span className="text-[10px] uppercase text-muted-foreground">{item.type}</span></button>)}</div>}
-              </div>
-              <div className="mt-3 flex min-h-10 flex-wrap gap-2">{recipeIngredients.map((ingredient, index) => <RecipeChip key={`${ingredient.paletteId}-${index}`} ingredient={ingredient} onWeight={() => onIngredients(recipeIngredients.map((item, itemIndex) => itemIndex === index ? { ...item, weight: item.weight === 1 ? -1 : 1 } : item))} onRemove={() => onIngredients(recipeIngredients.filter((_, itemIndex) => itemIndex !== index))} />)}{!recipeIngredients.length && <span className="text-sm text-muted-foreground">Поки що немає інгредієнтів.</span>}</div>
-              <div className="mt-3 flex items-center justify-between gap-2"><button type="button" onClick={() => { setAdvanced((value) => !value); if (!adminExpression && recipeIngredients.length) onExpression(ingredientsToExpression(recipeIngredients), 0); }} className="text-xs font-medium text-violet-400 hover:text-violet-300">{advanced ? "Сховати редактор синтаксису" : "Відкрити редактор синтаксису"}</button>{lastRecipe && <span className="truncate text-xs text-muted-foreground">Остання реакція: {lastRecipe.label}</span>}</div>
-              {advanced && <>
-              <div className="mt-3 flex flex-wrap items-center gap-1 rounded-xl border border-border bg-background/50 p-1.5"><span className="px-1.5 text-[11px] text-muted-foreground">Оператори</span>{[" + ", " − ", " * ", " / ", " ^ ", "(", ")"].map((operator) => <button type="button" key={operator} onClick={() => insertOperator(operator === " − " ? " - " : operator)} className="min-w-7 rounded-lg px-2 py-1 text-xs font-semibold text-amber-300 hover:bg-accent">{operator.trim()}</button>)}<button type="button" onClick={insertNormalize} className="rounded-lg px-2 py-1 text-xs font-semibold text-sky-300 hover:bg-accent">normalize()</button></div>
-                <div className="relative mt-2 overflow-hidden rounded-xl border border-border bg-background/70 font-mono text-sm"><pre aria-hidden className="pointer-events-none min-h-24 whitespace-pre-wrap break-words p-3 leading-6"><HighlightedExpression value={adminExpression} /></pre><textarea ref={editorRef} value={adminExpression} onChange={handleExpressionChange} onSelect={(event) => setCursor(event.currentTarget.selectionStart)} onClick={(event) => setCursor(event.currentTarget.selectionStart)} spellCheck={false} className="absolute inset-0 min-h-24 w-full resize-y bg-transparent p-3 font-mono text-sm leading-6 text-transparent caret-foreground outline-none selection:bg-violet-400/30" aria-label="Векторний вираз" placeholder={'normalize((anime("frieren-123") - anime("one-piece"))) / 2'} />{lookup && suggestions.length > 0 && <div className="absolute left-3 top-full z-10 mt-1 hidden rounded-lg border bg-popover p-1 shadow-lg sm:block">{suggestions.slice(0, 5).map((item) => <button type="button" key={item.paletteId} onClick={() => chooseSuggestion(item)} className="block px-2 py-1 text-left text-xs hover:bg-accent">{item.type}("{item.sourceId}") · {item.title}</button>)}</div>}</div>
-              </>}
-            </>}
-            {!replaceVector && <p className="mt-3 text-xs text-muted-foreground">Поточний 256-вимірний вектор буде збережено без змін.</p>}
-          </div>
-          <div className="mt-5 flex gap-2"><Button onClick={onSave} disabled={saving || !adminName.trim() || (!adminElement && !replaceVector)}>{saving ? "Збереження…" : adminElement ? "Зберегти зміни" : "Створити елемент"}</Button><Button variant="ghost" onClick={onNew}>Очистити</Button></div>
         </div>
       </div>
+
+      <MediaPicker
+        open={mediaOpen}
+        onOpenChange={setMediaOpen}
+        images={mediaImages}
+        selectedUrl={adminImageUrl}
+        loading={mediaLoading}
+        uploading={mediaUploading}
+        deletingId={mediaDeletingId}
+        error={mediaError}
+        imageInputRef={imageInputRef}
+        onRefresh={() => void loadMediaImages()}
+        onUpload={(event) => void handleImageUpload(event)}
+        onSelect={(url) => { onImage(url); setDirty(true); }}
+        onDelete={setMediaDeleteTarget}
+      />
+
+      <AlertDialog open={Boolean(pendingAction)} onOpenChange={(open) => !open && setPendingAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Відкинути незбережені зміни?</AlertDialogTitle>
+            <AlertDialogDescription>Поточні зміни форми буде втрачено. Цю дію неможливо скасувати.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Залишитися</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { const action = pendingAction; setPendingAction(null); setDirty(false); action?.(); }}>Відкинути зміни</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Видалити базовий елемент?</AlertDialogTitle>
-            <AlertDialogDescription>«{deleteTarget?.name}» буде видалено з backend і з поточної алхімічної мапи. Цю дію неможливо скасувати.</AlertDialogDescription>
+            <AlertDialogDescription>«{deleteTarget?.name}» буде видалено з backend і поточної алхімічної мапи. Цю дію неможливо скасувати.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Скасувати</AlertDialogCancel>
@@ -503,25 +762,16 @@ export function AlchemyAdminWorkspace({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
       <AlertDialog open={Boolean(mediaDeleteTarget)} onOpenChange={(open) => !open && setMediaDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Видалити зображення?</AlertDialogTitle>
-            <AlertDialogDescription>
-              «{mediaDeleteTarget?.originalFilename}» буде видалено з бібліотеки. Якщо зображення використовується елементом алхімії, backend відхилить операцію.
-            </AlertDialogDescription>
+            <AlertDialogDescription>«{mediaDeleteTarget?.originalFilename}» буде видалено з медіатеки. Якщо зображення використовується елементом алхімії, backend відхилить операцію.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Скасувати</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => {
-                if (mediaDeleteTarget) void deleteMediaImage(mediaDeleteTarget);
-                setMediaDeleteTarget(null);
-              }}
-            >
-              Видалити
-            </AlertDialogAction>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { if (mediaDeleteTarget) void deleteMediaImage(mediaDeleteTarget); setMediaDeleteTarget(null); }}>Видалити</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -3,20 +3,26 @@ import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { Icon } from "@iconify/react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ModulePageTransition } from "@/components/ui/module-page-transition";
 import { useAuth } from "@/contexts/ModuleAuthContext";
 import {
   AlchemyService,
   briefAlchemyError,
   type AlchemyElement,
-  type AlchemyIngredient,
 } from "@/services/alchemyService";
-import type { PaletteObject, RecipeIngredient } from "./alchemy.types";
+import type { PaletteObject } from "./alchemy.types";
 import { paletteFromElement } from "./alchemy.utils";
-import {
-  createExpressionEmbedding,
-  createRecipeEmbedding,
-} from "./alchemy.recipe";
+import { createExpressionEmbedding } from "./alchemy.recipe";
 import { useAlchemyCatalogSearch } from "./useAlchemyCatalogSearch";
 import { useAlchemyPalette } from "./useAlchemyPalette";
 import {
@@ -24,10 +30,6 @@ import {
   useAlchemyBoard,
 } from "./useAlchemyBoard";
 import { AlchemyAdminWorkspace } from "./AlchemyAdminWorkspace";
-import {
-  ingredientsToExpression,
-  toRecipeIngredient,
-} from "./alchemy.admin";
 import { AlchemyBoard } from "./AlchemyBoard";
 import { CardBody } from "./alchemy-card-components";
 
@@ -51,9 +53,10 @@ const VectorAlchemyPageComponent: React.FC = () => {
   const [adminDescription, setAdminDescription] = useState("");
   const [adminImageUrl, setAdminImageUrl] = useState("");
   const [adminExpression, setAdminExpression] = useState("");
-  const [recipeIngredients, setRecipeIngredients] = useState<RecipeIngredient[]>([]);
   const [adminSaving, setAdminSaving] = useState(false);
   const [replaceVector, setReplaceVector] = useState(true);
+  const [adminDirty, setAdminDirty] = useState(false);
+  const [adminExitConfirm, setAdminExitConfirm] = useState(false);
 
   const addToPalette = useCallback(
     (item: PaletteObject) =>
@@ -105,13 +108,24 @@ const VectorAlchemyPageComponent: React.FC = () => {
     setAdminImageUrl("");
     setReplaceVector(true);
     setAdminExpression("");
-    setRecipeIngredients([]);
     setError(null);
   }, []);
 
   const openAdmin = () => {
     setAdminMode(true);
     if (!adminElement) prepareCreate();
+  };
+
+  const toggleAdminMode = () => {
+    if (!adminMode) {
+      openAdmin();
+      return;
+    }
+    if (adminDirty) {
+      setAdminExitConfirm(true);
+      return;
+    }
+    setAdminMode(false);
   };
 
   const prepareEdit = async (element: AlchemyElement) => {
@@ -122,7 +136,6 @@ const VectorAlchemyPageComponent: React.FC = () => {
       setAdminDescription(loaded.description || "");
       setAdminImageUrl(loaded.imageUrl || "");
       setReplaceVector(Boolean(loaded.adminDescription?.trim()));
-      setRecipeIngredients([]);
       setAdminExpression(loaded.adminDescription || "");
       setError(null);
     } catch (loadError) {
@@ -133,43 +146,20 @@ const VectorAlchemyPageComponent: React.FC = () => {
   const updateAdminExpression = useCallback((value: string) => {
     setAdminExpression(value);
   }, []);
-  const updateRecipeIngredients = useCallback(
-    (value: RecipeIngredient[]) => {
-      setRecipeIngredients(value);
-      setAdminExpression(ingredientsToExpression(value));
-    },
-    [],
-  );
-
-  const saveAdminElement = async () => {
+  const saveAdminElement = async (): Promise<boolean> => {
     if (!adminName.trim()) {
       setError("Вкажіть назву елемента.");
-      return;
+      return false;
     }
-    let sourceIngredients: AlchemyIngredient[] | undefined;
-    try {
-      sourceIngredients = recipeIngredients.length
-        ? recipeIngredients.map(({ type, sourceId, weight }) =>
-            type === "element"
-              ? { type, id: Number(sourceId), weight }
-              : { type, slug: String(sourceId), weight },
-          )
-        : undefined;
-    } catch (saveError) {
-      setError(briefAlchemyError(saveError, "Некоректний рецепт."));
-      return;
-    }
-    if (replaceVector && !adminExpression.trim() && !sourceIngredients?.length) {
-      setError("Додайте інгредієнти до рецепту.");
-      return;
+    if (replaceVector && !adminExpression.trim()) {
+      setError("Вкажіть векторний вираз для рецепту.");
+      return false;
     }
     setAdminSaving(true);
     try {
       const embedding = adminElement && !replaceVector
         ? await AlchemyService.getEmbedding("element", adminElement.id)
-        : adminExpression.trim()
-          ? await createExpressionEmbedding(adminExpression)
-          : await createRecipeEmbedding(sourceIngredients!);
+        : await createExpressionEmbedding(adminExpression);
       const payload = {
         name: adminName.trim(),
         description: adminDescription || null,
@@ -196,8 +186,10 @@ const VectorAlchemyPageComponent: React.FC = () => {
       );
       prepareCreate();
       setError(null);
+      return true;
     } catch (saveError) {
       setError(briefAlchemyError(saveError, "Не вдалося зберегти елемент."));
+      return false;
     } finally {
       setAdminSaving(false);
     }
@@ -219,16 +211,6 @@ const VectorAlchemyPageComponent: React.FC = () => {
     } finally {
       setAdminSaving(false);
     }
-  };
-
-  const selectAdminIngredient = (item: PaletteObject) => {
-    updateRecipeIngredients(
-      recipeIngredients.some((ingredient) => ingredient.paletteId === item.paletteId)
-        ? recipeIngredients
-        : [...recipeIngredients, toRecipeIngredient(item)],
-    );
-    onIngredientQuery("");
-    clearCatalog();
   };
 
   if (loading) {
@@ -280,7 +262,7 @@ const VectorAlchemyPageComponent: React.FC = () => {
                 <Button
                   size="sm"
                   variant={adminMode ? "default" : "outline"}
-                  onClick={() => (adminMode ? setAdminMode(false) : openAdmin())}
+                  onClick={toggleAdminMode}
                 >
                   <Icon icon={adminMode ? "material-symbols:play-arrow" : "material-symbols:admin-panel-settings-outline"} />
                   {adminMode ? "До гри" : "Керування"}
@@ -297,30 +279,24 @@ const VectorAlchemyPageComponent: React.FC = () => {
           {adminMode && !authLoading ? (
             <AlchemyAdminWorkspace
               elements={elements}
-              palette={palette}
               adminElement={adminElement}
               adminName={adminName}
               adminDescription={adminDescription}
               adminImageUrl={adminImageUrl}
               adminExpression={adminExpression}
-              recipeIngredients={recipeIngredients}
               replaceVector={replaceVector}
               lastRecipe={board.lastRecipe}
               saving={adminSaving}
-              searchQuery={catalogQuery}
-              catalogResults={catalogResults}
-              onSearch={setCatalogQuery}
-              onSelectIngredient={selectAdminIngredient}
               onNew={prepareCreate}
               onEdit={prepareEdit}
               onName={setAdminName}
               onDescription={setAdminDescription}
               onImage={setAdminImageUrl}
               onExpression={updateAdminExpression}
-              onIngredients={updateRecipeIngredients}
               onReplace={setReplaceVector}
               onSave={saveAdminElement}
               onDelete={deleteAdminElement}
+              onDirtyChange={setAdminDirty}
             />
           ) : (
             <AlchemyBoard
@@ -370,6 +346,28 @@ const VectorAlchemyPageComponent: React.FC = () => {
               }
             />
           )}
+          <AlertDialog open={adminExitConfirm} onOpenChange={setAdminExitConfirm}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Вийти без збереження?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Поточні зміни в адмін-панелі буде втрачено.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Залишитися</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    setAdminExitConfirm(false);
+                    setAdminDirty(false);
+                    setAdminMode(false);
+                  }}
+                >
+                  Вийти без збереження
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </main>
       </ModulePageTransition>
     </DndContext>

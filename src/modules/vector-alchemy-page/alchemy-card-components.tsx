@@ -132,10 +132,10 @@ export function PaletteItem({
           src={item.imageUrl}
           alt=""
           draggable={false}
-          className="size-8 shrink-0 rounded-lg object-cover"
+          className="size-7 shrink-0 rounded-lg object-cover sm:size-8"
         />
       ) : (
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/12 text-violet-400">
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/12 text-violet-400 sm:size-8">
           <Icon icon={typeIcon(item.type)} />
         </span>
       )}
@@ -183,10 +183,10 @@ export function CatalogItem({ item }: { item: AlchemyCatalogItem }) {
           src={item.imageUrl}
           alt=""
           draggable={false}
-          className="size-9 shrink-0 rounded-lg object-cover"
+          className="size-8 shrink-0 rounded-lg object-cover sm:size-9"
         />
       ) : (
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground sm:size-9">
           <Icon icon={typeIcon(item.type)} />
         </span>
       )}

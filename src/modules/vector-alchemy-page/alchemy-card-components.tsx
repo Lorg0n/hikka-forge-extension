@@ -128,12 +128,14 @@ export function PaletteItem({
       className="group flex w-full min-w-0 max-w-none touch-none select-none items-center gap-2 rounded-xl border border-transparent bg-muted/35 p-2 text-left transition-colors hover:border-violet-400/40 hover:bg-violet-500/10"
     >
       {item.imageUrl ? (
-        <img
-          src={item.imageUrl}
-          alt=""
-          draggable={false}
-          className="size-7 shrink-0 rounded-lg object-cover sm:size-8"
-        />
+        <span className="size-7 shrink-0 overflow-hidden rounded-lg sm:size-8">
+          <img
+            src={item.imageUrl}
+            alt=""
+            draggable={false}
+            className="size-full scale-[1.5] object-cover"
+          />
+        </span>
       ) : (
         <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/12 text-violet-400 sm:size-8">
           <Icon icon={typeIcon(item.type)} />
@@ -179,12 +181,14 @@ export function CatalogItem({ item }: { item: AlchemyCatalogItem }) {
       className="group flex w-full touch-none items-center gap-2 rounded-xl p-2 text-left hover:bg-accent"
     >
       {item.imageUrl ? (
-        <img
-          src={item.imageUrl}
-          alt=""
-          draggable={false}
-          className="size-8 shrink-0 rounded-lg object-cover sm:size-9"
-        />
+        <span className="size-8 shrink-0 overflow-hidden rounded-lg sm:size-9">
+          <img
+            src={item.imageUrl}
+            alt=""
+            draggable={false}
+            className="size-full scale-[1.2] object-cover"
+          />
+        </span>
       ) : (
         <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground sm:size-9">
           <Icon icon={typeIcon(item.type)} />

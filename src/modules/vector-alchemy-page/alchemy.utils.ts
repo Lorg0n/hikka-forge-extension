@@ -108,7 +108,7 @@ export const paletteFromCatalog = (
   type: item.type,
   origin: "catalog",
   sourceId: item.slug,
-  title: item.titleEn || item.titleNative || item.slug,
+  title: item.titleUa || item.titleEn || item.titleNative || item.slug,
   subtitle: [item.year, item.mediaType].filter(Boolean).join(" • "),
   imageUrl: item.imageUrl,
 });

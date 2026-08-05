@@ -196,7 +196,7 @@ export function CatalogItem({ item }: { item: AlchemyCatalogItem }) {
       )}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium">
-          {item.titleEn || item.titleNative || item.slug}
+          {item.titleUa || item.titleEn || item.titleNative || item.slug}
         </span>
         <span className="block truncate text-[11px] text-muted-foreground">
           {item.type === "anime" ? "Аніме" : "Манґа"}

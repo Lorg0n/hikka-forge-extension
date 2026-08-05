@@ -49,6 +49,7 @@ export interface AlchemyCatalogItem {
   type: "anime" | "manga";
   slug: string;
   titleEn: string | null;
+  titleUa: string | null;
   titleNative: string | null;
   imageUrl: string | null;
   year: number | null;

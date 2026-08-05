@@ -386,6 +386,7 @@ class BackgroundManager {
 							id: m.id,
 							name: m.name,
 							description: m.description,
+							beta: m.beta,
 							enabled: false,
 							urlPatterns: m.urlPatterns,
 							settings: m.settings || [],

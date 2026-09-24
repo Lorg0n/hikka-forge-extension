@@ -25,6 +25,180 @@ const LANE_SPACING = 90;
 const LANE_GAP = 72;
 const STREAM_GAP = 38;
 
+type Random = () => number;
+
+interface HauntedBranch {
+  bitmap: HTMLCanvasElement;
+  width: number;
+  height: number;
+  phase: number;
+}
+
+function createRandom(seed: number): Random {
+  let value = seed >>> 0;
+  return () => {
+    value += 0x6d2b79f5;
+    let result = value;
+    result = Math.imul(result ^ (result >>> 15), result | 1);
+    result ^= result + Math.imul(result ^ (result >>> 7), result | 61);
+    return ((result ^ (result >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function randomBetween(
+  random: Random,
+  minimum: number,
+  maximum: number,
+): number {
+  return minimum + random() * (maximum - minimum);
+}
+
+function drawHauntedTwig(
+  context: CanvasRenderingContext2D,
+  random: Random,
+  x: number,
+  y: number,
+  length: number,
+  angle: number,
+  thickness: number,
+  depth: number,
+): void {
+  if (depth === 0 || length < 7) return;
+
+  const endX = x + Math.cos(angle) * length;
+  const endY = y + Math.sin(angle) * length;
+  const bend = randomBetween(random, -length * 0.16, length * 0.16);
+  const controlX = (x + endX) / 2 + Math.cos(angle + Math.PI / 2) * bend;
+  const controlY = (y + endY) / 2 + Math.sin(angle + Math.PI / 2) * bend;
+
+  context.beginPath();
+  context.moveTo(x, y);
+  context.quadraticCurveTo(controlX, controlY, endX, endY);
+  context.strokeStyle = depth === 1 ? "#43515d" : "#2e3a45";
+  context.lineWidth = thickness;
+  context.lineCap = "round";
+  context.stroke();
+
+  const forkAngle = randomBetween(random, 0.42, 0.72);
+  drawHauntedTwig(
+    context,
+    random,
+    endX,
+    endY,
+    length * randomBetween(random, 0.56, 0.7),
+    angle - forkAngle,
+    Math.max(1, thickness * 0.62),
+    depth - 1,
+  );
+  if (depth > 1 && random() < 0.8) {
+    drawHauntedTwig(
+      context,
+      random,
+      endX,
+      endY,
+      length * randomBetween(random, 0.48, 0.63),
+      angle + forkAngle,
+      Math.max(1, thickness * 0.58),
+      depth - 1,
+    );
+  }
+}
+
+function createHauntedBranch(
+  width: number,
+  height: number,
+  scale: number,
+): HauntedBranch {
+  const branchWidth = Math.min(width * 0.31, 330);
+  const branchHeight = Math.min(height * 0.28, 220);
+  const bitmap = document.createElement("canvas");
+  bitmap.width = Math.ceil(branchWidth * scale);
+  bitmap.height = Math.ceil(branchHeight * scale);
+  const context = bitmap.getContext("2d");
+  if (!context) throw new Error("Unable to render haunted branch");
+
+  context.setTransform(scale, 0, 0, scale, 0, 0);
+  context.globalAlpha = 0.9;
+  const random = createRandom(0xdeadbeef);
+  const segmentCount = 4;
+  const segmentLength = (branchWidth * 0.84) / segmentCount;
+  let x = -24;
+  let y = 8;
+  let angle = randomBetween(random, 0.23, 0.34);
+  let thickness = Math.max(5, branchWidth * 0.032);
+
+  for (let index = 0; index < segmentCount; index += 1) {
+    const endX = x + Math.cos(angle) * segmentLength;
+    const endY = y + Math.sin(angle) * segmentLength;
+    const bend = randomBetween(random, -7, 7);
+    context.beginPath();
+    context.moveTo(x, y);
+    context.quadraticCurveTo((x + endX) / 2, (y + endY) / 2 + bend, endX, endY);
+    context.strokeStyle = index === 0 ? "#202a33" : "#2a3640";
+    context.lineWidth = thickness;
+    context.lineCap = "round";
+    context.stroke();
+
+    if (index > 0) {
+      const side = index % 2 === 0 ? 1 : -1;
+      drawHauntedTwig(
+        context,
+        random,
+        x,
+        y,
+        segmentLength * randomBetween(random, 0.48, 0.68),
+        angle + side * randomBetween(random, 0.65, 0.95),
+        thickness * 0.58,
+        2,
+      );
+    }
+
+    x = endX;
+    y = endY;
+    angle += randomBetween(random, -0.09, 0.09);
+    thickness *= 0.76;
+  }
+
+  drawHauntedTwig(
+    context,
+    random,
+    x,
+    y,
+    segmentLength * 0.65,
+    angle - 0.58,
+    thickness,
+    2,
+  );
+  drawHauntedTwig(
+    context,
+    random,
+    x,
+    y,
+    segmentLength * 0.55,
+    angle + 0.62,
+    thickness,
+    2,
+  );
+  return {
+    bitmap,
+    width: branchWidth,
+    height: branchHeight,
+    phase: random() * Math.PI * 2,
+  };
+}
+
+function drawHauntedBranch(
+  context: CanvasRenderingContext2D,
+  branch: HauntedBranch,
+  time: number,
+): void {
+  context.save();
+  context.translate(-18, 38);
+  context.rotate(Math.sin(time * 0.00055 + branch.phase) * 0.012);
+  context.drawImage(branch.bitmap, 0, 0, branch.width, branch.height);
+  context.restore();
+}
+
 function getLanes(width: number): number[] {
   const count = Math.max(3, Math.floor(width / LANE_SPACING));
   return Array.from(
@@ -228,6 +402,7 @@ export default function HalloweenGhostsEffect() {
     let width = 0;
     let height = 0;
     let lanes: number[] = [];
+    let branch: HauntedBranch | null = null;
     let frame = 0;
     let running = false;
     let lastFrameTime = 0;
@@ -240,6 +415,7 @@ export default function HalloweenGhostsEffect() {
       canvas.width = Math.round(width * scale);
       canvas.height = Math.round(height * scale);
       context.setTransform(scale, 0, 0, scale, 0, 0);
+      branch = createHauntedBranch(width, height, scale);
       const count = mediaQuery.matches ? 8 : 14;
       ghosts = [];
       for (let index = 0; index < count; index += 1) {
@@ -258,6 +434,7 @@ export default function HalloweenGhostsEffect() {
       context.clearRect(0, 0, canvas.width, canvas.height);
       const scale = Math.min(window.devicePixelRatio || 1, MAX_RENDER_SCALE);
       context.setTransform(scale, 0, 0, scale, 0, 0);
+      if (branch) drawHauntedBranch(context, branch, time);
 
       for (const ghost of ghosts) {
         ghost.strokePhase += framesPassed * (0.06 + Math.abs(ghost.vx) * 0.025);

@@ -91,6 +91,8 @@ export interface ForgeModuleDef {
 	component?: React.FC<ModuleComponentProps>;
 	styles?: string | ((settings: ModuleSettings) => string);
 	persistentStyles?: boolean;
+	/** Keep a mounted component alive across same-site SPA navigation. */
+	persistent?: boolean;
 	settings?: ModuleSetting[];
 	hidden?: boolean;
 	authRequired?: boolean;

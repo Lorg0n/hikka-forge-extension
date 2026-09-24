@@ -784,7 +784,8 @@ class ModuleManager {
 			if (nextUrl !== this.currentUrl) {
 				this.currentUrl = nextUrl;
 				for (const [id, instance] of this.activeModuleRoots) {
-					if (!instance.exiting) reloadIds.add(id);
+					const moduleDef = this.moduleDefinitions.get(id);
+					if (!instance.exiting && !moduleDef?.persistent) reloadIds.add(id);
 				}
 				for (const moduleDef of this.moduleDefinitions.values()) {
 					if (typeof moduleDef.styles === "function") reloadIds.add(moduleDef.id);
@@ -803,7 +804,8 @@ class ModuleManager {
 			this.currentUrl = nextUrl;
 			const reloadIds = new Set<string>();
 			for (const [id, instance] of this.activeModuleRoots) {
-				if (!instance.exiting) reloadIds.add(id);
+				const moduleDef = this.moduleDefinitions.get(id);
+				if (!instance.exiting && !moduleDef?.persistent) reloadIds.add(id);
 			}
 			for (const moduleDef of this.moduleDefinitions.values()) {
 				if (typeof moduleDef.styles === "function") reloadIds.add(moduleDef.id);

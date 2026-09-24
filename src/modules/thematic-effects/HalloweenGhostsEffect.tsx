@@ -3,79 +3,122 @@ import { useEffect, useRef } from "react";
 interface Ghost {
   x: number;
   y: number;
+  targetX: number;
+  lane: number;
   size: number;
-  speed: number;
+  vx: number;
+  angle: number;
+  mode: "rising" | "entering" | "exiting";
+  exitSide: -1 | 0 | 1;
+  exitAtY: number;
   drift: number;
   phase: number;
+  strokePhase: number;
   opacity: number;
 }
 
 const MOBILE_MEDIA_QUERY = "(max-width: 767px)";
 const MAX_RENDER_SCALE = 2;
+const RISE_SPEED = 0.5;
+const SIDE_SPEED = 0.42;
+const LANE_SPACING = 90;
+const LANE_GAP = 72;
+const STREAM_GAP = 38;
+
+function getLanes(width: number): number[] {
+  const count = Math.max(3, Math.floor(width / LANE_SPACING));
+  return Array.from(
+    { length: count },
+    (_, index) => ((index + 0.5) * width) / count,
+  );
+}
+
+function chooseLane(ghosts: Ghost[], lanes: number[]): number {
+  const edgeCount = Math.max(1, Math.round(lanes.length * 0.25));
+  const counts = lanes.map(() => 0);
+  for (const ghost of ghosts) counts[ghost.lane] += 1;
+  const edgeLanes = lanes
+    .map((_, index) => index)
+    .filter((index) => index < edgeCount || index >= lanes.length - edgeCount);
+  const candidates =
+    Math.random() < 0.7 ? edgeLanes : lanes.map((_, index) => index);
+  const fewest = Math.min(...candidates.map((index) => counts[index]));
+  const available = candidates.filter((index) => counts[index] === fewest);
+  return available[Math.floor(Math.random() * available.length)];
+}
 
 function createGhost(
+  ghosts: Ghost[],
+  lanes: number[],
   width: number,
   height: number,
-  startBelowViewport = false,
+  fromSide: -1 | 0 | 1,
 ): Ghost {
   const size = 16 + Math.random() * 10;
-  // Favor the outer quarters, but still let some ghosts cross the center.
-  const nearEdge = Math.random() < 0.45;
-  const horizontalPosition = nearEdge
-    ? Math.random() < 0.5
-      ? Math.random() * 0.25
-      : 0.75 + Math.random() * 0.25
-    : Math.random();
-  return {
-    x: horizontalPosition * width,
-    y: startBelowViewport
-      ? height + size + Math.random() * size * 3
-      : Math.random() * height,
-    size,
-    speed: 0.28 + Math.random() * 0.34,
-    drift: 0.1 + Math.random() * 0.12,
-    phase: Math.random() * Math.PI * 2,
-    opacity: 0.19 + Math.random() * 0.13,
-  };
-}
+  const lane =
+    fromSide < 0
+      ? 0
+      : fromSide > 0
+        ? lanes.length - 1
+        : chooseLane(ghosts, lanes);
+  const laneGhosts = ghosts.filter((ghost) => ghost.lane === lane);
+  const targetX = lanes[lane];
+  let y: number;
 
-function verticalClearance(upper: Ghost, lower: Ghost): number {
-  // The tail extends farther below the origin than the head extends above it.
-  return upper.size * 1.55 + lower.size * 0.65 + 2;
-}
-
-function horizontalClearance(a: Ghost, b: Ghost): number {
-  // Include each ghost's full sway so they remain apart throughout the cycle.
-  return (a.size + b.size) * 0.82 + a.size * a.drift + b.size * b.drift + 2;
-}
-
-function createGhostApartFrom(
-  others: Ghost[],
-  width: number,
-  height: number,
-  startBelowViewport = false,
-): Ghost {
-  for (let attempt = 0; attempt < 40; attempt += 1) {
-    const candidate = createGhost(width, height, startBelowViewport);
-    const overlaps = others.some((other) => {
-      const upper = candidate.y < other.y ? candidate : other;
-      const lower = upper === candidate ? other : candidate;
-      return (
-        Math.abs(candidate.x - other.x) <
-          horizontalClearance(candidate, other) &&
-        lower.y - upper.y < verticalClearance(upper, lower)
-      );
-    });
-    if (!overlaps) return candidate;
+  if (fromSide) {
+    // Side visitors take a free height in the outer lane, then turn upward.
+    y = Math.max(
+      height + size,
+      ...laneGhosts.map((ghost) => ghost.y + LANE_GAP),
+    );
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      const candidate = height * (0.38 + Math.random() * 0.47);
+      if (
+        laneGhosts.every((ghost) => Math.abs(ghost.y - candidate) >= LANE_GAP)
+      ) {
+        y = candidate;
+        break;
+      }
+    }
+  } else {
+    const lowestInLane = Math.max(
+      height + size - LANE_GAP,
+      ...laneGhosts.map((ghost) => ghost.y),
+    );
+    const lowestInStream = Math.max(
+      height + size - STREAM_GAP,
+      ...ghosts.map((ghost) => ghost.y),
+    );
+    y = Math.max(
+      height + size,
+      lowestInLane + LANE_GAP,
+      lowestInStream + STREAM_GAP,
+    );
   }
 
-  // A crowded or unusually small viewport still gets a ghost; it waits below
-  // the others and enters naturally as space opens up.
-  const ghost = createGhost(width, height, true);
-  ghost.y =
-    Math.max(height, ...others.map((other) => other.y + other.size * 2.4)) +
-    ghost.size;
-  return ghost;
+  const vx = -fromSide * SIDE_SPEED;
+  return {
+    x: fromSide < 0 ? -size * 2 : fromSide > 0 ? width + size * 2 : targetX,
+    y,
+    targetX,
+    lane,
+    size,
+    vx,
+    angle: Math.atan2(vx, RISE_SPEED),
+    mode: fromSide ? "entering" : "rising",
+    exitSide: fromSide
+      ? 0
+      : lane === 0 && Math.random() < 0.14
+        ? -1
+        : lane === lanes.length - 1 && Math.random() < 0.14
+          ? 1
+          : 0,
+    exitAtY: height * (0.45 + Math.random() * 0.3),
+    drift: 0.16 + Math.random() * 0.08,
+    phase: Math.random() * Math.PI * 2,
+    strokePhase: Math.random() * Math.PI * 2,
+    opacity: 0.19 + Math.random() * 0.13,
+  };
 }
 
 function drawGhost(
@@ -83,24 +126,27 @@ function drawGhost(
   ghost: Ghost,
   time: number,
 ): void {
-  const sway = Math.sin(time * 0.0018 + ghost.phase) * ghost.size * ghost.drift;
+  const lateralPhase = time * 0.0018 + ghost.phase;
+  const sway = Math.sin(lateralPhase) * ghost.size * ghost.drift;
   const x = ghost.x + sway;
   const y = ghost.y;
   const radius = ghost.size / 2;
-  const tailWave = Math.sin(time * 0.0035 + ghost.phase) * 0.55;
-  const armWave = Math.sin(time * 0.003 + ghost.phase) * 0.08;
+  const upperWave = Math.sin(ghost.strokePhase) * 0.08;
+  const middleWave = Math.sin(ghost.strokePhase - 0.7) * 0.22;
+  const tipWave = Math.sin(ghost.strokePhase - 1.4) * 0.52;
+  const armWave = Math.sin(ghost.strokePhase + 0.5) * 0.055;
 
   context.save();
   const shimmer =
     0.55 + 0.45 * (0.5 + 0.5 * Math.sin(time * 0.0018 + ghost.phase));
   context.globalAlpha = ghost.opacity * shimmer;
   context.translate(x, y);
-  context.rotate(Math.sin(time * 0.0015 + ghost.phase) * 0.055);
+  context.rotate(ghost.angle);
   context.scale(radius, radius);
   context.fillStyle = "#f6f0ff";
   context.beginPath();
   // One continuous outline gives the ghosts their rounded head, little arms
-  // and tapered, curling tail. The arm tips and tail move independently.
+  // and tapered tail. A delayed wave travels from its base to the tip.
   context.moveTo(-0.87, -0.12);
   context.bezierCurveTo(-0.98, -0.72, -0.58, -1.16, 0, -1.16);
   context.bezierCurveTo(0.58, -1.16, 0.98, -0.72, 0.87, -0.12);
@@ -114,39 +160,32 @@ function drawGhost(
     0.31 + armWave,
   );
   context.bezierCurveTo(1.2, 0.42 + armWave, 1.08, 0.48, 1.02, 0.69);
-  context.bezierCurveTo(0.86, 1.04, 0.57, 1.43, 0.32 + tailWave * 0.1, 1.82);
+  context.bezierCurveTo(0.86, 1.04, 0.57, 1.43, 0.32 + upperWave, 1.82);
   context.bezierCurveTo(
-    0.2 + tailWave * 0.2,
+    0.2 + upperWave,
     2.2,
-    0.15 + tailWave * 0.5,
-    2.57,
-    0.2 + tailWave * 0.85,
-    2.72,
+    0.15 + middleWave,
+    2.55,
+    0.12 + tipWave,
+    2.63,
   );
   context.bezierCurveTo(
-    0.26 + tailWave,
-    2.86,
-    0.12 + tailWave * 0.9,
-    2.95,
-    -0.01 + tailWave * 0.8,
-    2.87,
+    0.2 + tipWave,
+    2.79,
+    0.08 + tipWave,
+    2.89,
+    -0.06 + tipWave,
+    2.8,
   );
   context.bezierCurveTo(
-    -0.17 + tailWave * 0.65,
-    2.75,
-    -0.11 + tailWave * 0.35,
-    2.53,
-    -0.24 + tailWave * 0.18,
-    2.36,
+    -0.18 + tipWave,
+    2.68,
+    -0.13 + middleWave,
+    2.48,
+    -0.24 + upperWave,
+    2.3,
   );
-  context.bezierCurveTo(
-    -0.33 + tailWave * 0.12,
-    2.05,
-    -0.48,
-    1.76,
-    -0.61,
-    1.42,
-  );
+  context.bezierCurveTo(-0.33 + upperWave, 2.05, -0.48, 1.76, -0.61, 1.42);
   context.bezierCurveTo(-0.77, 1.04, -0.97, 0.83, -1.06, 0.69);
   context.bezierCurveTo(
     -1.08,
@@ -188,56 +227,90 @@ export default function HalloweenGhostsEffect() {
     let ghosts: Ghost[] = [];
     let width = 0;
     let height = 0;
+    let lanes: number[] = [];
     let frame = 0;
     let running = false;
+    let lastFrameTime = 0;
 
     const resize = () => {
       width = document.documentElement.clientWidth;
       height = window.innerHeight;
+      lanes = getLanes(width);
       const scale = Math.min(window.devicePixelRatio || 1, MAX_RENDER_SCALE);
       canvas.width = Math.round(width * scale);
       canvas.height = Math.round(height * scale);
       context.setTransform(scale, 0, 0, scale, 0, 0);
-      const count = mediaQuery.matches ? 12 : 24;
+      const count = mediaQuery.matches ? 8 : 14;
       ghosts = [];
       for (let index = 0; index < count; index += 1) {
-        ghosts.push(createGhostApartFrom(ghosts, width, height));
+        const ghost = createGhost(ghosts, lanes, width, height, 0);
+        ghost.y = (height * (index + 0.5)) / count;
+        ghosts.push(ghost);
       }
     };
 
     const render = (time: number) => {
+      const framesPassed = lastFrameTime
+        ? Math.min((time - lastFrameTime) / (1000 / 60), 2)
+        : 1;
+      lastFrameTime = time;
       context.setTransform(1, 0, 0, 1, 0, 0);
       context.clearRect(0, 0, canvas.width, canvas.height);
       const scale = Math.min(window.devicePixelRatio || 1, MAX_RENDER_SCALE);
       context.setTransform(scale, 0, 0, scale, 0, 0);
 
       for (const ghost of ghosts) {
-        ghost.y -= ghost.speed;
-        if (ghost.y < -ghost.size * 2)
+        ghost.strokePhase += framesPassed * (0.06 + Math.abs(ghost.vx) * 0.025);
+        ghost.y -= RISE_SPEED * framesPassed;
+
+        if (
+          ghost.mode === "rising" &&
+          ghost.exitSide &&
+          ghost.y < ghost.exitAtY
+        ) {
+          ghost.mode = "exiting";
+          ghost.vx = ghost.exitSide * SIDE_SPEED;
+        }
+        if (ghost.mode !== "rising") {
+          ghost.x += ghost.vx * framesPassed;
+          if (
+            ghost.mode === "entering" &&
+            ((ghost.vx > 0 && ghost.x >= ghost.targetX) ||
+              (ghost.vx < 0 && ghost.x <= ghost.targetX))
+          ) {
+            ghost.x = ghost.targetX;
+            ghost.vx = 0;
+            ghost.mode = "rising";
+          }
+        }
+
+        const swayVelocity =
+          Math.cos(time * 0.0018 + ghost.phase) *
+          ghost.size *
+          ghost.drift *
+          0.0018 *
+          (1000 / 60);
+        const heading = Math.atan2(ghost.vx + swayVelocity, RISE_SPEED);
+        ghost.angle +=
+          (heading - ghost.angle) * Math.min(1, framesPassed * 0.08);
+
+        const leftExited =
+          ghost.mode === "exiting" && ghost.x < -ghost.size * 2;
+        const rightExited =
+          ghost.mode === "exiting" && ghost.x > width + ghost.size * 2;
+        if (ghost.y < -ghost.size * 2 || leftExited || rightExited) {
+          const fromSide: -1 | 0 | 1 =
+            Math.random() < 0.12 ? (Math.random() < 0.5 ? -1 : 1) : 0;
           Object.assign(
             ghost,
-            createGhostApartFrom(
+            createGhost(
               ghosts.filter((other) => other !== ghost),
+              lanes,
               width,
               height,
-              true,
+              fromSide,
             ),
           );
-      }
-
-      // Keep the lower ghost below the upper one's tail if different speeds
-      // would otherwise make their silhouettes cross.
-      ghosts.sort((a, b) => a.y - b.y);
-      for (let index = 0; index < ghosts.length; index += 1) {
-        const lower = ghosts[index];
-        for (let otherIndex = 0; otherIndex < index; otherIndex += 1) {
-          const upper = ghosts[otherIndex];
-          if (Math.abs(lower.x - upper.x) < horizontalClearance(lower, upper)) {
-            lower.y = Math.max(
-              lower.y,
-              upper.y + verticalClearance(upper, lower),
-            );
-          }
         }
       }
 
@@ -251,6 +324,7 @@ export default function HalloweenGhostsEffect() {
     const play = () => {
       if (running) return;
       running = true;
+      lastFrameTime = 0;
       frame = requestAnimationFrame(render);
     };
     const pause = () => {

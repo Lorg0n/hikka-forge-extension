@@ -22,7 +22,7 @@ const thematicEffectsModule: ForgeModuleDef = {
   },
   component: ThematicEffectsComponent,
   icon: {
-    name: "lucide:sparkles",
+    name: "fe:birthday-cake",
     color: "#c084fc",
   },
 };

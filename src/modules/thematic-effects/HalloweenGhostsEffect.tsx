@@ -31,6 +31,7 @@ interface Ghost {
 }
 
 const MOBILE_MEDIA_QUERY = "(max-width: 767px)";
+const SHOW_HAUNTED_BRANCH = false;
 const MAX_RENDER_SCALE = 2;
 const RISE_SPEED = 0.5;
 const LANE_SPACING = 90;
@@ -670,7 +671,9 @@ export default function HalloweenGhostsEffect() {
       canvas.width = Math.round(width * scale);
       canvas.height = Math.round(height * scale);
       context.setTransform(scale, 0, 0, scale, 0, 0);
-      branch = createHauntedBranch(width, height, scale);
+      if (SHOW_HAUNTED_BRANCH) {
+        branch = createHauntedBranch(width, height, scale);
+      }
       cobwebs = [
         {
           corner: "bottom-right",
@@ -696,7 +699,9 @@ export default function HalloweenGhostsEffect() {
       for (const { corner, cobweb } of cobwebs) {
         drawCobweb(context, cobweb, corner, width, height);
       }
-      if (branch) drawHauntedBranch(context, branch, time);
+      if (SHOW_HAUNTED_BRANCH && branch) {
+        drawHauntedBranch(context, branch, time);
+      }
 
       for (const ghost of ghosts) {
         ghost.age += framesPassed;

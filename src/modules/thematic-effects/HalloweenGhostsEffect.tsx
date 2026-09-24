@@ -220,15 +220,24 @@ function createLowerRightCornerThread(
 
   context.setTransform(scale, 0, 0, scale, 0, 0);
   const random = createRandom(0xc0b0be);
+  // A web is rarely tied to the mathematically exact corner. Its hub can sit
+  // just inside the page or continue a little beyond either screen edge.
+  const hub = {
+    x: width + randomBetween(random, -54, 38),
+    y: height + randomBetween(random, -54, 38),
+  };
+  const edgeOverflow = randomBetween(random, 48, 78);
   const points = [
-    { x: 5, y: height - 2 },
+    { x: -edgeOverflow * 0.28, y: height + edgeOverflow * 0.44 },
     { x: width * 0.2, y: height - randomBetween(random, 8, 16) },
     { x: width * 0.43, y: height - randomBetween(random, 16, 31) },
     { x: width * 0.62, y: height - randomBetween(random, 43, 62) },
     { x: width * 0.76, y: height - randomBetween(random, 92, 118) },
-    { x: width - 2, y: randomBetween(random, 18, 38) },
+    {
+      x: width + edgeOverflow * 0.42,
+      y: randomBetween(random, 18, 38),
+    },
   ];
-  const corner = { x: width - 2, y: height - 2 };
 
   const pointOnSegment = (
     start: { x: number; y: number },
@@ -293,13 +302,13 @@ function createLowerRightCornerThread(
     const sag = randomBetween(random, 3, 11);
     const sidewaysOffset = randomBetween(random, -4, 4);
     const control = {
-      x: (anchor.x + corner.x) / 2 + sidewaysOffset,
-      y: (anchor.y + corner.y) / 2 + sag,
+      x: (anchor.x + hub.x) / 2 + sidewaysOffset,
+      y: (anchor.y + hub.y) / 2 + sag,
     };
     rays.push({ anchor, control });
     context.beginPath();
     context.moveTo(anchor.x, anchor.y);
-    context.quadraticCurveTo(control.x, control.y, corner.x, corner.y);
+    context.quadraticCurveTo(control.x, control.y, hub.x, hub.y);
     context.stroke();
   }
 
@@ -309,15 +318,15 @@ function createLowerRightCornerThread(
     const end = rays[rayIndex + 1].anchor;
     const middleX = (start.x + end.x) / 2;
     const middleY = (start.y + end.y) / 2;
-    const distanceToCorner = Math.hypot(corner.x - middleX, corner.y - middleY);
+    const distanceToCorner = Math.hypot(hub.x - middleX, hub.y - middleY);
     // The outer edge is deliberately uneven: a thread can pull inward,
     // relax almost straight, or bow a little outward between two anchors.
     const pull = randomBetween(random, -7, 7);
     context.beginPath();
     context.moveTo(start.x, start.y);
     context.quadraticCurveTo(
-      middleX + ((corner.x - middleX) / distanceToCorner) * pull,
-      middleY + ((corner.y - middleY) / distanceToCorner) * pull,
+      middleX + ((hub.x - middleX) / distanceToCorner) * pull,
+      middleY + ((hub.y - middleY) / distanceToCorner) * pull,
       end.x,
       end.y,
     );
@@ -334,20 +343,17 @@ function createLowerRightCornerThread(
       const start = pointOnSegment(
         current.anchor,
         current.control,
-        corner,
+        hub,
         progress,
       );
-      const end = pointOnSegment(next.anchor, next.control, corner, progress);
+      const end = pointOnSegment(next.anchor, next.control, hub, progress);
       const middleX = (start.x + end.x) / 2;
       const middleY = (start.y + end.y) / 2;
-      const distanceToCorner = Math.hypot(
-        corner.x - middleX,
-        corner.y - middleY,
-      );
+      const distanceToCorner = Math.hypot(hub.x - middleX, hub.y - middleY);
       const pull = randomBetween(random, 24, 38);
       const control = {
-        x: middleX + ((corner.x - middleX) / distanceToCorner) * pull,
-        y: middleY + ((corner.y - middleY) / distanceToCorner) * pull,
+        x: middleX + ((hub.x - middleX) / distanceToCorner) * pull,
+        y: middleY + ((hub.y - middleY) / distanceToCorner) * pull,
       };
       context.beginPath();
       context.moveTo(start.x, start.y);

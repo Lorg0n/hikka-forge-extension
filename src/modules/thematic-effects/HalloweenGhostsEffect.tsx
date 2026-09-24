@@ -303,6 +303,27 @@ function createLowerRightCornerThread(
     context.stroke();
   }
 
+  context.strokeStyle = "rgba(224, 232, 240, 0.48)";
+  for (let rayIndex = 0; rayIndex < rays.length - 1; rayIndex += 1) {
+    const start = rays[rayIndex].anchor;
+    const end = rays[rayIndex + 1].anchor;
+    const middleX = (start.x + end.x) / 2;
+    const middleY = (start.y + end.y) / 2;
+    const distanceToCorner = Math.hypot(corner.x - middleX, corner.y - middleY);
+    // The outer edge is deliberately uneven: a thread can pull inward,
+    // relax almost straight, or bow a little outward between two anchors.
+    const pull = randomBetween(random, -7, 7);
+    context.beginPath();
+    context.moveTo(start.x, start.y);
+    context.quadraticCurveTo(
+      middleX + ((corner.x - middleX) / distanceToCorner) * pull,
+      middleY + ((corner.y - middleY) / distanceToCorner) * pull,
+      end.x,
+      end.y,
+    );
+    context.stroke();
+  }
+
   const arcCount = 3 + Math.floor(random() * 3);
   context.strokeStyle = "rgba(224, 232, 240, 0.46)";
   for (let arcIndex = 0; arcIndex < arcCount; arcIndex += 1) {
@@ -323,7 +344,7 @@ function createLowerRightCornerThread(
         corner.x - middleX,
         corner.y - middleY,
       );
-      const pull = randomBetween(random, 14, 26);
+      const pull = randomBetween(random, 24, 38);
       const control = {
         x: middleX + ((corner.x - middleX) / distanceToCorner) * pull,
         y: middleY + ((corner.y - middleY) / distanceToCorner) * pull,
@@ -334,20 +355,6 @@ function createLowerRightCornerThread(
       context.stroke();
     }
   }
-
-  context.beginPath();
-  context.moveTo(points[0].x, points[0].y);
-  for (let index = 1; index < points.length; index += 1) {
-    const previous = points[index - 1];
-    const point = points[index];
-    const controlX = (previous.x + point.x) / 2;
-    context.quadraticCurveTo(controlX, previous.y, point.x, point.y);
-  }
-  context.strokeStyle = "rgba(224, 232, 240, 0.62)";
-  context.lineWidth = randomBetween(random, 1.1, 1.55);
-  context.lineCap = "round";
-  context.lineJoin = "round";
-  context.stroke();
 
   return { bitmap, width, height };
 }

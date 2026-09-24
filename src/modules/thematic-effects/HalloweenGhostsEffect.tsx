@@ -34,10 +34,17 @@ interface HauntedBranch {
   phase: number;
 }
 
-interface CornerThread {
+type CobwebCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
+
+interface Cobweb {
   bitmap: HTMLCanvasElement;
   width: number;
   height: number;
+}
+
+interface PositionedCobweb {
+  corner: CobwebCorner;
+  cobweb: Cobweb;
 }
 
 function createRandom(seed: number): Random {
@@ -205,21 +212,23 @@ function drawHauntedBranch(
   context.restore();
 }
 
-function createLowerRightCornerThread(
+function createCobweb(
   viewportWidth: number,
   viewportHeight: number,
   scale: number,
-): CornerThread {
-  const width = Math.min(viewportWidth * 0.23, 280);
-  const height = Math.min(viewportHeight * 0.27, 245);
+  seed: number,
+  size = 1,
+): Cobweb {
+  const width = Math.min(viewportWidth * 0.23, 280) * size;
+  const height = Math.min(viewportHeight * 0.27, 245) * size;
   const bitmap = document.createElement("canvas");
   bitmap.width = Math.ceil(width * scale);
   bitmap.height = Math.ceil(height * scale);
   const context = bitmap.getContext("2d");
-  if (!context) throw new Error("Unable to render corner thread");
+  if (!context) throw new Error("Unable to render cobweb");
 
   context.setTransform(scale, 0, 0, scale, 0, 0);
-  const random = createRandom(0xc0b0be);
+  const random = createRandom(seed);
   // A web is rarely tied to the mathematically exact corner. Its hub can sit
   // just inside the page or continue a little beyond either screen edge.
   const hub = {
@@ -295,7 +304,7 @@ function createLowerRightCornerThread(
   context.strokeStyle = "rgba(224, 232, 240, 0.42)";
   context.lineWidth = randomBetween(random, 0.7, 1);
   context.lineCap = "round";
-  const rayCount = 7;
+  const rayCount = 9;
   const rays = [];
   for (let index = 0; index < rayCount; index += 1) {
     const anchor = anchorAtDistance((totalLength * index) / (rayCount - 1));
@@ -365,19 +374,26 @@ function createLowerRightCornerThread(
   return { bitmap, width, height };
 }
 
-function drawLowerRightCornerThread(
+function drawCobweb(
   context: CanvasRenderingContext2D,
-  thread: CornerThread,
+  cobweb: Cobweb,
+  corner: CobwebCorner,
   viewportWidth: number,
   viewportHeight: number,
 ): void {
-  context.drawImage(
-    thread.bitmap,
-    viewportWidth - thread.width,
-    viewportHeight - thread.height,
-    thread.width,
-    thread.height,
+  const isLeft = corner.endsWith("left");
+  const isTop = corner.startsWith("top");
+  const originX = isLeft ? 0 : viewportWidth - cobweb.width;
+  const originY = isTop ? 0 : viewportHeight - cobweb.height;
+
+  context.save();
+  context.translate(
+    originX + (isLeft ? cobweb.width : 0),
+    originY + (isTop ? cobweb.height : 0),
   );
+  context.scale(isLeft ? -1 : 1, isTop ? -1 : 1);
+  context.drawImage(cobweb.bitmap, 0, 0, cobweb.width, cobweb.height);
+  context.restore();
 }
 
 function getLanes(width: number): number[] {
@@ -584,7 +600,7 @@ export default function HalloweenGhostsEffect() {
     let height = 0;
     let lanes: number[] = [];
     let branch: HauntedBranch | null = null;
-    let cornerThread: CornerThread | null = null;
+    let cobwebs: PositionedCobweb[] = [];
     let frame = 0;
     let running = false;
     let lastFrameTime = 0;
@@ -598,7 +614,16 @@ export default function HalloweenGhostsEffect() {
       canvas.height = Math.round(height * scale);
       context.setTransform(scale, 0, 0, scale, 0, 0);
       branch = createHauntedBranch(width, height, scale);
-      cornerThread = createLowerRightCornerThread(width, height, scale);
+      cobwebs = [
+        {
+          corner: "bottom-right",
+          cobweb: createCobweb(width, height, scale, 0xc0b0be),
+        },
+        {
+          corner: "top-right",
+          cobweb: createCobweb(width, height, scale, 0xa11ce, 2 / 3),
+        },
+      ];
       const count = mediaQuery.matches ? 8 : 14;
       ghosts = [];
       for (let index = 0; index < count; index += 1) {
@@ -617,10 +642,10 @@ export default function HalloweenGhostsEffect() {
       context.clearRect(0, 0, canvas.width, canvas.height);
       const scale = Math.min(window.devicePixelRatio || 1, MAX_RENDER_SCALE);
       context.setTransform(scale, 0, 0, scale, 0, 0);
-      if (branch) drawHauntedBranch(context, branch, time);
-      if (cornerThread) {
-        drawLowerRightCornerThread(context, cornerThread, width, height);
+      for (const { corner, cobweb } of cobwebs) {
+        drawCobweb(context, cobweb, corner, width, height);
       }
+      if (branch) drawHauntedBranch(context, branch, time);
 
       for (const ghost of ghosts) {
         ghost.strokePhase += framesPassed * (0.06 + Math.abs(ghost.vx) * 0.025);

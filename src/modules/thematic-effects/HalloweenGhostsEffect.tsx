@@ -5,6 +5,7 @@ interface Ghost {
   y: number;
   lane: number;
   size: number;
+  variant: 0 | 1;
   vx: number;
   riseSpeed: number;
   wanderAmplitude: number;
@@ -466,6 +467,7 @@ function createGhost(
     y,
     lane,
     size,
+    variant: Math.random() < 0.36 ? 1 : 0,
     vx: direction * (0.025 + Math.random() * 0.065),
     riseSpeed: 0.18 + Math.random() * 0.1,
     wanderAmplitude: 0.008 + Math.random() * 0.028,
@@ -506,6 +508,9 @@ function drawGhost(
     Math.sin(ghost.strokePhase - 0.7) * 0.22 + ghost.tailCurl * 0.4;
   const tipWave = Math.sin(ghost.strokePhase - 1.4) * 0.52 + ghost.tailCurl;
   const armWave = Math.sin(ghost.strokePhase + 0.5) * 0.055;
+  const hemWaveRight = Math.sin(ghost.strokePhase - 0.3) * 0.13;
+  const hemWaveCenter = Math.sin(ghost.strokePhase - 1.25) * 0.14;
+  const hemWaveLeft = Math.sin(ghost.strokePhase - 2.1) * 0.12;
 
   context.save();
   const shimmer =
@@ -519,71 +524,120 @@ function drawGhost(
   context.scale(radius * presenceScale, radius * presenceScale);
   context.fillStyle = "#f6f0ff";
   context.beginPath();
-  // One continuous outline gives the ghosts their rounded head, little arms
-  // and tapered tail. A delayed wave travels from its base to the tip.
-  context.moveTo(-0.87, -0.12);
-  context.bezierCurveTo(-0.98, -0.72, -0.58, -1.16, 0, -1.16);
-  context.bezierCurveTo(0.58, -1.16, 0.98, -0.72, 0.87, -0.12);
-  context.bezierCurveTo(0.97, 0.08, 1.04, 0.07, 1.12, 0.04 + armWave);
-  context.bezierCurveTo(
-    1.3,
-    -0.04 + armWave,
-    1.4,
-    0.16 + armWave,
-    1.28,
-    0.31 + armWave,
-  );
-  context.bezierCurveTo(1.2, 0.42 + armWave, 1.08, 0.48, 1.02, 0.69);
-  context.bezierCurveTo(0.86, 1.04, 0.57, 1.43, 0.32 + upperWave, 1.82);
-  context.bezierCurveTo(
-    0.2 + upperWave,
-    2.2,
-    0.15 + middleWave,
-    2.55,
-    0.12 + tipWave,
-    2.63,
-  );
-  context.bezierCurveTo(
-    0.2 + tipWave,
-    2.79,
-    0.08 + tipWave,
-    2.89,
-    -0.06 + tipWave,
-    2.8,
-  );
-  context.bezierCurveTo(
-    -0.18 + tipWave,
-    2.68,
-    -0.13 + middleWave,
-    2.48,
-    -0.24 + upperWave,
-    2.3,
-  );
-  context.bezierCurveTo(-0.33 + upperWave, 2.05, -0.48, 1.76, -0.61, 1.42);
-  context.bezierCurveTo(-0.77, 1.04, -0.97, 0.83, -1.06, 0.69);
-  context.bezierCurveTo(
-    -1.08,
-    0.48,
-    -1.2,
-    0.42 + armWave,
-    -1.28,
-    0.31 + armWave,
-  );
-  context.bezierCurveTo(
-    -1.4,
-    0.16 + armWave,
-    -1.3,
-    -0.04 + armWave,
-    -1.12,
-    0.04 + armWave,
-  );
-  context.bezierCurveTo(-1.04, 0.07, -0.97, 0.08, -0.87, -0.12);
-  context.closePath();
+  if (ghost.variant === 1) {
+    // Rounded sheet ghost with the three-wave hem from the reference.
+    // Keep the left side of the sheet clean; the old inward hook read as a
+    // broken silhouette at small sizes.
+    context.moveTo(-0.78, 0.96);
+    context.lineTo(-0.78, 0.1);
+    context.bezierCurveTo(-0.74, -0.63, -0.42, -1.16, 0, -1.16);
+    context.bezierCurveTo(0.48, -1.16, 0.77, -0.64, 0.77, 0.1);
+    context.lineTo(0.77, 0.95);
+    context.bezierCurveTo(
+      0.77,
+      1.18,
+      0.67 + hemWaveRight * 0.45,
+      1.24,
+      0.55 + hemWaveRight,
+      1.11,
+    );
+    context.bezierCurveTo(
+      0.39 + hemWaveRight,
+      0.93,
+      0.26 + hemWaveCenter * 0.45,
+      0.98,
+      0.18 + hemWaveCenter,
+      1.22,
+    );
+    context.bezierCurveTo(
+      0.1 + hemWaveCenter,
+      1.46,
+      -0.07 + hemWaveLeft * 0.45,
+      1.48,
+      -0.17 + hemWaveLeft,
+      1.23,
+    );
+    context.bezierCurveTo(
+      -0.28 + hemWaveLeft,
+      0.98,
+      -0.42 + hemWaveLeft * 0.45,
+      0.95,
+      -0.57,
+      1.15,
+    );
+    context.bezierCurveTo(-0.68, 1.3, -0.78, 1.25, -0.78, 1.08);
+    context.lineTo(-0.78, 0.96);
+    context.closePath();
+  } else {
+    // The original rounded silhouette with little arms and a long tail.
+    context.moveTo(-0.87, -0.12);
+    context.bezierCurveTo(-0.98, -0.72, -0.58, -1.16, 0, -1.16);
+    context.bezierCurveTo(0.58, -1.16, 0.98, -0.72, 0.87, -0.12);
+    context.bezierCurveTo(0.97, 0.08, 1.04, 0.07, 1.12, 0.04 + armWave);
+    context.bezierCurveTo(
+      1.3,
+      -0.04 + armWave,
+      1.4,
+      0.16 + armWave,
+      1.28,
+      0.31 + armWave,
+    );
+    context.bezierCurveTo(1.2, 0.42 + armWave, 1.08, 0.48, 1.02, 0.69);
+    context.bezierCurveTo(0.86, 1.04, 0.57, 1.43, 0.32 + upperWave, 1.82);
+    context.bezierCurveTo(
+      0.2 + upperWave,
+      2.2,
+      0.15 + middleWave,
+      2.55,
+      0.12 + tipWave,
+      2.63,
+    );
+    context.bezierCurveTo(
+      0.2 + tipWave,
+      2.79,
+      0.08 + tipWave,
+      2.89,
+      -0.06 + tipWave,
+      2.8,
+    );
+    context.bezierCurveTo(
+      -0.18 + tipWave,
+      2.68,
+      -0.13 + middleWave,
+      2.48,
+      -0.24 + upperWave,
+      2.3,
+    );
+    context.bezierCurveTo(-0.33 + upperWave, 2.05, -0.48, 1.76, -0.61, 1.42);
+    context.bezierCurveTo(-0.77, 1.04, -0.97, 0.83, -1.06, 0.69);
+    context.bezierCurveTo(
+      -1.08,
+      0.48,
+      -1.2,
+      0.42 + armWave,
+      -1.28,
+      0.31 + armWave,
+    );
+    context.bezierCurveTo(
+      -1.4,
+      0.16 + armWave,
+      -1.3,
+      -0.04 + armWave,
+      -1.12,
+      0.04 + armWave,
+    );
+    context.bezierCurveTo(-1.04, 0.07, -0.97, 0.08, -0.87, -0.12);
+    context.closePath();
+  }
   // Even-odd filling leaves actual transparent openings rather than dark paint.
-  context.moveTo(-0.34 + 0.18 * Math.cos(-0.16), -0.3 + 0.18 * Math.sin(-0.16));
-  context.ellipse(-0.34, -0.3, 0.18, 0.25, -0.16, 0, Math.PI * 2);
-  context.moveTo(0.34 + 0.18 * Math.cos(0.16), -0.3 + 0.18 * Math.sin(0.16));
-  context.ellipse(0.34, -0.3, 0.18, 0.25, 0.16, 0, Math.PI * 2);
+  const eyeSpread = ghost.variant === 1 ? 0.27 : 0.34;
+  const eyeWidth = 0.18;
+  const eyeHeight = 0.25;
+  const eyeY = ghost.variant === 1 ? -0.32 : -0.3;
+  context.moveTo(-eyeSpread, eyeY - eyeHeight);
+  context.ellipse(-eyeSpread, eyeY, eyeWidth, eyeHeight, -0.16, 0, Math.PI * 2);
+  context.moveTo(eyeSpread + eyeWidth, eyeY);
+  context.ellipse(eyeSpread, eyeY, eyeWidth, eyeHeight, 0.16, 0, Math.PI * 2);
   context.fill("evenodd");
   context.restore();
 }

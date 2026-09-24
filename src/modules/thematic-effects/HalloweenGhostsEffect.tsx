@@ -3,27 +3,34 @@ import { useEffect, useRef } from "react";
 interface Ghost {
   x: number;
   y: number;
-  targetX: number;
   lane: number;
   size: number;
   vx: number;
   angle: number;
-  mode: "rising" | "entering" | "exiting";
-  exitSide: -1 | 0 | 1;
-  exitAtY: number;
+  mode: "rising" | "fading" | "swooping";
   drift: number;
   phase: number;
   strokePhase: number;
   opacity: number;
+  presence: number;
+  age: number;
+  vanishAt: number;
+  appearDelay: number;
+  swoopAway: boolean;
+  swoopProgress: number;
+  swoopDuration: number;
+  swoopRadius: number;
+  swoopDirection: -1 | 1;
+  swoopCenterX: number;
+  swoopCenterY: number;
+  tailCurl: number;
 }
 
 const MOBILE_MEDIA_QUERY = "(max-width: 767px)";
 const MAX_RENDER_SCALE = 2;
 const RISE_SPEED = 0.5;
-const SIDE_SPEED = 0.42;
 const LANE_SPACING = 90;
-const LANE_GAP = 72;
-const STREAM_GAP = 38;
+const GHOST_GAP = 44;
 
 type Random = () => number;
 
@@ -423,72 +430,49 @@ function createGhost(
   lanes: number[],
   width: number,
   height: number,
-  fromSide: -1 | 0 | 1,
 ): Ghost {
   const size = 16 + Math.random() * 10;
-  const lane =
-    fromSide < 0
-      ? 0
-      : fromSide > 0
-        ? lanes.length - 1
-        : chooseLane(ghosts, lanes);
-  const laneGhosts = ghosts.filter((ghost) => ghost.lane === lane);
-  const targetX = lanes[lane];
-  let y: number;
+  const lane = chooseLane(ghosts, lanes);
+  const x = lanes[lane];
+  let y = height * (0.12 + Math.random() * 0.82);
 
-  if (fromSide) {
-    // Side visitors take a free height in the outer lane, then turn upward.
-    y = Math.max(
-      height + size,
-      ...laneGhosts.map((ghost) => ghost.y + LANE_GAP),
+  // New ghosts can materialize anywhere, while keeping enough space from
+  // neighbours so the translucent shapes do not stack into clumps.
+  for (let attempt = 0; attempt < 48; attempt += 1) {
+    const candidate = height * (0.08 + Math.random() * 0.86);
+    const hasSpace = ghosts.every(
+      (ghost) => Math.hypot(x - ghost.x, candidate - ghost.y) >= GHOST_GAP,
     );
-    for (let attempt = 0; attempt < 30; attempt += 1) {
-      const candidate = height * (0.38 + Math.random() * 0.47);
-      if (
-        laneGhosts.every((ghost) => Math.abs(ghost.y - candidate) >= LANE_GAP)
-      ) {
-        y = candidate;
-        break;
-      }
+    if (hasSpace) {
+      y = candidate;
+      break;
     }
-  } else {
-    const lowestInLane = Math.max(
-      height + size - LANE_GAP,
-      ...laneGhosts.map((ghost) => ghost.y),
-    );
-    const lowestInStream = Math.max(
-      height + size - STREAM_GAP,
-      ...ghosts.map((ghost) => ghost.y),
-    );
-    y = Math.max(
-      height + size,
-      lowestInLane + LANE_GAP,
-      lowestInStream + STREAM_GAP,
-    );
   }
 
-  const vx = -fromSide * SIDE_SPEED;
   return {
-    x: fromSide < 0 ? -size * 2 : fromSide > 0 ? width + size * 2 : targetX,
+    x,
     y,
-    targetX,
     lane,
     size,
-    vx,
-    angle: Math.atan2(vx, RISE_SPEED),
-    mode: fromSide ? "entering" : "rising",
-    exitSide: fromSide
-      ? 0
-      : lane === 0 && Math.random() < 0.14
-        ? -1
-        : lane === lanes.length - 1 && Math.random() < 0.14
-          ? 1
-          : 0,
-    exitAtY: height * (0.45 + Math.random() * 0.3),
+    vx: randomBetween(Math.random, -0.14, 0.14),
+    angle: 0,
+    mode: "rising",
     drift: 0.16 + Math.random() * 0.08,
     phase: Math.random() * Math.PI * 2,
     strokePhase: Math.random() * Math.PI * 2,
     opacity: 0.19 + Math.random() * 0.13,
+    presence: 0,
+    age: 0,
+    vanishAt: 180 + Math.random() * 420,
+    appearDelay: Math.random() * 48,
+    swoopAway: Math.random() < 0.3,
+    swoopProgress: 0,
+    swoopDuration: 0,
+    swoopRadius: 0,
+    swoopDirection: 1,
+    swoopCenterX: x,
+    swoopCenterY: y,
+    tailCurl: 0,
   };
 }
 
@@ -503,17 +487,21 @@ function drawGhost(
   const y = ghost.y;
   const radius = ghost.size / 2;
   const upperWave = Math.sin(ghost.strokePhase) * 0.08;
-  const middleWave = Math.sin(ghost.strokePhase - 0.7) * 0.22;
-  const tipWave = Math.sin(ghost.strokePhase - 1.4) * 0.52;
+  const middleWave =
+    Math.sin(ghost.strokePhase - 0.7) * 0.22 + ghost.tailCurl * 0.4;
+  const tipWave = Math.sin(ghost.strokePhase - 1.4) * 0.52 + ghost.tailCurl;
   const armWave = Math.sin(ghost.strokePhase + 0.5) * 0.055;
 
   context.save();
   const shimmer =
     0.55 + 0.45 * (0.5 + 0.5 * Math.sin(time * 0.0018 + ghost.phase));
-  context.globalAlpha = ghost.opacity * shimmer;
+  const easedPresence =
+    ghost.presence * ghost.presence * (3 - 2 * ghost.presence);
+  context.globalAlpha = ghost.opacity * shimmer * easedPresence;
   context.translate(x, y);
   context.rotate(ghost.angle);
-  context.scale(radius, radius);
+  const presenceScale = 0.88 + easedPresence * 0.12;
+  context.scale(radius * presenceScale, radius * presenceScale);
   context.fillStyle = "#f6f0ff";
   context.beginPath();
   // One continuous outline gives the ghosts their rounded head, little arms
@@ -627,9 +615,7 @@ export default function HalloweenGhostsEffect() {
       const count = mediaQuery.matches ? 8 : 14;
       ghosts = [];
       for (let index = 0; index < count; index += 1) {
-        const ghost = createGhost(ghosts, lanes, width, height, 0);
-        ghost.y = (height * (index + 0.5)) / count;
-        ghosts.push(ghost);
+        ghosts.push(createGhost(ghosts, lanes, width, height));
       }
     };
 
@@ -648,27 +634,83 @@ export default function HalloweenGhostsEffect() {
       if (branch) drawHauntedBranch(context, branch, time);
 
       for (const ghost of ghosts) {
+        ghost.age += framesPassed;
         ghost.strokePhase += framesPassed * (0.06 + Math.abs(ghost.vx) * 0.025);
-        ghost.y -= RISE_SPEED * framesPassed;
+        let horizontalVelocity = ghost.vx;
+        let verticalSpeed = RISE_SPEED;
 
-        if (
-          ghost.mode === "rising" &&
-          ghost.exitSide &&
-          ghost.y < ghost.exitAtY
-        ) {
-          ghost.mode = "exiting";
-          ghost.vx = ghost.exitSide * SIDE_SPEED;
-        }
-        if (ghost.mode !== "rising") {
+        if (ghost.mode === "rising") {
+          ghost.tailCurl *= Math.max(0, 1 - framesPassed * 0.08);
           ghost.x += ghost.vx * framesPassed;
-          if (
-            ghost.mode === "entering" &&
-            ((ghost.vx > 0 && ghost.x >= ghost.targetX) ||
-              (ghost.vx < 0 && ghost.x <= ghost.targetX))
-          ) {
-            ghost.x = ghost.targetX;
-            ghost.vx = 0;
-            ghost.mode = "rising";
+          ghost.y -= RISE_SPEED * framesPassed;
+          if (ghost.x < ghost.size * 2 || ghost.x > width - ghost.size * 2) {
+            ghost.vx *= -1;
+          }
+          if (ghost.age >= ghost.appearDelay) {
+            ghost.presence = Math.min(1, ghost.presence + framesPassed / 58);
+          }
+          if (ghost.age >= ghost.vanishAt) {
+            if (ghost.swoopAway) {
+              ghost.mode = "swooping";
+              ghost.swoopProgress = 0;
+              ghost.swoopRadius = 18 + Math.random() * 12;
+              ghost.swoopDuration =
+                (ghost.swoopRadius * Math.PI * 2) /
+                (0.56 + Math.random() * 0.14);
+              ghost.swoopDirection = Math.random() < 0.5 ? -1 : 1;
+              ghost.swoopCenterX =
+                ghost.x + ghost.swoopDirection * ghost.swoopRadius;
+              ghost.swoopCenterY = ghost.y;
+            } else {
+              ghost.mode = "fading";
+            }
+          }
+        } else if (ghost.mode === "fading") {
+          ghost.tailCurl *= Math.max(0, 1 - framesPassed * 0.08);
+          ghost.x += ghost.vx * framesPassed;
+          ghost.y -= RISE_SPEED * framesPassed;
+          ghost.presence = Math.max(0, ghost.presence - framesPassed / 86);
+        } else if (ghost.mode === "swooping") {
+          ghost.swoopProgress = Math.min(
+            1,
+            ghost.swoopProgress + framesPassed / ghost.swoopDuration,
+          );
+          const theta =
+            (ghost.swoopDirection > 0 ? Math.PI : 0) +
+            ghost.swoopDirection * ghost.swoopProgress * Math.PI * 2;
+          ghost.x = ghost.swoopCenterX + ghost.swoopRadius * Math.cos(theta);
+          ghost.y = ghost.swoopCenterY + ghost.swoopRadius * Math.sin(theta);
+          horizontalVelocity =
+            (-ghost.swoopRadius *
+              Math.sin(theta) *
+              Math.PI *
+              2 *
+              ghost.swoopDirection) /
+            ghost.swoopDuration;
+          verticalSpeed =
+            (-ghost.swoopRadius *
+              Math.cos(theta) *
+              Math.PI *
+              2 *
+              ghost.swoopDirection) /
+            ghost.swoopDuration;
+          const flightAngle = Math.atan2(horizontalVelocity, verticalSpeed);
+          const angleDifference = Math.atan2(
+            Math.sin(flightAngle - ghost.angle),
+            Math.cos(flightAngle - ghost.angle),
+          );
+          ghost.angle += angleDifference * Math.min(1, framesPassed * 0.26);
+          const inwardX = ghost.swoopCenterX - ghost.x;
+          const inwardY = ghost.swoopCenterY - ghost.y;
+          const inwardLocalX =
+            inwardX * Math.cos(ghost.angle) + inwardY * Math.sin(ghost.angle);
+          ghost.tailCurl = Math.max(
+            -0.46,
+            Math.min(0.46, (inwardLocalX / ghost.swoopRadius) * 0.46),
+          );
+          if (ghost.swoopProgress === 1) {
+            ghost.mode = "fading";
+            ghost.vx = ghost.swoopDirection * (0.16 + Math.random() * 0.12);
           }
         }
 
@@ -678,17 +720,27 @@ export default function HalloweenGhostsEffect() {
           ghost.drift *
           0.0018 *
           (1000 / 60);
-        const heading = Math.atan2(ghost.vx + swayVelocity, RISE_SPEED);
-        ghost.angle +=
-          (heading - ghost.angle) * Math.min(1, framesPassed * 0.08);
+        if (ghost.mode !== "swooping") {
+          const heading = Math.max(
+            -0.52,
+            Math.min(
+              0.52,
+              Math.atan2(horizontalVelocity + swayVelocity, verticalSpeed),
+            ),
+          );
+          const headingDifference = Math.atan2(
+            Math.sin(heading - ghost.angle),
+            Math.cos(heading - ghost.angle),
+          );
+          ghost.angle +=
+            headingDifference * Math.min(1, framesPassed * 0.08);
+        }
 
-        const leftExited =
-          ghost.mode === "exiting" && ghost.x < -ghost.size * 2;
-        const rightExited =
-          ghost.mode === "exiting" && ghost.x > width + ghost.size * 2;
-        if (ghost.y < -ghost.size * 2 || leftExited || rightExited) {
-          const fromSide: -1 | 0 | 1 =
-            Math.random() < 0.12 ? (Math.random() < 0.5 ? -1 : 1) : 0;
+        const outsideViewport =
+          ghost.y < -ghost.size * 2 ||
+          ghost.x < -ghost.size * 2 ||
+          ghost.x > width + ghost.size * 2;
+        if (ghost.presence <= 0 || outsideViewport) {
           Object.assign(
             ghost,
             createGhost(
@@ -696,7 +748,6 @@ export default function HalloweenGhostsEffect() {
               lanes,
               width,
               height,
-              fromSide,
             ),
           );
         }

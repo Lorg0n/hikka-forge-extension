@@ -30,6 +30,21 @@ interface Ghost {
   tailCurl: number;
 }
 
+interface FlyingFace {
+  x: number;
+  y: number;
+  size: number;
+  vx: number;
+  riseSpeed: number;
+  wanderAmplitude: number;
+  wanderRate: number;
+  phase: number;
+  opacity: number;
+  presence: number;
+  age: number;
+  appearDelay: number;
+}
+
 const MOBILE_MEDIA_QUERY = "(max-width: 767px)";
 const SHOW_HAUNTED_BRANCH = false;
 const MAX_RENDER_SCALE = 2;
@@ -643,6 +658,57 @@ function drawGhost(
   context.restore();
 }
 
+const EVIL_FACE_PATH_DATA = [
+  "M35.6901 72.3047C35.6901 72.3047 10.1079 51.6187 5.08027 45.2468C3.259 42.9385 2.09058 41.6403 1.34102 40.9232L0 40.1996C0 40.1996 0.0214319 39.6608 1.34102 40.9232L25.8502 54.148L29.6859 46.2253L45.1831 54.9167L49.0188 46.994L53.9708 55.2662L61.1934 50.7083L61.1934 50.7084L60.6804 63.6082L53.2655 73.0036L48.3776 63.119L44.4778 72.6542L32.6239 60.8775L35.6901 72.3047Z",
+  "M84.9012 74.26C84.9012 74.26 112.045 55.6707 117.563 49.7181C119.562 47.5617 120.83 46.3604 121.634 45.7051L123.028 45.0903C123.028 45.0903 123.049 44.5515 121.634 45.7051L96.1518 56.9419L92.9574 48.7396L76.8189 56.1731L73.6244 47.9709L68.0312 55.8237L61.1934 50.7066L61.1933 50.7067L60.6804 63.6066L67.3258 73.5611L72.9832 64.0958L76.1135 73.9106L88.8652 63.1123L84.9012 74.26Z",
+  "M53.2366 27.4206L28.4936 0.0517651C10.7041 -1.11372 9.02265 17.868 10.4056 27.5046L53.2366 27.4206Z",
+  "M71.131 28.2335L98.76 2.16968C117.111 2.42785 117.285 22.0447 115.078 31.8209L71.131 28.2335Z",
+];
+let evilFacePaths: Path2D[] | null = null;
+
+function createFlyingFace(width: number, height: number): FlyingFace {
+  return {
+    x: width * (0.08 + Math.random() * 0.84),
+    y: height * (0.12 + Math.random() * 0.88),
+    size: 34 + Math.random() * 10,
+    vx: (Math.random() < 0.5 ? -1 : 1) * (0.025 + Math.random() * 0.055),
+    riseSpeed: 0.16 + Math.random() * 0.09,
+    wanderAmplitude: 0.012 + Math.random() * 0.024,
+    wanderRate: 0.0005 + Math.random() * 0.0008,
+    phase: Math.random() * Math.PI * 2,
+    opacity: 0.19 + Math.random() * 0.13,
+    presence: 0,
+    age: 0,
+    appearDelay: Math.random() * 42,
+  };
+}
+
+function drawFlyingFace(
+  context: CanvasRenderingContext2D,
+  face: FlyingFace,
+  time: number,
+): void {
+  const easedPresence =
+    face.presence * face.presence * (3 - 2 * face.presence);
+  const shimmer =
+    0.55 + 0.45 * (0.5 + 0.5 * Math.sin(time * 0.0018 + face.phase));
+  const bob = Math.sin(time * 0.002 + face.phase) * 1.5;
+  const scale = face.size / 124;
+  const paths =
+    (evilFacePaths ??= EVIL_FACE_PATH_DATA.map((path) => new Path2D(path)));
+
+  context.save();
+  context.globalAlpha = face.opacity * shimmer * easedPresence;
+  context.translate(
+    face.x - face.size / 2,
+    face.y + bob - (face.size * 75) / 124 / 2,
+  );
+  context.scale(scale, scale);
+  context.fillStyle = "#f6f0ff";
+  for (const path of paths) context.fill(path);
+  context.restore();
+}
+
 export default function HalloweenGhostsEffect() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -654,6 +720,7 @@ export default function HalloweenGhostsEffect() {
 
     const mediaQuery = window.matchMedia(MOBILE_MEDIA_QUERY);
     let ghosts: Ghost[] = [];
+    let faces: FlyingFace[] = [];
     let width = 0;
     let height = 0;
     let lanes: number[] = [];
@@ -685,6 +752,10 @@ export default function HalloweenGhostsEffect() {
       for (let index = 0; index < count; index += 1) {
         ghosts.push(createGhost(ghosts, lanes, width, height));
       }
+      faces = Array.from(
+        { length: mediaQuery.matches ? 1 : 2 },
+        () => createFlyingFace(width, height),
+      );
     };
 
     const render = (time: number) => {
@@ -829,6 +900,26 @@ export default function HalloweenGhostsEffect() {
 
       for (const ghost of ghosts) {
         drawGhost(context, ghost, time);
+      }
+
+      for (const face of faces) {
+        face.age += framesPassed;
+        const wanderVelocity =
+          Math.sin(time * face.wanderRate + face.phase) * face.wanderAmplitude;
+        face.x += (face.vx + wanderVelocity) * framesPassed;
+        face.y -= face.riseSpeed * framesPassed;
+        if (face.age >= face.appearDelay) {
+          face.presence = Math.min(1, face.presence + framesPassed / 48);
+        }
+
+        if (
+          face.y < -face.size * 2 ||
+          face.x < -face.size * 2 ||
+          face.x > width + face.size * 2
+        ) {
+          Object.assign(face, createFlyingFace(width, height));
+        }
+        drawFlyingFace(context, face, time);
       }
 
       frame = requestAnimationFrame(render);

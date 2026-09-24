@@ -58,6 +58,9 @@ const easterEvent = {
 	darkLogoFull: easterDarkFull,
 };
 
+// Temporary preview date; set to null to return to the real current date.
+const LOGO_PREVIEW_DATE: Date | null = new Date(2026, 9, 31);
+
 function getCatholicEaster(year: number): Date {
 	const a = year % 19;
 	const b = Math.floor(year / 100);
@@ -122,7 +125,7 @@ const ThematicLogoModule: ForgeModuleDef = {
 	},
 
 	styles: () => {
-		const now = new Date();
+		const now = LOGO_PREVIEW_DATE ?? new Date();
 		const currentMonth = now.getMonth();
 		const currentDay = now.getDate();
 
@@ -169,13 +172,13 @@ const ThematicLogoModule: ForgeModuleDef = {
 			const darkLogoUrl = getAssetUrl(foundEvent.darkLogoFull);
 
 			cssToInject = `
-                @media (min-width: 768px) {
-                    .logo {
-                        background-image: url("${lightLogoUrl}") !important;
-                    }
-                    .dark .logo {
-                        background-image: url("${darkLogoUrl}") !important;
-                    }
+                .logo,
+                .logo-full {
+                    background-image: url("${lightLogoUrl}") !important;
+                }
+                .dark .logo,
+                .dark .logo-full {
+                    background-image: url("${darkLogoUrl}") !important;
                 }
             `;
 		} else {

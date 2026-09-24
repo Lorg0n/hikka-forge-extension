@@ -58,9 +58,6 @@ const easterEvent = {
 	darkLogoFull: easterDarkFull,
 };
 
-// Temporary preview date; set to null to return to the real current date.
-const LOGO_PREVIEW_DATE: Date | null = new Date(2026, 9, 31);
-
 function getCatholicEaster(year: number): Date {
 	const a = year % 19;
 	const b = Math.floor(year / 100);
@@ -125,7 +122,7 @@ const ThematicLogoModule: ForgeModuleDef = {
 	},
 
 	styles: () => {
-		const now = LOGO_PREVIEW_DATE ?? new Date();
+		const now = new Date();
 		const currentMonth = now.getMonth();
 		const currentDay = now.getDate();
 

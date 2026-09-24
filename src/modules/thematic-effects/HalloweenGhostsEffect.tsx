@@ -34,6 +34,12 @@ interface HauntedBranch {
   phase: number;
 }
 
+interface CornerThread {
+  bitmap: HTMLCanvasElement;
+  width: number;
+  height: number;
+}
+
 function createRandom(seed: number): Random {
   let value = seed >>> 0;
   return () => {
@@ -197,6 +203,168 @@ function drawHauntedBranch(
   context.rotate(Math.sin(time * 0.00055 + branch.phase) * 0.012);
   context.drawImage(branch.bitmap, 0, 0, branch.width, branch.height);
   context.restore();
+}
+
+function createLowerRightCornerThread(
+  viewportWidth: number,
+  viewportHeight: number,
+  scale: number,
+): CornerThread {
+  const width = Math.min(viewportWidth * 0.23, 280);
+  const height = Math.min(viewportHeight * 0.27, 245);
+  const bitmap = document.createElement("canvas");
+  bitmap.width = Math.ceil(width * scale);
+  bitmap.height = Math.ceil(height * scale);
+  const context = bitmap.getContext("2d");
+  if (!context) throw new Error("Unable to render corner thread");
+
+  context.setTransform(scale, 0, 0, scale, 0, 0);
+  const random = createRandom(0xc0b0be);
+  const points = [
+    { x: 5, y: height - 2 },
+    { x: width * 0.2, y: height - randomBetween(random, 8, 16) },
+    { x: width * 0.43, y: height - randomBetween(random, 16, 31) },
+    { x: width * 0.62, y: height - randomBetween(random, 43, 62) },
+    { x: width * 0.76, y: height - randomBetween(random, 92, 118) },
+    { x: width - 2, y: randomBetween(random, 18, 38) },
+  ];
+  const corner = { x: width - 2, y: height - 2 };
+
+  const pointOnSegment = (
+    start: { x: number; y: number },
+    control: { x: number; y: number },
+    end: { x: number; y: number },
+    progress: number,
+  ) => {
+    const inverse = 1 - progress;
+    return {
+      x:
+        inverse * inverse * start.x +
+        2 * inverse * progress * control.x +
+        progress * progress * end.x,
+      y:
+        inverse * inverse * start.y +
+        2 * inverse * progress * control.y +
+        progress * progress * end.y,
+    };
+  };
+
+  const curveSamples = [points[0]];
+  for (let segment = 0; segment < points.length - 1; segment += 1) {
+    const start = points[segment];
+    const end = points[segment + 1];
+    const control = { x: (start.x + end.x) / 2, y: start.y };
+    for (let step = 1; step <= 24; step += 1) {
+      curveSamples.push(pointOnSegment(start, control, end, step / 24));
+    }
+  }
+  const distances = [0];
+  for (let index = 1; index < curveSamples.length; index += 1) {
+    const previous = curveSamples[index - 1];
+    const point = curveSamples[index];
+    distances.push(
+      distances[index - 1] +
+        Math.hypot(point.x - previous.x, point.y - previous.y),
+    );
+  }
+
+  const totalLength = distances[distances.length - 1];
+  const anchorAtDistance = (targetDistance: number) => {
+    const index = distances.findIndex((distance) => distance >= targetDistance);
+    if (index <= 0) return curveSamples[0];
+    const previousDistance = distances[index - 1];
+    const segmentLength = distances[index] - previousDistance;
+    const progress = (targetDistance - previousDistance) / segmentLength;
+    const previous = curveSamples[index - 1];
+    const point = curveSamples[index];
+    return {
+      x: previous.x + (point.x - previous.x) * progress,
+      y: previous.y + (point.y - previous.y) * progress,
+    };
+  };
+
+  context.strokeStyle = "rgba(224, 232, 240, 0.42)";
+  context.lineWidth = randomBetween(random, 0.7, 1);
+  context.lineCap = "round";
+  const rayCount = 7;
+  const rays = [];
+  for (let index = 0; index < rayCount; index += 1) {
+    const anchor = anchorAtDistance((totalLength * index) / (rayCount - 1));
+    const sag = randomBetween(random, 3, 11);
+    const sidewaysOffset = randomBetween(random, -4, 4);
+    const control = {
+      x: (anchor.x + corner.x) / 2 + sidewaysOffset,
+      y: (anchor.y + corner.y) / 2 + sag,
+    };
+    rays.push({ anchor, control });
+    context.beginPath();
+    context.moveTo(anchor.x, anchor.y);
+    context.quadraticCurveTo(control.x, control.y, corner.x, corner.y);
+    context.stroke();
+  }
+
+  const arcCount = 3 + Math.floor(random() * 3);
+  context.strokeStyle = "rgba(224, 232, 240, 0.46)";
+  for (let arcIndex = 0; arcIndex < arcCount; arcIndex += 1) {
+    const progress = (arcIndex + 1) / (arcCount + 1);
+    for (let rayIndex = 0; rayIndex < rays.length - 1; rayIndex += 1) {
+      const current = rays[rayIndex];
+      const next = rays[rayIndex + 1];
+      const start = pointOnSegment(
+        current.anchor,
+        current.control,
+        corner,
+        progress,
+      );
+      const end = pointOnSegment(next.anchor, next.control, corner, progress);
+      const middleX = (start.x + end.x) / 2;
+      const middleY = (start.y + end.y) / 2;
+      const distanceToCorner = Math.hypot(
+        corner.x - middleX,
+        corner.y - middleY,
+      );
+      const pull = randomBetween(random, 14, 26);
+      const control = {
+        x: middleX + ((corner.x - middleX) / distanceToCorner) * pull,
+        y: middleY + ((corner.y - middleY) / distanceToCorner) * pull,
+      };
+      context.beginPath();
+      context.moveTo(start.x, start.y);
+      context.quadraticCurveTo(control.x, control.y, end.x, end.y);
+      context.stroke();
+    }
+  }
+
+  context.beginPath();
+  context.moveTo(points[0].x, points[0].y);
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1];
+    const point = points[index];
+    const controlX = (previous.x + point.x) / 2;
+    context.quadraticCurveTo(controlX, previous.y, point.x, point.y);
+  }
+  context.strokeStyle = "rgba(224, 232, 240, 0.62)";
+  context.lineWidth = randomBetween(random, 1.1, 1.55);
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  context.stroke();
+
+  return { bitmap, width, height };
+}
+
+function drawLowerRightCornerThread(
+  context: CanvasRenderingContext2D,
+  thread: CornerThread,
+  viewportWidth: number,
+  viewportHeight: number,
+): void {
+  context.drawImage(
+    thread.bitmap,
+    viewportWidth - thread.width,
+    viewportHeight - thread.height,
+    thread.width,
+    thread.height,
+  );
 }
 
 function getLanes(width: number): number[] {
@@ -403,6 +571,7 @@ export default function HalloweenGhostsEffect() {
     let height = 0;
     let lanes: number[] = [];
     let branch: HauntedBranch | null = null;
+    let cornerThread: CornerThread | null = null;
     let frame = 0;
     let running = false;
     let lastFrameTime = 0;
@@ -416,6 +585,7 @@ export default function HalloweenGhostsEffect() {
       canvas.height = Math.round(height * scale);
       context.setTransform(scale, 0, 0, scale, 0, 0);
       branch = createHauntedBranch(width, height, scale);
+      cornerThread = createLowerRightCornerThread(width, height, scale);
       const count = mediaQuery.matches ? 8 : 14;
       ghosts = [];
       for (let index = 0; index < count; index += 1) {
@@ -435,6 +605,9 @@ export default function HalloweenGhostsEffect() {
       const scale = Math.min(window.devicePixelRatio || 1, MAX_RENDER_SCALE);
       context.setTransform(scale, 0, 0, scale, 0, 0);
       if (branch) drawHauntedBranch(context, branch, time);
+      if (cornerThread) {
+        drawLowerRightCornerThread(context, cornerThread, width, height);
+      }
 
       for (const ghost of ghosts) {
         ghost.strokePhase += framesPassed * (0.06 + Math.abs(ghost.vx) * 0.025);

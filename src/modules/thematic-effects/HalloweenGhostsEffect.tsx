@@ -956,6 +956,7 @@ export default function HalloweenGhostsEffect() {
     <canvas
       aria-hidden="true"
       ref={canvasRef}
+      className="halloween-ghosts-effect"
       style={{
         position: "fixed",
         inset: 0,

@@ -157,6 +157,16 @@
   --sidebar-ring: oklch(0.552 0.016 285.938);
 }
 
+/* The Halloween artwork is drawn for a dark backdrop. Invert only the
+ * transparent canvas in light mode, leaving the host page untouched. */
+.halloween-ghosts-effect {
+  filter: invert(1);
+}
+
+.dark .halloween-ghosts-effect {
+  filter: none;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

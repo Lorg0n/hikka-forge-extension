@@ -33,14 +33,10 @@ steps:
     environment:
       EXTENSION_ID:
         from_secret: CWS_EXTENSION_ID
-      CLIENT_ID:
-        from_secret: CWS_CLIENT_ID
-      CLIENT_SECRET:
-        from_secret: CWS_CLIENT_SECRET
-      REFRESH_TOKEN:
-        from_secret: CWS_REFRESH_TOKEN
       PUBLISHER_ID:
         from_secret: CWS_PUBLISHER_ID
+      SERVICE_ACCOUNT_KEY_BASE64:
+        from_secret: CWS_SERVICE_ACCOUNT_KEY_BASE64
     commands:
       - node scripts/publish-chrome-web-store-v2.mjs dist/hikka-forge-chrome-${DRONE_TAG}.zip
 

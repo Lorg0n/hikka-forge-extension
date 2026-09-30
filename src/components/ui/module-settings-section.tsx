@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
-import type { ModuleSetting, ModuleSettings, ModuleSettingValue } from "@/types/module";
+import type { ModuleSetting, ModuleSettings, ModuleSettingValue, ThematicScheduleInfo } from "@/types/module";
 import { SettingInput } from "./setting-input";
+import { ThematicScheduleSettings } from "./thematic-schedule-settings";
 
 interface ModuleSettingsSectionProps {
 	moduleId: string;
@@ -8,6 +9,8 @@ interface ModuleSettingsSectionProps {
 	currentModuleSettings: ModuleSettings;
 	onSettingChange: (moduleId: string, settingId: string, value: ModuleSettingValue) => void;
 	onResetSettings: (moduleId: string) => void;
+	thematicSchedule?: ThematicScheduleInfo;
+	moduleEnabled: boolean;
 }
 
 export function ModuleSettingsSection({
@@ -16,10 +19,31 @@ export function ModuleSettingsSection({
 	currentModuleSettings,
 	onSettingChange,
 	onResetSettings,
+	thematicSchedule,
+	moduleEnabled,
 }: ModuleSettingsSectionProps) {
+	const thematicSettingIds = new Set(
+		thematicSchedule
+			? [
+					thematicSchedule.manualSelectionSettingId,
+					...thematicSchedule.items.map((item) => item.calendarEnabledSettingId),
+				]
+			: [],
+	);
+	const regularSettings = settings.filter((setting) => !thematicSettingIds.has(setting.id));
+
 	return (
 		<>
-			{settings.map((setting) => (
+			{thematicSchedule && (
+				<ThematicScheduleSettings
+					moduleId={moduleId}
+					config={thematicSchedule}
+					currentModuleSettings={currentModuleSettings}
+					onSettingChange={onSettingChange}
+					moduleEnabled={moduleEnabled}
+				/>
+			)}
+			{regularSettings.map((setting) => (
 				<SettingInput
 					key={setting.id}
 					moduleId={moduleId}

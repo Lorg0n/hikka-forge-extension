@@ -172,8 +172,10 @@ export function ModuleCard({
                             settings={moduleInfo.settings!}
                             currentModuleSettings={currentModuleSettings}
                             onSettingChange={onSettingChange}
-                            onResetSettings={onResetSettings}
-                        />
+							onResetSettings={onResetSettings}
+							thematicSchedule={moduleInfo.thematicSchedule}
+							moduleEnabled={moduleInfo.enabled}
+						/>
                     </CollapsibleContent>
                 </Collapsible>
             )}

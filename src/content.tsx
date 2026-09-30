@@ -883,6 +883,12 @@ class ModuleManager {
 			category: moduleDef.category,
 			icon: moduleDef.icon,
 			popupAction: moduleDef.popupAction,
+			thematicSchedule: moduleDef.thematicSchedule
+				? {
+					...moduleDef.thematicSchedule,
+					activeItemIds: moduleDef.getActiveThematicItemIds?.() ?? [],
+				}
+				: undefined,
 		}));
 	}
 

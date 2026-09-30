@@ -6,6 +6,27 @@ export type ModuleCategory = keyof typeof MODULE_CATEGORIES;
 export type ModuleSettingValue = string | number | boolean;
 export type ModuleSettings = Record<string, ModuleSettingValue>;
 
+/** Declarative metadata for modules whose content is selected by a calendar. */
+export interface ThematicScheduleItem {
+	id: string;
+	label: string;
+	scheduleLabel: string;
+	/** The boolean setting that controls this item's automatic activation. */
+	calendarEnabledSettingId: string;
+}
+
+export interface ThematicScheduleConfig {
+	/** The select setting that stores either `automaticValue` or an item id. */
+	manualSelectionSettingId: string;
+	automaticValue: string;
+	items: ThematicScheduleItem[];
+}
+
+export interface ThematicScheduleInfo extends ThematicScheduleConfig {
+	/** Items whose calendar period includes today, calculated by the content script. */
+	activeItemIds: string[];
+}
+
 export interface ModuleComponentProps {
 	settings: ModuleSettings;
 	exiting?: boolean;
@@ -107,6 +128,9 @@ export interface ForgeModuleDef {
 		href: string;
 		icon?: string;
 	};
+	/** Metadata used by the popup's shared thematic-schedule settings panel. */
+	thematicSchedule?: ThematicScheduleConfig;
+	getActiveThematicItemIds?: () => string[];
 }
 
 export interface ModuleInfo {
@@ -130,6 +154,7 @@ export interface ModuleInfo {
 		href: string;
 		icon?: string;
 	};
+	thematicSchedule?: ThematicScheduleInfo;
 }
 
 interface ModuleToggleAction {

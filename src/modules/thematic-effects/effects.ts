@@ -5,6 +5,7 @@ import type React from "react";
 export interface ThematicEffect {
   id: string;
   name: string;
+  scheduleLabel: string;
   Component: React.FC;
   /** Whether the effect should be active on the given date. */
   isActive: (date: Date) => boolean;
@@ -20,6 +21,7 @@ export const THEMATIC_EFFECTS: readonly ThematicEffect[] = [
   {
     id: "halloween-ghosts",
     name: "Геловінські привиди",
+    scheduleLabel: "30 жовтня — 1 листопада",
     Component: HalloweenGhostsEffect,
     isActive: isHalloweenPeriod,
   },

@@ -1,5 +1,5 @@
 import { logger } from "@/utils/logger";
-import type { ForgeModuleDef } from "@/types/module";
+import type { ForgeModuleDef, ModuleSettings } from "@/types/module";
 import { getAssetUrl } from "@/utils/asset-utils";
 
 import newYearLightFull from "@/assets/thematic-logos/new-year/logo.svg";
@@ -17,6 +17,7 @@ import independenceDayUaDarkFull from "@/assets/thematic-logos/ukraine/logo-dark
 interface ThematicEvent {
 	id: string;
 	name: string;
+	scheduleLabel: string;
 	startDate?: { month: number; day: number };
 	endDate?: { month: number; day: number };
 
@@ -28,6 +29,7 @@ const thematicEvents: ThematicEvent[] = [
 	{
 		id: "new-year",
 		name: "Новий Рік",
+		scheduleLabel: "15 грудня — 21 січня",
 		startDate: { month: 11, day: 15 },
 		endDate: { month: 0, day: 21 },
 		lightLogoFull: newYearLightFull,
@@ -36,6 +38,7 @@ const thematicEvents: ThematicEvent[] = [
 	{
 		id: "halloween",
 		name: "Геловін",
+		scheduleLabel: "30 жовтня — 1 листопада",
 		startDate: { month: 9, day: 30 },
 		endDate: { month: 10, day: 1 },
 		lightLogoFull: halloweenLightFull,
@@ -44,6 +47,7 @@ const thematicEvents: ThematicEvent[] = [
 	{
 		id: "ukraine",
 		name: "День Незалежності України",
+		scheduleLabel: "23 — 25 серпня",
 		startDate: { month: 7, day: 23 },
 		endDate: { month: 7, day: 25 },
 		lightLogoFull: independenceDayUaLightFull,
@@ -51,9 +55,10 @@ const thematicEvents: ThematicEvent[] = [
 	},
 ];
 
-const easterEvent = {
+const easterEvent: ThematicEvent = {
 	id: "easter",
 	name: "Великдень",
+	scheduleLabel: "За 2 дні до та після католицького або православного Великодня",
 	lightLogoFull: easterLightFull,
 	darkLogoFull: easterDarkFull,
 };
@@ -106,6 +111,42 @@ function isEasterPeriod(date: Date): boolean {
 	);
 }
 
+const allThematicEvents = [...thematicEvents, easterEvent];
+const MANUAL_SELECTION_SETTING_ID = "manualEventId";
+const AUTOMATIC_SELECTION = "automatic";
+
+function calendarEnabledSettingId(eventId: string): string {
+	return `calendarEnabled_${eventId}`;
+}
+
+function isEventActive(event: ThematicEvent, date: Date): boolean {
+	if (event.id === easterEvent.id) return isEasterPeriod(date);
+	if (!event.startDate || !event.endDate) return false;
+
+	const currentNumericalDate = date.getMonth() * 100 + date.getDate();
+	const startNumericalDate = event.startDate.month * 100 + event.startDate.day;
+	const endNumericalDate = event.endDate.month * 100 + event.endDate.day;
+
+	return startNumericalDate <= endNumericalDate
+		? currentNumericalDate >= startNumericalDate && currentNumericalDate <= endNumericalDate
+		: currentNumericalDate >= startNumericalDate || currentNumericalDate <= endNumericalDate;
+}
+
+function getActiveEventIds(date = new Date()): string[] {
+	return allThematicEvents.filter((event) => isEventActive(event, date)).map(({ id }) => id);
+}
+
+function getSelectedEvent(settings: ModuleSettings, date = new Date()): ThematicEvent | undefined {
+	const manualSelection = settings[MANUAL_SELECTION_SETTING_ID];
+	if (typeof manualSelection === "string" && manualSelection !== AUTOMATIC_SELECTION) {
+		return allThematicEvents.find((event) => event.id === manualSelection);
+	}
+
+	return allThematicEvents.find(
+		(event) => settings[calendarEnabledSettingId(event.id)] !== false && isEventActive(event, date),
+	);
+}
+
 const ThematicLogoModule: ForgeModuleDef = {
 	id: "thematic-logo",
 	name: "Тематичні логотипи",
@@ -121,44 +162,9 @@ const ThematicLogoModule: ForgeModuleDef = {
 		color: '#fb923c'
 	},
 
-	styles: () => {
-		const now = new Date();
-		const currentMonth = now.getMonth();
-		const currentDay = now.getDate();
-
-		const isCurrentDateWithinRange = (event: ThematicEvent): boolean => {
-			if (!event.startDate || !event.endDate) return false;
-			const currentNumericalDate = currentMonth * 100 + currentDay;
-			const startNumericalDate =
-				event.startDate.month * 100 + event.startDate.day;
-			const endNumericalDate = event.endDate.month * 100 + event.endDate.day;
-
-			if (startNumericalDate <= endNumericalDate) {
-				return (
-					currentNumericalDate >= startNumericalDate &&
-					currentNumericalDate <= endNumericalDate
-				);
-			} else {
-				return (
-					currentNumericalDate >= startNumericalDate ||
-					currentNumericalDate <= endNumericalDate
-				);
-			}
-		};
-
+	styles: (settings) => {
 		let cssToInject = "";
-		let foundEvent: ThematicEvent | null = null;
-
-		for (const event of thematicEvents) {
-			if (isCurrentDateWithinRange(event)) {
-				foundEvent = event;
-				break;
-			}
-		}
-
-		if (!foundEvent && isEasterPeriod(now)) {
-			foundEvent = easterEvent;
-		}
+		const foundEvent = getSelectedEvent(settings);
 
 		if (foundEvent) {
 			logger.log(
@@ -186,7 +192,35 @@ const ThematicLogoModule: ForgeModuleDef = {
 
 		return cssToInject;
 	},
-	settings: [],
+	thematicSchedule: {
+		manualSelectionSettingId: MANUAL_SELECTION_SETTING_ID,
+		automaticValue: AUTOMATIC_SELECTION,
+		items: allThematicEvents.map((event) => ({
+			id: event.id,
+			label: event.name,
+			scheduleLabel: event.scheduleLabel,
+			calendarEnabledSettingId: calendarEnabledSettingId(event.id),
+		})),
+	},
+	getActiveThematicItemIds: getActiveEventIds,
+	settings: [
+		{
+			id: MANUAL_SELECTION_SETTING_ID,
+			label: "Ручний вибір тематики",
+			type: "select",
+			defaultValue: AUTOMATIC_SELECTION,
+			options: [
+				{ value: AUTOMATIC_SELECTION, label: "За календарем" },
+				...allThematicEvents.map((event) => ({ value: event.id, label: event.name })),
+			],
+		},
+		...allThematicEvents.map((event) => ({
+			id: calendarEnabledSettingId(event.id),
+			label: `Включати ${event.name} за календарем`,
+			type: "toggle" as const,
+			defaultValue: true,
+		})),
+	],
 };
 
 export default ThematicLogoModule;

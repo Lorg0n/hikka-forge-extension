@@ -394,8 +394,9 @@ class BackgroundManager {
 							hidden: m.hidden,
 							authRequired: m.authRequired ?? false,
 							category: m.category,
-					icon: m.icon,
-					popupAction: m.popupAction,
+							icon: m.icon,
+							popupAction: m.popupAction,
+							thematicSchedule: m.thematicSchedule,
 						}));
 					} else {
 						logger.warn(

@@ -5,7 +5,7 @@ interface Ghost {
   y: number;
   lane: number;
   size: number;
-  variant: 0 | 1;
+  variant: 0 | 1 | 2;
   vx: number;
   riseSpeed: number;
   wanderAmplitude: number;
@@ -44,6 +44,10 @@ interface FlyingFace {
   age: number;
   appearDelay: number;
 }
+
+const FLYING_SKULL_PATH =
+  "M8 1a7 7 0 0 1 7 7v3a2 2 0 0 1-2 2h-1v2h-2v-2H9v2H7v-2H6v2H4v-2H3a2 2 0 0 1-2-2V8a7 7 0 0 1 7-7m0 9a1 1 0 1 0 0 2a1 1 0 0 0 0-2M5 6a2 2 0 1 0 0 4a2 2 0 1 0 0-4m6 0a2 2 0 1 0 0 4a2 2 0 1 0 0-4";
+let flyingSkullPath: Path2D | null = null;
 
 const MOBILE_MEDIA_QUERY = "(max-width: 767px)";
 const SHOW_HAUNTED_BRANCH = false;
@@ -451,7 +455,8 @@ function createGhost(
   width: number,
   height: number,
 ): Ghost {
-  const size = 16 + Math.random() * 10;
+  const size = 16 + Math.random() * 4.8;
+  const variant = Math.random() < 0.18 ? 2 : Math.random() < 0.36 ? 1 : 0;
   const lane = chooseLane(ghosts, lanes);
   const x = lanes[lane];
   const edgeCount = Math.max(1, Math.round(lanes.length * 0.25));
@@ -483,7 +488,7 @@ function createGhost(
     y,
     lane,
     size,
-    variant: Math.random() < 0.36 ? 1 : 0,
+    variant,
     vx: direction * (0.025 + Math.random() * 0.065),
     riseSpeed: 0.18 + Math.random() * 0.1,
     wanderAmplitude: 0.008 + Math.random() * 0.028,
@@ -493,7 +498,8 @@ function createGhost(
     drift: 0.16 + Math.random() * 0.08,
     phase: Math.random() * Math.PI * 2,
     strokePhase: Math.random() * Math.PI * 2,
-    opacity: 0.19 + Math.random() * 0.13,
+    opacity:
+      variant === 2 ? 0.36 + Math.random() * 0.16 : 0.19 + Math.random() * 0.13,
     presence: 0,
     age: 0,
     vanishAt: 600 + Math.random() * 900,
@@ -645,6 +651,19 @@ function drawGhost(
     context.bezierCurveTo(-1.04, 0.07, -0.97, 0.08, -0.87, -0.12);
     context.closePath();
   }
+
+  if (ghost.variant === 2) {
+    // A high-contrast copy of the original silhouette: the soft, translucent
+    // body keeps it ghostly while the white outer line makes it stand out.
+    context.fillStyle = "rgba(246, 240, 255, 0.24)";
+    context.fill();
+    context.strokeStyle = "#ffffff";
+    context.lineWidth = 0.11;
+    context.lineJoin = "round";
+    context.lineCap = "round";
+    context.stroke();
+    context.beginPath();
+  }
   // Even-odd filling leaves actual transparent openings rather than dark paint.
   const eyeSpread = ghost.variant === 1 ? 0.27 : 0.34;
   const eyeWidth = 0.18;
@@ -654,23 +673,20 @@ function drawGhost(
   context.ellipse(-eyeSpread, eyeY, eyeWidth, eyeHeight, -0.16, 0, Math.PI * 2);
   context.moveTo(eyeSpread + eyeWidth, eyeY);
   context.ellipse(eyeSpread, eyeY, eyeWidth, eyeHeight, 0.16, 0, Math.PI * 2);
-  context.fill("evenodd");
+  if (ghost.variant === 2) {
+    context.fillStyle = "#ffffff";
+    context.fill();
+  } else {
+    context.fill("evenodd");
+  }
   context.restore();
 }
-
-const EVIL_FACE_PATH_DATA = [
-  "M35.6901 72.3047C35.6901 72.3047 10.1079 51.6187 5.08027 45.2468C3.259 42.9385 2.09058 41.6403 1.34102 40.9232L0 40.1996C0 40.1996 0.0214319 39.6608 1.34102 40.9232L25.8502 54.148L29.6859 46.2253L45.1831 54.9167L49.0188 46.994L53.9708 55.2662L61.1934 50.7083L61.1934 50.7084L60.6804 63.6082L53.2655 73.0036L48.3776 63.119L44.4778 72.6542L32.6239 60.8775L35.6901 72.3047Z",
-  "M84.9012 74.26C84.9012 74.26 112.045 55.6707 117.563 49.7181C119.562 47.5617 120.83 46.3604 121.634 45.7051L123.028 45.0903C123.028 45.0903 123.049 44.5515 121.634 45.7051L96.1518 56.9419L92.9574 48.7396L76.8189 56.1731L73.6244 47.9709L68.0312 55.8237L61.1934 50.7066L61.1933 50.7067L60.6804 63.6066L67.3258 73.5611L72.9832 64.0958L76.1135 73.9106L88.8652 63.1123L84.9012 74.26Z",
-  "M53.2366 27.4206L28.4936 0.0517651C10.7041 -1.11372 9.02265 17.868 10.4056 27.5046L53.2366 27.4206Z",
-  "M71.131 28.2335L98.76 2.16968C117.111 2.42785 117.285 22.0447 115.078 31.8209L71.131 28.2335Z",
-];
-let evilFacePaths: Path2D[] | null = null;
 
 function createFlyingFace(width: number, height: number): FlyingFace {
   return {
     x: width * (0.08 + Math.random() * 0.84),
     y: height * (0.12 + Math.random() * 0.88),
-    size: 34 + Math.random() * 10,
+    size: 34 + Math.random() * 1.2,
     vx: (Math.random() < 0.5 ? -1 : 1) * (0.025 + Math.random() * 0.055),
     riseSpeed: 0.16 + Math.random() * 0.09,
     wanderAmplitude: 0.012 + Math.random() * 0.024,
@@ -693,19 +709,14 @@ function drawFlyingFace(
   const shimmer =
     0.55 + 0.45 * (0.5 + 0.5 * Math.sin(time * 0.0018 + face.phase));
   const bob = Math.sin(time * 0.002 + face.phase) * 1.5;
-  const scale = face.size / 124;
-  const paths =
-    (evilFacePaths ??= EVIL_FACE_PATH_DATA.map((path) => new Path2D(path)));
+  const skullPath = (flyingSkullPath ??= new Path2D(FLYING_SKULL_PATH));
 
   context.save();
   context.globalAlpha = face.opacity * shimmer * easedPresence;
-  context.translate(
-    face.x - face.size / 2,
-    face.y + bob - (face.size * 75) / 124 / 2,
-  );
-  context.scale(scale, scale);
+  context.translate(face.x - face.size / 2, face.y + bob - face.size / 2);
+  context.scale(face.size / 16, face.size / 16);
   context.fillStyle = "#f6f0ff";
-  for (const path of paths) context.fill(path);
+  context.fill(skullPath);
   context.restore();
 }
 

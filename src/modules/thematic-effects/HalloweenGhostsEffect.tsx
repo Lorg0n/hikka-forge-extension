@@ -28,6 +28,8 @@ interface Ghost {
   swoopCenterX: number;
   swoopCenterY: number;
   tailCurl: number;
+  spawnYMin: number;
+  spawnYMax: number;
 }
 
 interface FlyingFace {
@@ -44,6 +46,13 @@ interface FlyingFace {
   age: number;
   appearDelay: number;
   isContrast: boolean;
+  spawnYMin: number;
+  spawnYMax: number;
+}
+
+interface EffectPosition {
+  x: number;
+  y: number;
 }
 
 const FLYING_SKULL_PATH =
@@ -55,7 +64,8 @@ const SHOW_HAUNTED_BRANCH = false;
 const MAX_RENDER_SCALE = 2;
 const RISE_SPEED = 0.5;
 const LANE_SPACING = 90;
-const GHOST_GAP = 44;
+const EFFECT_GAP = 76;
+const POSITION_ATTEMPTS = 64;
 
 type Random = () => number;
 type GhostShape = "rounded" | "sheet";
@@ -413,11 +423,16 @@ function drawCobweb(
   corner: CobwebCorner,
   viewportWidth: number,
   viewportHeight: number,
+  appearanceProgress: number,
 ): void {
+  if (appearanceProgress <= 0) return;
+
   const isLeft = corner.endsWith("left");
   const isTop = corner.startsWith("top");
   const originX = isLeft ? 0 : viewportWidth - cobweb.width;
   const originY = isTop ? 0 : viewportHeight - cobweb.height;
+  const easedProgress = 1 - (1 - appearanceProgress) ** 3;
+  const scale = 0.78 + easedProgress * 0.22;
 
   context.save();
   context.translate(
@@ -425,6 +440,11 @@ function drawCobweb(
     originY + (isTop ? cobweb.height : 0),
   );
   context.scale(isLeft ? -1 : 1, isTop ? -1 : 1);
+  // The web grows from its corner anchor while the threads softly fade in.
+  context.translate(cobweb.width, cobweb.height);
+  context.scale(scale, scale);
+  context.translate(-cobweb.width, -cobweb.height);
+  context.globalAlpha = easedProgress;
   context.drawImage(cobweb.bitmap, 0, 0, cobweb.width, cobweb.height);
   context.restore();
 }
@@ -451,12 +471,42 @@ function chooseLane(ghosts: Ghost[], lanes: number[]): number {
   return available[Math.floor(Math.random() * available.length)];
 }
 
+function findSpacedPosition(
+  occupied: readonly EffectPosition[],
+  createCandidate: () => EffectPosition,
+): EffectPosition {
+  let bestCandidate = createCandidate();
+  let bestDistance = -Infinity;
+
+  for (let attempt = 0; attempt < POSITION_ATTEMPTS; attempt += 1) {
+    const candidate = createCandidate();
+    const closestDistance = occupied.length
+      ? Math.min(
+          ...occupied.map((element) =>
+            Math.hypot(candidate.x - element.x, candidate.y - element.y),
+          ),
+        )
+      : Infinity;
+
+    if (closestDistance >= EFFECT_GAP) return candidate;
+    if (closestDistance > bestDistance) {
+      bestCandidate = candidate;
+      bestDistance = closestDistance;
+    }
+  }
+
+  return bestCandidate;
+}
+
 function createGhost(
   ghosts: Ghost[],
+  occupied: readonly EffectPosition[],
   lanes: number[],
   width: number,
   height: number,
   shape: GhostShape,
+  spawnYMin: number,
+  spawnYMax: number,
 ): Ghost {
   const size = 16 + Math.random() * 4.8;
   const isContrast = Math.random() < 0.28;
@@ -473,20 +523,10 @@ function createGhost(
       : Math.random() < 0.5
         ? -1
         : 1;
-  let y = height * (0.1 + Math.random() * 0.84);
-
-  // New ghosts can materialize anywhere, while keeping enough space from
-  // neighbours so the translucent shapes do not stack into clumps.
-  for (let attempt = 0; attempt < 48; attempt += 1) {
-    const candidate = height * (0.1 + Math.random() * 0.84);
-    const hasSpace = ghosts.every(
-      (ghost) => Math.hypot(x - ghost.x, candidate - ghost.y) >= GHOST_GAP,
-    );
-    if (hasSpace) {
-      y = candidate;
-      break;
-    }
-  }
+  const { y } = findSpacedPosition(occupied, () => ({
+    x,
+    y: spawnYMin + Math.random() * (spawnYMax - spawnYMin),
+  }));
 
   return {
     x,
@@ -519,6 +559,8 @@ function createGhost(
     swoopCenterX: x,
     swoopCenterY: y,
     tailCurl: 0,
+    spawnYMin,
+    spawnYMax,
   };
 }
 
@@ -691,10 +733,20 @@ function drawGhost(
   context.restore();
 }
 
-function createFlyingFace(width: number, height: number): FlyingFace {
-  return {
+function createFlyingFace(
+  width: number,
+  height: number,
+  occupied: readonly EffectPosition[],
+  spawnYMin: number,
+  spawnYMax: number,
+): FlyingFace {
+  const position = findSpacedPosition(occupied, () => ({
     x: width * (0.08 + Math.random() * 0.84),
-    y: height * (0.12 + Math.random() * 0.88),
+    y: spawnYMin + Math.random() * (spawnYMax - spawnYMin),
+  }));
+
+  return {
+    ...position,
     size: 25.5 + Math.random() * 9.7,
     vx: (Math.random() < 0.5 ? -1 : 1) * (0.025 + Math.random() * 0.055),
     riseSpeed: 0.16 + Math.random() * 0.09,
@@ -706,6 +758,8 @@ function createFlyingFace(width: number, height: number): FlyingFace {
     age: 0,
     appearDelay: Math.random() * 42,
     isContrast: Math.random() < 0.28,
+    spawnYMin,
+    spawnYMax,
   };
 }
 
@@ -759,6 +813,7 @@ export default function HalloweenGhostsEffect() {
     let frame = 0;
     let running = false;
     let lastFrameTime = 0;
+    let cobwebAppearanceStartedAt: number | null = null;
 
     const resize = () => {
       width = document.documentElement.clientWidth;
@@ -778,20 +833,37 @@ export default function HalloweenGhostsEffect() {
         },
       ];
       const count = mediaQuery.matches ? 5 : 9;
+      const spawnTop = height * 0.08;
+      const spawnBottom = height * 0.94;
+      const spawnBandHeight = (spawnBottom - spawnTop) / count;
       ghosts = [];
       faces = [];
       for (let index = 0; index < count; index += 1) {
         const objectRoll = Math.random();
+        const occupied = [...ghosts, ...faces];
+        const spawnYMin = spawnTop + spawnBandHeight * (index + 0.12);
+        const spawnYMax = spawnTop + spawnBandHeight * (index + 0.88);
         if (objectRoll < 0.2) {
-          faces.push(createFlyingFace(width, height));
+          faces.push(
+            createFlyingFace(
+              width,
+              height,
+              occupied,
+              spawnYMin,
+              spawnYMax,
+            ),
+          );
         } else {
           ghosts.push(
             createGhost(
               ghosts,
+              occupied,
               lanes,
               width,
               height,
               objectRoll < 0.6 ? "rounded" : "sheet",
+              spawnYMin,
+              spawnYMax,
             ),
           );
         }
@@ -807,8 +879,22 @@ export default function HalloweenGhostsEffect() {
       context.clearRect(0, 0, canvas.width, canvas.height);
       const scale = Math.min(window.devicePixelRatio || 1, MAX_RENDER_SCALE);
       context.setTransform(scale, 0, 0, scale, 0, 0);
+      if (cobwebAppearanceStartedAt === null) {
+        cobwebAppearanceStartedAt = time;
+      }
+      const cobwebAppearanceProgress = Math.min(
+        1,
+        (time - cobwebAppearanceStartedAt) / 900,
+      );
       for (const { corner, cobweb } of cobwebs) {
-        drawCobweb(context, cobweb, corner, width, height);
+        drawCobweb(
+          context,
+          cobweb,
+          corner,
+          width,
+          height,
+          cobwebAppearanceProgress,
+        );
       }
       if (SHOW_HAUNTED_BRANCH && branch) {
         drawHauntedBranch(context, branch, time);
@@ -926,16 +1012,20 @@ export default function HalloweenGhostsEffect() {
           ghost.x < -ghost.size * 2 ||
           ghost.x > width + ghost.size * 2;
         if (ghost.presence <= 0 || outsideViewport) {
+          const otherGhosts = ghosts.filter((other) => other !== ghost);
           Object.assign(
             ghost,
             createGhost(
-              ghosts.filter((other) => other !== ghost),
+              otherGhosts,
+              [...otherGhosts, ...faces],
               lanes,
               width,
               height,
               ghost.variant === 1 || ghost.variant === 3
                 ? "sheet"
                 : "rounded",
+              ghost.spawnYMin,
+              ghost.spawnYMax,
             ),
           );
         }
@@ -960,7 +1050,16 @@ export default function HalloweenGhostsEffect() {
           face.x < -face.size * 2 ||
           face.x > width + face.size * 2
         ) {
-          Object.assign(face, createFlyingFace(width, height));
+          Object.assign(
+            face,
+            createFlyingFace(
+              width,
+              height,
+              [...ghosts, ...faces.filter((other) => other !== face)],
+              face.spawnYMin,
+              face.spawnYMax,
+            ),
+          );
         }
         drawFlyingFace(context, face, time);
       }

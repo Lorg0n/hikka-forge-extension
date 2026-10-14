@@ -5,7 +5,7 @@ interface Ghost {
   y: number;
   lane: number;
   size: number;
-  variant: 0 | 1 | 2;
+  variant: 0 | 1 | 2 | 3;
   vx: number;
   riseSpeed: number;
   wanderAmplitude: number;
@@ -43,6 +43,7 @@ interface FlyingFace {
   presence: number;
   age: number;
   appearDelay: number;
+  isContrast: boolean;
 }
 
 const FLYING_SKULL_PATH =
@@ -456,7 +457,15 @@ function createGhost(
   height: number,
 ): Ghost {
   const size = 16 + Math.random() * 4.8;
-  const variant = Math.random() < 0.18 ? 2 : Math.random() < 0.36 ? 1 : 0;
+  const variantRandom = Math.random();
+  const variant =
+    variantRandom < 0.09
+      ? 2
+      : variantRandom < 0.18
+        ? 3
+        : variantRandom < 0.48
+          ? 1
+          : 0;
   const lane = chooseLane(ghosts, lanes);
   const x = lanes[lane];
   const edgeCount = Math.max(1, Math.round(lanes.length * 0.25));
@@ -499,7 +508,9 @@ function createGhost(
     phase: Math.random() * Math.PI * 2,
     strokePhase: Math.random() * Math.PI * 2,
     opacity:
-      variant === 2 ? 0.36 + Math.random() * 0.16 : 0.19 + Math.random() * 0.13,
+      variant >= 2
+        ? 0.36 + Math.random() * 0.16
+        : 0.19 + Math.random() * 0.13,
     presence: 0,
     age: 0,
     vanishAt: 600 + Math.random() * 900,
@@ -533,6 +544,8 @@ function drawGhost(
   const hemWaveRight = Math.sin(ghost.strokePhase - 0.3) * 0.13;
   const hemWaveCenter = Math.sin(ghost.strokePhase - 1.25) * 0.14;
   const hemWaveLeft = Math.sin(ghost.strokePhase - 2.1) * 0.12;
+  const isSheetGhost = ghost.variant === 1 || ghost.variant === 3;
+  const isContrastGhost = ghost.variant >= 2;
 
   context.save();
   const shimmer =
@@ -546,7 +559,7 @@ function drawGhost(
   context.scale(radius * presenceScale, radius * presenceScale);
   context.fillStyle = "#f6f0ff";
   context.beginPath();
-  if (ghost.variant === 1) {
+  if (isSheetGhost) {
     // Rounded sheet ghost with the three-wave hem from the reference.
     // Keep the left side of the sheet clean; the old inward hook read as a
     // broken silhouette at small sizes.
@@ -652,7 +665,7 @@ function drawGhost(
     context.closePath();
   }
 
-  if (ghost.variant === 2) {
+  if (isContrastGhost) {
     // A high-contrast copy of the original silhouette: the soft, translucent
     // body keeps it ghostly while the white outer line makes it stand out.
     context.fillStyle = "rgba(246, 240, 255, 0.24)";
@@ -665,15 +678,15 @@ function drawGhost(
     context.beginPath();
   }
   // Even-odd filling leaves actual transparent openings rather than dark paint.
-  const eyeSpread = ghost.variant === 1 ? 0.27 : 0.34;
+  const eyeSpread = isSheetGhost ? 0.27 : 0.34;
   const eyeWidth = 0.18;
   const eyeHeight = 0.25;
-  const eyeY = ghost.variant === 1 ? -0.32 : -0.3;
+  const eyeY = isSheetGhost ? -0.32 : -0.3;
   context.moveTo(-eyeSpread, eyeY - eyeHeight);
   context.ellipse(-eyeSpread, eyeY, eyeWidth, eyeHeight, -0.16, 0, Math.PI * 2);
   context.moveTo(eyeSpread + eyeWidth, eyeY);
   context.ellipse(eyeSpread, eyeY, eyeWidth, eyeHeight, 0.16, 0, Math.PI * 2);
-  if (ghost.variant === 2) {
+  if (isContrastGhost) {
     context.fillStyle = "#ffffff";
     context.fill();
   } else {
@@ -696,6 +709,7 @@ function createFlyingFace(width: number, height: number): FlyingFace {
     presence: 0,
     age: 0,
     appearDelay: Math.random() * 42,
+    isContrast: Math.random() < 0.18,
   };
 }
 
@@ -712,11 +726,20 @@ function drawFlyingFace(
   const skullPath = (flyingSkullPath ??= new Path2D(FLYING_SKULL_PATH));
 
   context.save();
-  context.globalAlpha = face.opacity * shimmer * easedPresence;
+  context.globalAlpha =
+    face.opacity * shimmer * easedPresence * (face.isContrast ? 1.45 : 1);
   context.translate(face.x - face.size / 2, face.y + bob - face.size / 2);
   context.scale(face.size / 16, face.size / 16);
-  context.fillStyle = "#f6f0ff";
+  context.fillStyle = face.isContrast
+    ? "rgba(246, 240, 255, 0.24)"
+    : "#f6f0ff";
   context.fill(skullPath);
+  if (face.isContrast) {
+    context.strokeStyle = "rgba(255, 255, 255, 0.7)";
+    context.lineWidth = 0.75;
+    context.lineJoin = "round";
+    context.stroke(skullPath);
+  }
   context.restore();
 }
 

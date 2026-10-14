@@ -58,6 +58,7 @@ const LANE_SPACING = 90;
 const GHOST_GAP = 44;
 
 type Random = () => number;
+type GhostShape = "rounded" | "sheet";
 
 interface HauntedBranch {
   bitmap: HTMLCanvasElement;
@@ -455,17 +456,12 @@ function createGhost(
   lanes: number[],
   width: number,
   height: number,
+  shape: GhostShape,
 ): Ghost {
   const size = 16 + Math.random() * 4.8;
-  const variantRandom = Math.random();
+  const isContrast = Math.random() < 0.28;
   const variant =
-    variantRandom < 0.09
-      ? 2
-      : variantRandom < 0.18
-        ? 3
-        : variantRandom < 0.48
-          ? 1
-          : 0;
+    shape === "sheet" ? (isContrast ? 3 : 1) : isContrast ? 2 : 0;
   const lane = chooseLane(ghosts, lanes);
   const x = lanes[lane];
   const edgeCount = Math.max(1, Math.round(lanes.length * 0.25));
@@ -709,7 +705,7 @@ function createFlyingFace(width: number, height: number): FlyingFace {
     presence: 0,
     age: 0,
     appearDelay: Math.random() * 42,
-    isContrast: Math.random() < 0.18,
+    isContrast: Math.random() < 0.28,
   };
 }
 
@@ -783,13 +779,23 @@ export default function HalloweenGhostsEffect() {
       ];
       const count = mediaQuery.matches ? 5 : 9;
       ghosts = [];
+      faces = [];
       for (let index = 0; index < count; index += 1) {
-        ghosts.push(createGhost(ghosts, lanes, width, height));
+        const objectRoll = Math.random();
+        if (objectRoll < 0.2) {
+          faces.push(createFlyingFace(width, height));
+        } else {
+          ghosts.push(
+            createGhost(
+              ghosts,
+              lanes,
+              width,
+              height,
+              objectRoll < 0.6 ? "rounded" : "sheet",
+            ),
+          );
+        }
       }
-      faces = Array.from(
-        { length: mediaQuery.matches ? 1 : 2 },
-        () => createFlyingFace(width, height),
-      );
     };
 
     const render = (time: number) => {
@@ -927,6 +933,9 @@ export default function HalloweenGhostsEffect() {
               lanes,
               width,
               height,
+              ghost.variant === 1 || ghost.variant === 3
+                ? "sheet"
+                : "rounded",
             ),
           );
         }

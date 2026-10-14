@@ -38,8 +38,8 @@ const thematicEvents: ThematicEvent[] = [
 	{
 		id: "halloween",
 		name: "Геловін",
-		scheduleLabel: "14 жовтня — 3 листопада",
-		startDate: { month: 9, day: 14 },
+		scheduleLabel: "20 жовтня — 3 листопада",
+		startDate: { month: 9, day: 20 },
 		endDate: { month: 10, day: 3 },
 		lightLogoFull: halloweenLightFull,
 		darkLogoFull: halloweenDarkFull,

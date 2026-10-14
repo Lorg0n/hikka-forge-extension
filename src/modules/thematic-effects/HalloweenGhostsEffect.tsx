@@ -657,7 +657,7 @@ function drawGhost(
     // body keeps it ghostly while the white outer line makes it stand out.
     context.fillStyle = "rgba(246, 240, 255, 0.24)";
     context.fill();
-    context.strokeStyle = "#ffffff";
+    context.strokeStyle = "rgba(255, 255, 255, 0.7)";
     context.lineWidth = 0.11;
     context.lineJoin = "round";
     context.lineCap = "round";
@@ -686,7 +686,7 @@ function createFlyingFace(width: number, height: number): FlyingFace {
   return {
     x: width * (0.08 + Math.random() * 0.84),
     y: height * (0.12 + Math.random() * 0.88),
-    size: 34 + Math.random() * 1.2,
+    size: 25.5 + Math.random() * 9.7,
     vx: (Math.random() < 0.5 ? -1 : 1) * (0.025 + Math.random() * 0.055),
     riseSpeed: 0.16 + Math.random() * 0.09,
     wanderAmplitude: 0.012 + Math.random() * 0.024,

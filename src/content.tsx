@@ -23,6 +23,9 @@ import {
 	MODULE_ANIMATION_DURATION_MS,
 } from "@/components/ui/module-animation";
 import extensionStyles from "@/index.css?inline";
+import { initializeIconCache } from "@/utils/icon-cache";
+
+void initializeIconCache();
 
 const moduleImports = import.meta.glob<{ default: ForgeModuleDef }>(
 	"/src/modules/*/module.ts",

@@ -3,11 +3,14 @@ import { createRoot } from 'react-dom/client'
 import '@/index.css'
 import App from './page.tsx'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { initializeIconCache } from '@/utils/icon-cache'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <AuthProvider>
-      <App />
-    </AuthProvider>
-  </StrictMode>,
-)
+void initializeIconCache().finally(() => {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </StrictMode>,
+  )
+})

@@ -48,6 +48,7 @@ interface Bat {
   cruiseSpeed: number;
   climbSpeed: number;
   cruiseY: number;
+  cruiseVerticalBias: number;
   mode: "climbing" | "turning" | "cruising";
   turnProgress: number;
   turnDuration: number;
@@ -871,22 +872,36 @@ function createBatBezierFrames(): Float32Array[] {
 
 function createBat(width: number, height: number, appearDelay = 0): Bat {
   const direction = (Math.random() < 0.5 ? -1 : 1) as -1 | 1;
-  const cruiseSpeed = 0.26 + Math.random() * 0.08;
-  const climbSpeed = 0.24 + Math.random() * 0.07;
+  const cruiseSpeed = 0.52 + Math.random() * 0.16;
+  const climbSpeed = 0.48 + Math.random() * 0.14;
   const size = 16 + Math.random() * 9;
   const isOutline = Math.random() < 0.4;
   const wingPhase = Math.random() * Math.PI * 2;
+  const startsWithClimb = Math.random() < 0.5;
+  const cruiseVerticalBias = startsWithClimb
+    ? -(0.28 + Math.random() * 0.18)
+    : -0.42 + Math.random() * 0.7;
+  const sideHeadingX = Math.sqrt(1 - cruiseVerticalBias ** 2);
   return {
-    x: width * (0.2 + Math.random() * 0.6),
-    y: height * (0.72 + Math.random() * 0.18),
+    x: startsWithClimb
+      ? width * (0.2 + Math.random() * 0.6)
+      : direction > 0
+        ? -size * 1.5
+        : width + size * 1.5,
+    y: startsWithClimb
+      ? height * (0.72 + Math.random() * 0.18)
+      : height * (0.18 + Math.random() * 0.62),
     size,
-    vx: direction * climbSpeed * 0.05,
-    vy: -climbSpeed,
+    vx: startsWithClimb
+      ? direction * climbSpeed * 0.05
+      : direction * cruiseSpeed * sideHeadingX,
+    vy: startsWithClimb ? -climbSpeed : cruiseSpeed * cruiseVerticalBias,
     direction,
     cruiseSpeed,
     climbSpeed,
     cruiseY: height * (0.18 + Math.random() * 0.34),
-    mode: "climbing",
+    cruiseVerticalBias,
+    mode: startsWithClimb ? "climbing" : "cruising",
     turnProgress: 0,
     turnDuration: 110 + Math.random() * 40,
     angle: 0,
@@ -1233,9 +1248,13 @@ export default function HalloweenGhostsEffect() {
           );
           const turnEase =
             bat.turnProgress * bat.turnProgress * (3 - 2 * bat.turnProgress);
+          const sideHeadingX = Math.sqrt(
+            1 - bat.cruiseVerticalBias ** 2,
+          );
           const headingX =
-            bat.direction * (0.05 + (0.919 - 0.05) * turnEase);
-          const headingY = -1 + (1 - 0.394) * turnEase;
+            bat.direction * (0.05 + (sideHeadingX - 0.05) * turnEase);
+          const headingY =
+            -1 + (1 + bat.cruiseVerticalBias) * turnEase;
           const headingLength = Math.hypot(headingX, headingY);
           const turnSpeed =
             bat.climbSpeed +
@@ -1244,8 +1263,8 @@ export default function HalloweenGhostsEffect() {
           bat.vy = (headingY / headingLength) * turnSpeed;
           const targetBank =
             bat.direction *
-            (turnEase * (Math.PI / 18) +
-              Math.sin(bat.turnProgress * Math.PI) * (Math.PI / 60));
+            (turnEase * (Math.PI / 12) +
+              Math.sin(bat.turnProgress * Math.PI) * (Math.PI / 45));
           bat.angle +=
             (targetBank - bat.angle) * Math.min(1, framesPassed * 0.14);
           if (bat.turnProgress === 1) bat.mode = "cruising";
@@ -1253,19 +1272,26 @@ export default function HalloweenGhostsEffect() {
           const zigzag = Math.sin(time * 0.0026 + bat.phase);
           const speedPulse = Math.cos(time * 0.0013 + bat.phase) * 0.03;
           const sideFlightSpeed = bat.cruiseSpeed * (1 + speedPulse);
-          // Normalized 70:30 heading: mostly sideways, gently climbing.
-          bat.vx = bat.direction * sideFlightSpeed * 0.919;
-          bat.vy = -sideFlightSpeed * 0.394 + zigzag * sideFlightSpeed * 0.2;
+          const sideHeadingX = Math.sqrt(
+            1 - bat.cruiseVerticalBias ** 2,
+          );
+          bat.vx = bat.direction * sideFlightSpeed * sideHeadingX;
+          bat.vy =
+            sideFlightSpeed * bat.cruiseVerticalBias +
+            zigzag * sideFlightSpeed * 0.18;
           const targetBank =
-            bat.direction * (Math.PI / 18) + zigzag * (Math.PI / 120);
+            bat.direction * (Math.PI / 12) + zigzag * (Math.PI / 60);
           bat.angle +=
             (targetBank - bat.angle) * Math.min(1, framesPassed * 0.08);
         }
 
         const flightSpeed = Math.hypot(bat.vx, bat.vy);
+        // Movement is intentionally 2x faster; keep the wing animation on
+        // its original timing by using the pre-acceleration speed here.
+        const wingReferenceSpeed = flightSpeed / 2;
         const speedProgress = Math.max(
           0,
-          Math.min(1, (flightSpeed - 0.2) / 0.18),
+          Math.min(1, (wingReferenceSpeed - 0.2) / 0.18),
         );
         const animationFps = 10 + speedProgress * 4;
         const cruiseWingScale =
@@ -1275,7 +1301,7 @@ export default function HalloweenGhostsEffect() {
               ? 1 + bat.turnProgress * 0.2
               : 1;
         const wingRate =
-          (0.0048 + flightSpeed * 0.006) * cruiseWingScale;
+          (0.0048 + wingReferenceSpeed * 0.006) * cruiseWingScale;
         const elapsedMilliseconds = framesPassed * (1000 / 60);
         bat.wingPhase += wingRate * elapsedMilliseconds;
         bat.wingFrameElapsed += elapsedMilliseconds;
@@ -1292,6 +1318,7 @@ export default function HalloweenGhostsEffect() {
         }
         if (
           bat.y < -bat.size * 2 ||
+          bat.y > height + bat.size * 2 ||
           bat.x < -bat.size * 2 ||
           bat.x > width + bat.size * 2
         ) {

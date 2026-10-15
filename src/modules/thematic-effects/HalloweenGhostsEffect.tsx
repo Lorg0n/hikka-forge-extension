@@ -912,7 +912,7 @@ function createBat(width: number, height: number, appearDelay = 0): Bat {
     phase: Math.random() * Math.PI * 2,
     opacity: isOutline
       ? 0.52 + Math.random() * 0.16
-      : 0.3 + Math.random() * 0.16,
+      : 0.24 + Math.random() * 0.14,
     presence: 0,
     age: 0,
     appearDelay,

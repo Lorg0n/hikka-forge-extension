@@ -32,46 +32,87 @@ interface Ghost {
   spawnYMax: number;
 }
 
-interface FlyingFace {
-  x: number;
-  y: number;
-  size: number;
-  vx: number;
-  riseSpeed: number;
-  wanderAmplitude: number;
-  wanderRate: number;
-  phase: number;
-  opacity: number;
-  presence: number;
-  age: number;
-  appearDelay: number;
-  isContrast: boolean;
-  spawnYMin: number;
-  spawnYMax: number;
-}
-
 interface EffectPosition {
   x: number;
   y: number;
 }
 
-const FLYING_SKULL_PATH =
-  "M8 1a7 7 0 0 1 7 7v3a2 2 0 0 1-2 2h-1v2h-2v-2H9v2H7v-2H6v2H4v-2H3a2 2 0 0 1-2-2V8a7 7 0 0 1 7-7m0 9a1 1 0 1 0 0 2a1 1 0 0 0 0-2M5 6a2 2 0 1 0 0 4a2 2 0 1 0 0-4m6 0a2 2 0 1 0 0 4a2 2 0 1 0 0-4";
-let flyingSkullPath: Path2D | null = null;
-
-/** A hand-drawn bat, animated from the four wing positions in the reference. */
+/** A hand-drawn bat animated from the supplied SVG keyframes. */
 interface Bat {
   x: number;
   y: number;
   size: number;
   vx: number;
+  vy: number;
+  direction: -1 | 1;
+  cruiseSpeed: number;
+  climbSpeed: number;
+  cruiseY: number;
+  mode: "climbing" | "turning" | "cruising";
+  turnProgress: number;
+  turnDuration: number;
+  angle: number;
+  isOutline: boolean;
+  wingPhase: number;
+  displayedWingPhase: number;
+  wingFrameElapsed: number;
   phase: number;
   opacity: number;
   presence: number;
   age: number;
   appearDelay: number;
-  wingRate: number;
 }
+
+interface BatEye {
+  x: number;
+  y: number;
+  radius: number;
+}
+
+interface BatKeyframe {
+  path: string;
+  anchorX: number;
+  anchorY: number;
+  segmentOffset: number;
+  eyes: [BatEye, BatEye];
+}
+
+const BAT_KEYFRAMES: BatKeyframe[] = [
+  {
+    path: "M292.5 8.05127C293.3 0.85127 297.833 -0.282103 300 0.0512695C306.4 -0.34873 310.333 21.2179 311.5 32.0513L325 34.0513C359.8 40.4513 409.5 38.7179 430 37.0513L563.5 28.5513C570.3 30.5513 567 33.0513 564.5 34.0513C450.9 62.8513 400.833 137.718 390 171.551C323.6 179.551 297.333 209.551 292.5 223.551C253.7 175.151 190.667 182.385 164 192.051C112.8 133.251 33.3334 109.551 0 105.051C149.208 71.6829 213.532 44.1056 245 29.5513C248.5 13.0513 255 -0.94873 259 1.05127C262.2 2.65135 265.667 7.05131 267 9.05127C274.2 4.25127 287 6.38459 292.5 8.05127ZM265.5 23.5513C262.462 23.5513 260 26.0137 260 29.0513C260 32.0886 262.463 34.5513 265.5 34.5513C268.537 34.5513 271 32.0886 271 29.0513C271 26.0137 268.538 23.5513 265.5 23.5513ZM290.5 23.5513C287.462 23.5513 285 26.0137 285 29.0513C285 32.0886 287.463 34.5513 290.5 34.5513C293.537 34.5513 296 32.0886 296 29.0513C296 26.0137 293.538 23.5513 290.5 23.5513Z",
+    anchorX: 278,
+    anchorY: 29,
+    segmentOffset: 0,
+    eyes: [
+      { x: 265.5, y: 29.0513, radius: 5.5 },
+      { x: 290.5, y: 29.0513, radius: 5.5 },
+    ],
+  },
+  {
+    path: "M491 2.92684C496 -3.57383 496 2.42548 494 4.92684C449 110.925 456 137.425 456 168.925C320 199.925 296.833 297.926 292 311.927C233 218.927 138 200.927 83.5 200.927C71 128.927 30.5 65.4268 0 46.4268C146 103.927 209 127.925 241.5 124.925C241 103.425 256 81.9256 260 83.9249C263.2 85.5248 264.667 90.9247 266 92.9249C273 88.925 279.5 90.2582 285 91.9249C285.8 84.7251 294.333 78.5916 296.5 78.9249C302.9 78.525 314.5 114.372 313 126.425C313 126.425 319.5 127.425 330.5 124.925C341.5 122.425 379.5 106.927 407.5 85.9776C435.5 65.0285 491 2.92684 491 2.92684ZM261 115.925C257.963 115.925 255.5 118.388 255.5 121.425C255.5 124.462 257.962 126.925 261 126.925C264.038 126.925 266.5 124.462 266.5 121.425C266.5 118.388 264.037 115.925 261 115.925ZM290 113.925C286.963 113.925 284.5 116.388 284.5 119.425C284.5 122.462 286.962 124.925 290 124.925C293.038 124.925 295.5 122.462 295.5 119.425C295.5 116.388 293.037 113.925 290 113.925Z",
+    anchorX: 276,
+    anchorY: 120,
+    segmentOffset: 9,
+    eyes: [
+      { x: 261, y: 121.425, radius: 5.5 },
+      { x: 290, y: 119.425, radius: 5.5 },
+    ],
+  },
+  {
+    path: "M254 9.03302C254.8 1.83322 257.833 -0.300328 260 0.0330222C268.5 -0.466958 275.5 20.9805 274 33.033C274 33.033 281.5 34.0332 292.5 35.9549C303.5 37.8766 356 54.033 383.5 63.533C410.992 73.0304 498.452 105.015 498.5 105.033C501.5 107.533 503 108.659 500.5 108.533C391.5 103.033 348.5 154.534 342.5 184.03C283 166.53 254.5 205.53 247 227.03C168 168.03 142.5 196.03 127 211.53C77.5 159.53 31 178.53 0 185.53C19.5 164.53 153.5 62.1077 201.5 35.533C200 13.6113 212.528 1.03302 217 1.03302C220 1.03302 229.666 6.53289 231 8.53302C238 4.53312 248.5 7.36635 254 9.03302ZM225.5 27.032C222.462 27.032 220 29.4946 220 32.532C220 35.5696 222.462 38.032 225.5 38.032C228.538 38.032 231 35.5696 231 32.532C231 29.4946 228.538 27.032 225.5 27.032ZM251.5 27.032C248.462 27.032 246 29.4946 246 32.532C246 35.5696 248.462 38.032 251.5 38.032C254.538 38.032 257 35.5696 257 32.532C257 29.4946 254.538 27.032 251.5 27.032Z",
+    anchorX: 238,
+    anchorY: 32,
+    segmentOffset: 0,
+    eyes: [
+      { x: 225.5, y: 32.532, radius: 5.5 },
+      { x: 251.5, y: 32.532, radius: 5.5 },
+    ],
+  },
+];
+const BAT_FRAME_SEQUENCE = [0, 1, 2, 1] as const;
+const BAT_BEZIER_SEGMENT_COUNT = 14;
+const BAT_SPAWN_GAP_FRAMES = 300;
+let batBezierFrames: Float32Array[] | null = null;
 
 const MOBILE_MEDIA_QUERY = "(max-width: 767px)";
 const SHOW_HAUNTED_BRANCH = false;
@@ -747,79 +788,119 @@ function drawGhost(
   context.restore();
 }
 
-function createFlyingFace(
-  width: number,
-  height: number,
-  occupied: readonly EffectPosition[],
-  spawnYMin: number,
-  spawnYMax: number,
-): FlyingFace {
-  const position = findSpacedPosition(occupied, () => ({
-    x: width * (0.08 + Math.random() * 0.84),
-    y: spawnYMin + Math.random() * (spawnYMax - spawnYMin),
-  }));
+function createBatBezierFrames(): Float32Array[] {
+  const numberPattern = /[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/;
 
-  return {
-    ...position,
-    size: 25.5 + Math.random() * 9.7,
-    vx: (Math.random() < 0.5 ? -1 : 1) * (0.025 + Math.random() * 0.055),
-    riseSpeed: 0.16 + Math.random() * 0.09,
-    wanderAmplitude: 0.012 + Math.random() * 0.024,
-    wanderRate: 0.0005 + Math.random() * 0.0008,
-    phase: Math.random() * Math.PI * 2,
-    opacity: 0.19 + Math.random() * 0.13,
-    presence: 0,
-    age: 0,
-    appearDelay: Math.random() * 42,
-    isContrast: Math.random() < 0.28,
-    spawnYMin,
-    spawnYMax,
-  };
+  return BAT_KEYFRAMES.map((keyframe) => {
+    const outlineEnd = keyframe.path.indexOf("Z");
+    const tokens =
+      keyframe.path
+        .slice(0, outlineEnd + 1)
+        .match(new RegExp(`[A-Za-z]|${numberPattern.source}`, "g")) ?? [];
+    const segments: number[][] = [];
+    let tokenIndex = 0;
+    let command = "";
+    let startX = 0;
+    let startY = 0;
+    let currentX = 0;
+    let currentY = 0;
+    const readNumber = () => Number(tokens[tokenIndex++]);
+
+    while (tokenIndex < tokens.length) {
+      if (/^[A-Za-z]$/.test(tokens[tokenIndex])) {
+        command = tokens[tokenIndex++];
+      }
+      if (command === "M") {
+        startX = readNumber();
+        startY = readNumber();
+        currentX = startX;
+        currentY = startY;
+        command = "L";
+      } else if (command === "C") {
+        const segment = Array.from({ length: 6 }, readNumber);
+        segments.push(segment);
+        currentX = segment[4];
+        currentY = segment[5];
+      } else if (command === "L") {
+        const endX = readNumber();
+        const endY = readNumber();
+        segments.push([
+          currentX + (endX - currentX) / 3,
+          currentY + (endY - currentY) / 3,
+          currentX + ((endX - currentX) * 2) / 3,
+          currentY + ((endY - currentY) * 2) / 3,
+          endX,
+          endY,
+        ]);
+        currentX = endX;
+        currentY = endY;
+      } else if (command === "Z") {
+        break;
+      } else {
+        throw new Error(`Unsupported bat SVG command: ${command}`);
+      }
+    }
+
+    if (segments.length !== BAT_BEZIER_SEGMENT_COUNT) {
+      throw new Error(`Unexpected bat segment count: ${segments.length}`);
+    }
+
+    const offset = keyframe.segmentOffset;
+    const previousSegment =
+      segments[(offset - 1 + segments.length) % segments.length];
+    const morphStartX = offset === 0 ? startX : previousSegment[4];
+    const morphStartY = offset === 0 ? startY : previousSegment[5];
+    const orderedSegments = [
+      ...segments.slice(offset),
+      ...segments.slice(0, offset),
+    ];
+    const frame = new Float32Array(2 + BAT_BEZIER_SEGMENT_COUNT * 6);
+    frame[0] = morphStartX - keyframe.anchorX;
+    frame[1] = morphStartY - keyframe.anchorY;
+    for (let segmentIndex = 0; segmentIndex < orderedSegments.length; segmentIndex += 1) {
+      const segment = orderedSegments[segmentIndex];
+      for (let pointIndex = 0; pointIndex < segment.length; pointIndex += 2) {
+        const destination = 2 + segmentIndex * 6 + pointIndex;
+        frame[destination] = segment[pointIndex] - keyframe.anchorX;
+        frame[destination + 1] = segment[pointIndex + 1] - keyframe.anchorY;
+      }
+    }
+    return frame;
+  });
 }
 
-function drawFlyingFace(
-  context: CanvasRenderingContext2D,
-  face: FlyingFace,
-  time: number,
-): void {
-  const easedPresence =
-    face.presence * face.presence * (3 - 2 * face.presence);
-  const shimmer =
-    0.55 + 0.45 * (0.5 + 0.5 * Math.sin(time * 0.0018 + face.phase));
-  const bob = Math.sin(time * 0.002 + face.phase) * 1.5;
-  const skullPath = (flyingSkullPath ??= new Path2D(FLYING_SKULL_PATH));
-
-  context.save();
-  context.globalAlpha =
-    face.opacity * shimmer * easedPresence * (face.isContrast ? 1.45 : 1);
-  context.translate(face.x - face.size / 2, face.y + bob - face.size / 2);
-  context.scale(face.size / 16, face.size / 16);
-  context.fillStyle = face.isContrast
-    ? "rgba(246, 240, 255, 0.24)"
-    : "#f6f0ff";
-  context.fill(skullPath);
-  if (face.isContrast) {
-    context.strokeStyle = "rgba(255, 255, 255, 0.7)";
-    context.lineWidth = 0.75;
-    context.lineJoin = "round";
-    context.stroke(skullPath);
-  }
-  context.restore();
-}
-
-function createBat(width: number, height: number): Bat {
-  const fromLeft = Math.random() < 0.5;
+function createBat(width: number, height: number, appearDelay = 0): Bat {
+  const direction = (Math.random() < 0.5 ? -1 : 1) as -1 | 1;
+  const cruiseSpeed = 0.26 + Math.random() * 0.08;
+  const climbSpeed = 0.24 + Math.random() * 0.07;
+  const size = 16 + Math.random() * 9;
+  const isOutline = Math.random() < 0.4;
+  const wingPhase = Math.random() * Math.PI * 2;
   return {
-    x: fromLeft ? -72 : width + 72,
-    y: height * (0.13 + Math.random() * 0.56),
-    size: 32 + Math.random() * 18,
-    vx: (fromLeft ? 1 : -1) * (0.36 + Math.random() * 0.22),
+    x: width * (0.2 + Math.random() * 0.6),
+    y: height * (0.72 + Math.random() * 0.18),
+    size,
+    vx: direction * climbSpeed * 0.05,
+    vy: -climbSpeed,
+    direction,
+    cruiseSpeed,
+    climbSpeed,
+    cruiseY: height * (0.18 + Math.random() * 0.34),
+    mode: "climbing",
+    turnProgress: 0,
+    turnDuration: 110 + Math.random() * 40,
+    angle: 0,
+    isOutline,
+    wingPhase,
+    displayedWingPhase: wingPhase,
+    wingFrameElapsed: 0,
     phase: Math.random() * Math.PI * 2,
-    opacity: 0.3 + Math.random() * 0.16,
+    opacity: isOutline
+      ? 0.52 + Math.random() * 0.16
+      : 0.3 + Math.random() * 0.16,
     presence: 0,
     age: 0,
-    appearDelay: Math.random() * 160,
-    wingRate: 0.011 + Math.random() * 0.003,
+    appearDelay,
   };
 }
 
@@ -828,53 +909,76 @@ function drawBat(
   bat: Bat,
   time: number,
 ): void {
-  // The GIF supplies four wing poses (up, level, down, tucked).  A smooth
-  // sine cycle interpolates those positions instead of playing image frames.
-  const flap = Math.sin(time * bat.wingRate + bat.phase);
-  const wingTipY = -0.66 - flap * 0.68;
-  const wingBendY = 0.1 - flap * 0.38;
+  const frames = (batBezierFrames ??= createBatBezierFrames());
+  const cycle =
+    (((bat.displayedWingPhase / (Math.PI * 2)) % 1) + 1) % 1;
+  const sequencePosition = cycle * BAT_FRAME_SEQUENCE.length;
+  const sequenceIndex = Math.floor(sequencePosition);
+  const transition = sequencePosition - sequenceIndex;
+  const easedTransition = transition * transition * (3 - 2 * transition);
+  const fromIndex = BAT_FRAME_SEQUENCE[sequenceIndex];
+  const toIndex =
+    BAT_FRAME_SEQUENCE[(sequenceIndex + 1) % BAT_FRAME_SEQUENCE.length];
   const bodyBob = Math.sin(time * 0.003 + bat.phase) * 0.07;
-  const direction = bat.vx < 0 ? -1 : 1;
   const easedPresence = bat.presence * bat.presence * (3 - 2 * bat.presence);
+  const frameScale = bat.size / 200;
+  const fromPoints = frames[fromIndex];
+  const toPoints = frames[toIndex];
+  const fromFrame = BAT_KEYFRAMES[fromIndex];
+  const toFrame = BAT_KEYFRAMES[toIndex];
+  const interpolate = (from: number, to: number) =>
+    from + (to - from) * easedTransition;
 
   context.save();
   context.globalAlpha = bat.opacity * easedPresence;
   context.translate(bat.x, bat.y + bodyBob * bat.size);
-  context.scale(direction * bat.size, bat.size);
-  context.fillStyle = "#f6f0ff";
-
-  // Left and right membrane: elbow, wrist and three flexible scallops make
-  // this read as an animal rather than the flat silhouette from the GIF.
-  for (const side of [-1, 1]) {
-    context.beginPath();
-    context.moveTo(side * 0.18, -0.05);
-    context.quadraticCurveTo(side * 0.63, wingBendY, side * 1.08, wingTipY);
-    context.quadraticCurveTo(side * 0.8, wingBendY + 0.64, side * 0.59, 0.53);
-    context.quadraticCurveTo(side * 0.43, 0.84, side * 0.26, 0.48);
-    context.quadraticCurveTo(side * 0.1, 0.76, 0, 0.4);
-    context.quadraticCurveTo(side * 0.1, 0.12, side * 0.18, -0.05);
-    context.closePath();
-    context.fill();
+  context.rotate(bat.angle);
+  context.scale(bat.direction * frameScale, frameScale);
+  context.fillStyle = bat.isOutline
+    ? "rgba(246, 240, 255, 0.18)"
+    : "#f6f0ff";
+  context.beginPath();
+  context.moveTo(
+    interpolate(fromPoints[0], toPoints[0]),
+    interpolate(fromPoints[1], toPoints[1]),
+  );
+  for (let index = 0; index < BAT_BEZIER_SEGMENT_COUNT; index += 1) {
+    const pointIndex = 2 + index * 6;
+    context.bezierCurveTo(
+      interpolate(fromPoints[pointIndex], toPoints[pointIndex]),
+      interpolate(fromPoints[pointIndex + 1], toPoints[pointIndex + 1]),
+      interpolate(fromPoints[pointIndex + 2], toPoints[pointIndex + 2]),
+      interpolate(fromPoints[pointIndex + 3], toPoints[pointIndex + 3]),
+      interpolate(fromPoints[pointIndex + 4], toPoints[pointIndex + 4]),
+      interpolate(fromPoints[pointIndex + 5], toPoints[pointIndex + 5]),
+    );
   }
-
-  // Small body, pointed ears and two cut-out eyes provide a living creature
-  // at the same tiny scale as the existing ghosts.
-  context.beginPath();
-  context.ellipse(0, 0.08, 0.24, 0.39, 0, 0, Math.PI * 2);
-  context.fill();
-  context.beginPath();
-  context.moveTo(-0.18, -0.2);
-  context.lineTo(-0.13, -0.58);
-  context.lineTo(0, -0.31);
-  context.lineTo(0.13, -0.58);
-  context.lineTo(0.18, -0.2);
   context.closePath();
-  context.fill();
-  context.fillStyle = "#1d2630";
-  context.beginPath();
-  context.arc(-0.08, -0.07, 0.038, 0, Math.PI * 2);
-  context.arc(0.08, -0.07, 0.038, 0, Math.PI * 2);
-  context.fill();
+
+  for (let index = 0; index < fromFrame.eyes.length; index += 1) {
+    const fromEye = fromFrame.eyes[index];
+    const toEye = toFrame.eyes[index];
+    context.moveTo(
+      interpolate(fromEye.x - fromFrame.anchorX, toEye.x - toFrame.anchorX) +
+        interpolate(fromEye.radius, toEye.radius),
+      interpolate(fromEye.y - fromFrame.anchorY, toEye.y - toFrame.anchorY),
+    );
+    context.arc(
+      interpolate(fromEye.x - fromFrame.anchorX, toEye.x - toFrame.anchorX),
+      interpolate(fromEye.y - fromFrame.anchorY, toEye.y - toFrame.anchorY),
+      interpolate(fromEye.radius, toEye.radius),
+      0,
+      Math.PI * 2,
+    );
+  }
+  context.fill("evenodd");
+  if (bat.isOutline) {
+    context.strokeStyle = "rgba(255, 255, 255, 0.78)";
+    context.lineWidth = 7;
+    context.lineJoin = "round";
+    context.lineCap = "round";
+    context.stroke();
+  }
   context.restore();
 }
 
@@ -889,7 +993,6 @@ export default function HalloweenGhostsEffect() {
 
     const mediaQuery = window.matchMedia(MOBILE_MEDIA_QUERY);
     let ghosts: Ghost[] = [];
-    let faces: FlyingFace[] = [];
     let bats: Bat[] = [];
     let width = 0;
     let height = 0;
@@ -923,40 +1026,26 @@ export default function HalloweenGhostsEffect() {
       const spawnBottom = height * 0.94;
       const spawnBandHeight = (spawnBottom - spawnTop) / count;
       ghosts = [];
-      faces = [];
       for (let index = 0; index < count; index += 1) {
-        const objectRoll = Math.random();
-        const occupied = [...ghosts, ...faces];
+        const shapeRoll = Math.random();
         const spawnYMin = spawnTop + spawnBandHeight * (index + 0.12);
         const spawnYMax = spawnTop + spawnBandHeight * (index + 0.88);
-        if (objectRoll < 0.2) {
-          faces.push(
-            createFlyingFace(
-              width,
-              height,
-              occupied,
-              spawnYMin,
-              spawnYMax,
-            ),
-          );
-        } else {
-          ghosts.push(
-            createGhost(
-              ghosts,
-              occupied,
-              lanes,
-              width,
-              height,
-              objectRoll < 0.6 ? "rounded" : "sheet",
-              spawnYMin,
-              spawnYMax,
-            ),
-          );
-        }
+        ghosts.push(
+          createGhost(
+            ghosts,
+            ghosts,
+            lanes,
+            width,
+            height,
+            shapeRoll < 0.5 ? "rounded" : "sheet",
+            spawnYMin,
+            spawnYMax,
+          ),
+        );
       }
       bats = Array.from(
         { length: mediaQuery.matches ? 1 : 3 },
-        () => createBat(width, height),
+        (_, index) => createBat(width, height, index * BAT_SPAWN_GAP_FRAMES),
       );
     };
 
@@ -1107,7 +1196,7 @@ export default function HalloweenGhostsEffect() {
             ghost,
             createGhost(
               otherGhosts,
-              [...otherGhosts, ...faces],
+              otherGhosts,
               lanes,
               width,
               height,
@@ -1125,44 +1214,91 @@ export default function HalloweenGhostsEffect() {
         drawGhost(context, ghost, time);
       }
 
-      for (const face of faces) {
-        face.age += framesPassed;
-        const wanderVelocity =
-          Math.sin(time * face.wanderRate + face.phase) * face.wanderAmplitude;
-        face.x += (face.vx + wanderVelocity) * framesPassed;
-        face.y -= face.riseSpeed * framesPassed;
-        if (face.age >= face.appearDelay) {
-          face.presence = Math.min(1, face.presence + framesPassed / 48);
-        }
-
-        if (
-          face.y < -face.size * 2 ||
-          face.x < -face.size * 2 ||
-          face.x > width + face.size * 2
-        ) {
-          Object.assign(
-            face,
-            createFlyingFace(
-              width,
-              height,
-              [...ghosts, ...faces.filter((other) => other !== face)],
-              face.spawnYMin,
-              face.spawnYMax,
-            ),
-          );
-        }
-        drawFlyingFace(context, face, time);
-      }
-
       for (const bat of bats) {
         bat.age += framesPassed;
+        if (bat.age < bat.appearDelay) continue;
+
+        if (bat.mode === "climbing") {
+          bat.vx = bat.direction * bat.climbSpeed * 0.05;
+          bat.vy = -bat.climbSpeed;
+          bat.angle += (0 - bat.angle) * Math.min(1, framesPassed * 0.08);
+          if (bat.y <= bat.cruiseY) {
+            bat.mode = "turning";
+            bat.turnProgress = 0;
+          }
+        } else if (bat.mode === "turning") {
+          bat.turnProgress = Math.min(
+            1,
+            bat.turnProgress + framesPassed / bat.turnDuration,
+          );
+          const turnEase =
+            bat.turnProgress * bat.turnProgress * (3 - 2 * bat.turnProgress);
+          const headingX =
+            bat.direction * (0.05 + (0.919 - 0.05) * turnEase);
+          const headingY = -1 + (1 - 0.394) * turnEase;
+          const headingLength = Math.hypot(headingX, headingY);
+          const turnSpeed =
+            bat.climbSpeed +
+            (bat.cruiseSpeed - bat.climbSpeed) * turnEase;
+          bat.vx = (headingX / headingLength) * turnSpeed;
+          bat.vy = (headingY / headingLength) * turnSpeed;
+          const targetBank =
+            bat.direction *
+            (turnEase * (Math.PI / 18) +
+              Math.sin(bat.turnProgress * Math.PI) * (Math.PI / 60));
+          bat.angle +=
+            (targetBank - bat.angle) * Math.min(1, framesPassed * 0.14);
+          if (bat.turnProgress === 1) bat.mode = "cruising";
+        } else {
+          const zigzag = Math.sin(time * 0.0026 + bat.phase);
+          const speedPulse = Math.cos(time * 0.0013 + bat.phase) * 0.03;
+          const sideFlightSpeed = bat.cruiseSpeed * (1 + speedPulse);
+          // Normalized 70:30 heading: mostly sideways, gently climbing.
+          bat.vx = bat.direction * sideFlightSpeed * 0.919;
+          bat.vy = -sideFlightSpeed * 0.394 + zigzag * sideFlightSpeed * 0.2;
+          const targetBank =
+            bat.direction * (Math.PI / 18) + zigzag * (Math.PI / 120);
+          bat.angle +=
+            (targetBank - bat.angle) * Math.min(1, framesPassed * 0.08);
+        }
+
+        const flightSpeed = Math.hypot(bat.vx, bat.vy);
+        const speedProgress = Math.max(
+          0,
+          Math.min(1, (flightSpeed - 0.2) / 0.18),
+        );
+        const animationFps = 10 + speedProgress * 4;
+        const cruiseWingScale =
+          bat.mode === "cruising"
+            ? 1.2
+            : bat.mode === "turning"
+              ? 1 + bat.turnProgress * 0.2
+              : 1;
+        const wingRate =
+          (0.0048 + flightSpeed * 0.006) * cruiseWingScale;
+        const elapsedMilliseconds = framesPassed * (1000 / 60);
+        bat.wingPhase += wingRate * elapsedMilliseconds;
+        bat.wingFrameElapsed += elapsedMilliseconds;
+        const wingFrameDuration = 1000 / animationFps;
+        if (bat.wingFrameElapsed >= wingFrameDuration) {
+          bat.displayedWingPhase = bat.wingPhase;
+          bat.wingFrameElapsed %= wingFrameDuration;
+        }
+
         bat.x += bat.vx * framesPassed;
-        bat.y += Math.sin(time * 0.0015 + bat.phase) * 0.05 * framesPassed;
+        bat.y += bat.vy * framesPassed;
         if (bat.age >= bat.appearDelay) {
           bat.presence = Math.min(1, bat.presence + framesPassed / 42);
         }
-        if (bat.x < -bat.size * 2 || bat.x > width + bat.size * 2) {
-          Object.assign(bat, createBat(width, height));
+        if (
+          bat.y < -bat.size * 2 ||
+          bat.x < -bat.size * 2 ||
+          bat.x > width + bat.size * 2
+        ) {
+          Object.assign(
+            bat,
+            createBat(width, height, BAT_SPAWN_GAP_FRAMES),
+          );
         }
         drawBat(context, bat, time);
       }

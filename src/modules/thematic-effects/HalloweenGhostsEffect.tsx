@@ -59,6 +59,20 @@ const FLYING_SKULL_PATH =
   "M8 1a7 7 0 0 1 7 7v3a2 2 0 0 1-2 2h-1v2h-2v-2H9v2H7v-2H6v2H4v-2H3a2 2 0 0 1-2-2V8a7 7 0 0 1 7-7m0 9a1 1 0 1 0 0 2a1 1 0 0 0 0-2M5 6a2 2 0 1 0 0 4a2 2 0 1 0 0-4m6 0a2 2 0 1 0 0 4a2 2 0 1 0 0-4";
 let flyingSkullPath: Path2D | null = null;
 
+/** A hand-drawn bat, animated from the four wing positions in the reference. */
+interface Bat {
+  x: number;
+  y: number;
+  size: number;
+  vx: number;
+  phase: number;
+  opacity: number;
+  presence: number;
+  age: number;
+  appearDelay: number;
+  wingRate: number;
+}
+
 const MOBILE_MEDIA_QUERY = "(max-width: 767px)";
 const SHOW_HAUNTED_BRANCH = false;
 const MAX_RENDER_SCALE = 2;
@@ -793,6 +807,77 @@ function drawFlyingFace(
   context.restore();
 }
 
+function createBat(width: number, height: number): Bat {
+  const fromLeft = Math.random() < 0.5;
+  return {
+    x: fromLeft ? -72 : width + 72,
+    y: height * (0.13 + Math.random() * 0.56),
+    size: 32 + Math.random() * 18,
+    vx: (fromLeft ? 1 : -1) * (0.36 + Math.random() * 0.22),
+    phase: Math.random() * Math.PI * 2,
+    opacity: 0.3 + Math.random() * 0.16,
+    presence: 0,
+    age: 0,
+    appearDelay: Math.random() * 160,
+    wingRate: 0.011 + Math.random() * 0.003,
+  };
+}
+
+function drawBat(
+  context: CanvasRenderingContext2D,
+  bat: Bat,
+  time: number,
+): void {
+  // The GIF supplies four wing poses (up, level, down, tucked).  A smooth
+  // sine cycle interpolates those positions instead of playing image frames.
+  const flap = Math.sin(time * bat.wingRate + bat.phase);
+  const wingTipY = -0.66 - flap * 0.68;
+  const wingBendY = 0.1 - flap * 0.38;
+  const bodyBob = Math.sin(time * 0.003 + bat.phase) * 0.07;
+  const direction = bat.vx < 0 ? -1 : 1;
+  const easedPresence = bat.presence * bat.presence * (3 - 2 * bat.presence);
+
+  context.save();
+  context.globalAlpha = bat.opacity * easedPresence;
+  context.translate(bat.x, bat.y + bodyBob * bat.size);
+  context.scale(direction * bat.size, bat.size);
+  context.fillStyle = "#f6f0ff";
+
+  // Left and right membrane: elbow, wrist and three flexible scallops make
+  // this read as an animal rather than the flat silhouette from the GIF.
+  for (const side of [-1, 1]) {
+    context.beginPath();
+    context.moveTo(side * 0.18, -0.05);
+    context.quadraticCurveTo(side * 0.63, wingBendY, side * 1.08, wingTipY);
+    context.quadraticCurveTo(side * 0.8, wingBendY + 0.64, side * 0.59, 0.53);
+    context.quadraticCurveTo(side * 0.43, 0.84, side * 0.26, 0.48);
+    context.quadraticCurveTo(side * 0.1, 0.76, 0, 0.4);
+    context.quadraticCurveTo(side * 0.1, 0.12, side * 0.18, -0.05);
+    context.closePath();
+    context.fill();
+  }
+
+  // Small body, pointed ears and two cut-out eyes provide a living creature
+  // at the same tiny scale as the existing ghosts.
+  context.beginPath();
+  context.ellipse(0, 0.08, 0.24, 0.39, 0, 0, Math.PI * 2);
+  context.fill();
+  context.beginPath();
+  context.moveTo(-0.18, -0.2);
+  context.lineTo(-0.13, -0.58);
+  context.lineTo(0, -0.31);
+  context.lineTo(0.13, -0.58);
+  context.lineTo(0.18, -0.2);
+  context.closePath();
+  context.fill();
+  context.fillStyle = "#1d2630";
+  context.beginPath();
+  context.arc(-0.08, -0.07, 0.038, 0, Math.PI * 2);
+  context.arc(0.08, -0.07, 0.038, 0, Math.PI * 2);
+  context.fill();
+  context.restore();
+}
+
 export default function HalloweenGhostsEffect() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -805,6 +890,7 @@ export default function HalloweenGhostsEffect() {
     const mediaQuery = window.matchMedia(MOBILE_MEDIA_QUERY);
     let ghosts: Ghost[] = [];
     let faces: FlyingFace[] = [];
+    let bats: Bat[] = [];
     let width = 0;
     let height = 0;
     let lanes: number[] = [];
@@ -868,6 +954,10 @@ export default function HalloweenGhostsEffect() {
           );
         }
       }
+      bats = Array.from(
+        { length: mediaQuery.matches ? 1 : 3 },
+        () => createBat(width, height),
+      );
     };
 
     const render = (time: number) => {
@@ -1062,6 +1152,19 @@ export default function HalloweenGhostsEffect() {
           );
         }
         drawFlyingFace(context, face, time);
+      }
+
+      for (const bat of bats) {
+        bat.age += framesPassed;
+        bat.x += bat.vx * framesPassed;
+        bat.y += Math.sin(time * 0.0015 + bat.phase) * 0.05 * framesPassed;
+        if (bat.age >= bat.appearDelay) {
+          bat.presence = Math.min(1, bat.presence + framesPassed / 42);
+        }
+        if (bat.x < -bat.size * 2 || bat.x > width + bat.size * 2) {
+          Object.assign(bat, createBat(width, height));
+        }
+        drawBat(context, bat, time);
       }
 
       frame = requestAnimationFrame(render);

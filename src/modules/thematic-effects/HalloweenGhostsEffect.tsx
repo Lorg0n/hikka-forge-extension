@@ -1018,25 +1018,59 @@ export default function HalloweenGhostsEffect() {
     let running = false;
     let lastFrameTime = 0;
     let cobwebAppearanceStartedAt: number | null = null;
+    let renderScale = 0;
+    let isMobile = mediaQuery.matches;
 
     const resize = () => {
-      width = document.documentElement.clientWidth;
-      height = window.innerHeight;
+      const bounds = canvas.getBoundingClientRect();
+      const measuredWidth = Math.round(
+        bounds.width || document.documentElement.clientWidth,
+      );
+      const measuredHeight = Math.round(bounds.height || window.innerHeight);
+      const nextMobile = mediaQuery.matches;
+      const widthChanged = width === 0 || Math.abs(measuredWidth - width) > 1;
+      const mobileModeChanged = nextMobile !== isMobile;
+      // Mobile browser chrome repeatedly shrinks the visual viewport. Keep the
+      // largest height for the current width; 100lvh uses the same stable box.
+      const nextHeight =
+        nextMobile && !widthChanged && height > 0
+          ? Math.max(height, measuredHeight)
+          : measuredHeight;
+      const nextScale = Math.min(
+        window.devicePixelRatio || 1,
+        MAX_RENDER_SCALE,
+      );
+      const dimensionsChanged =
+        measuredWidth !== width || nextHeight !== height;
+      const scaleChanged = nextScale !== renderScale;
+
+      if (!dimensionsChanged && !scaleChanged && !mobileModeChanged) return;
+
+      const shouldResetScene = width === 0 || widthChanged || mobileModeChanged;
+      width = measuredWidth;
+      height = nextHeight;
+      renderScale = nextScale;
+      isMobile = nextMobile;
       lanes = getLanes(width);
-      const scale = Math.min(window.devicePixelRatio || 1, MAX_RENDER_SCALE);
-      canvas.width = Math.round(width * scale);
-      canvas.height = Math.round(height * scale);
-      context.setTransform(scale, 0, 0, scale, 0, 0);
+      const backingWidth = Math.round(width * renderScale);
+      const backingHeight = Math.round(height * renderScale);
+      if (canvas.width !== backingWidth) canvas.width = backingWidth;
+      if (canvas.height !== backingHeight) canvas.height = backingHeight;
+      context.setTransform(renderScale, 0, 0, renderScale, 0, 0);
       if (SHOW_HAUNTED_BRANCH) {
-        branch = createHauntedBranch(width, height, scale);
+        branch = createHauntedBranch(width, height, renderScale);
       }
       cobwebs = [
         {
           corner: "bottom-right",
-          cobweb: createCobweb(width, height, scale, 0xc0b0be),
+          cobweb: createCobweb(width, height, renderScale, 0xc0b0be),
         },
       ];
-      const count = mediaQuery.matches ? 5 : 9;
+
+      // Height-only changes keep every entity and its animation progress.
+      if (!shouldResetScene) return;
+
+      const count = nextMobile ? 5 : 9;
       const spawnTop = height * 0.08;
       const spawnBottom = height * 0.94;
       const spawnBandHeight = (spawnBottom - spawnTop) / count;
@@ -1059,7 +1093,7 @@ export default function HalloweenGhostsEffect() {
         );
       }
       bats = Array.from(
-        { length: mediaQuery.matches ? 1 : 3 },
+        { length: nextMobile ? 1 : 3 },
         (_, index) => createBat(width, height, index * BAT_SPAWN_GAP_FRAMES),
       );
     };
@@ -1071,8 +1105,7 @@ export default function HalloweenGhostsEffect() {
       lastFrameTime = time;
       context.setTransform(1, 0, 0, 1, 0, 0);
       context.clearRect(0, 0, canvas.width, canvas.height);
-      const scale = Math.min(window.devicePixelRatio || 1, MAX_RENDER_SCALE);
-      context.setTransform(scale, 0, 0, scale, 0, 0);
+      context.setTransform(renderScale, 0, 0, renderScale, 0, 0);
       if (cobwebAppearanceStartedAt === null) {
         cobwebAppearanceStartedAt = time;
       }

@@ -119,8 +119,10 @@ const MOBILE_MEDIA_QUERY = "(max-width: 767px)";
 const SHOW_HAUNTED_BRANCH = false;
 const MAX_RENDER_SCALE = 2;
 const RISE_SPEED = 0.5;
-const LANE_SPACING = 90;
-const EFFECT_GAP = 76;
+// Wider lanes and a larger spawn gap keep the effect distributed instead of
+// gathering several figures in the same part of the viewport.
+const LANE_SPACING = 120;
+const EFFECT_GAP = 150;
 const POSITION_ATTEMPTS = 64;
 
 type Random = () => number;
@@ -564,7 +566,11 @@ function createGhost(
   spawnYMin: number,
   spawnYMax: number,
 ): Ghost {
-  const size = 16 + Math.random() * 4.8;
+  // The long-tailed silhouette reads noticeably larger than the sheet shape,
+  // so keep its usual and largest instances more compact.  Reduce the top end
+  // for sheets too, while preserving their standard size.
+  const size =
+    shape === "rounded" ? 14 + Math.random() * 4.8 : 16 + Math.random() * 3.8;
   const isContrast = Math.random() < 0.28;
   const variant =
     shape === "sheet" ? (isContrast ? 3 : 1) : isContrast ? 2 : 0;
@@ -874,7 +880,8 @@ function createBat(width: number, height: number, appearDelay = 0): Bat {
   const direction = (Math.random() < 0.5 ? -1 : 1) as -1 | 1;
   const cruiseSpeed = 0.52 + Math.random() * 0.16;
   const climbSpeed = 0.48 + Math.random() * 0.14;
-  const size = 16 + Math.random() * 9;
+  // Make both the everyday bats and the occasional largest ones less dominant.
+  const size = 14.5 + Math.random() * 7.5;
   const isOutline = Math.random() < 0.4;
   const wingPhase = Math.random() * Math.PI * 2;
   const startsWithClimb = Math.random() < 0.5;
@@ -884,13 +891,13 @@ function createBat(width: number, height: number, appearDelay = 0): Bat {
   const sideHeadingX = Math.sqrt(1 - cruiseVerticalBias ** 2);
   return {
     x: startsWithClimb
-      ? width * (0.2 + Math.random() * 0.6)
+      ? width * (0.12 + Math.random() * 0.76)
       : direction > 0
         ? -size * 1.5
         : width + size * 1.5,
     y: startsWithClimb
-      ? height * (0.72 + Math.random() * 0.18)
-      : height * (0.18 + Math.random() * 0.62),
+      ? height * (0.66 + Math.random() * 0.24)
+      : height * (0.1 + Math.random() * 0.76),
     size,
     vx: startsWithClimb
       ? direction * climbSpeed * 0.05
@@ -899,7 +906,7 @@ function createBat(width: number, height: number, appearDelay = 0): Bat {
     direction,
     cruiseSpeed,
     climbSpeed,
-    cruiseY: height * (0.18 + Math.random() * 0.34),
+    cruiseY: height * (0.12 + Math.random() * 0.58),
     cruiseVerticalBias,
     mode: startsWithClimb ? "climbing" : "cruising",
     turnProgress: 0,
@@ -1070,7 +1077,7 @@ export default function HalloweenGhostsEffect() {
       // Height-only changes keep every entity and its animation progress.
       if (!shouldResetScene) return;
 
-      const count = nextMobile ? 5 : 9;
+      const count = nextMobile ? 4 : 7;
       const spawnTop = height * 0.08;
       const spawnBottom = height * 0.94;
       const spawnBandHeight = (spawnBottom - spawnTop) / count;
@@ -1093,7 +1100,7 @@ export default function HalloweenGhostsEffect() {
         );
       }
       bats = Array.from(
-        { length: nextMobile ? 1 : 3 },
+        { length: nextMobile ? 1 : 2 },
         (_, index) => createBat(width, height, index * BAT_SPAWN_GAP_FRAMES),
       );
     };

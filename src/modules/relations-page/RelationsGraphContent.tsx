@@ -426,7 +426,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
     return (
         <div
             ref={viewportRef}
-            className="relative size-full touch-none overflow-hidden bg-background/95 fullscreen:size-screen"
+            className="relative size-full touch-none overflow-hidden bg-black fullscreen:size-screen"
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}

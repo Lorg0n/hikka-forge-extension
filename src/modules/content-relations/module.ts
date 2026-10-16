@@ -3,21 +3,22 @@ import ContentRelationsButton from './ContentRelationsButton';
 
 const contentRelationsModule: ForgeModuleDef = {
     id: 'content-relations',
-    name: "Зв'язки між тайтлами",
-    description: 'Додає кнопку для відкриття сторінки пов\'язаного контенту (#related) поруч із блоком "Пов\'язане".',
+    name: 'Граф франшизи',
+    description: 'Додає вкладку Hikka Forge з інтерактивним графом зв’язків на сторінці франшизи.',
     beta: true,
     urlPatterns: [
-        'https://hikka.io/anime/*',
-        'https://hikka.io/manga/*',
-        'https://dev.hikka.io/anime/*',
-        'https://dev.hikka.io/manga/*',
+        'https://hikka.io/anime/*/franchise*=',
+        'https://hikka.io/manga/*/franchise*=',
+        'https://dev.hikka.io/anime/*/franchise*=',
+        'https://dev.hikka.io/manga/*/franchise*=',
     ],
     enabledByDefault: true,
     category: 'content',
     elementSelector: {
-        selector: '#content-franchise > div > div > div:first-child > div',
+        selector: 'div[role="tablist"]:has(> a[role="tab"][href*="/franchise"])',
         position: 'append',
         hostWidth: 'auto',
+        initiallyHidden: true,
     },
     component: ContentRelationsButton,
     icon: {

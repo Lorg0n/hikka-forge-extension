@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import forgeLogo from "@/assets/logo.svg";
-import { editorApi, editorIds } from "@/services/editorApiService";
+import { editorApi, editorIds, type EditorNode, type EditorValue } from "@/services/editorApiService";
 import { StickerService, type StickerCategory, type StickerItem } from "@/services/stickerService";
 
 const COMMENTS = "#comments";
@@ -9,6 +9,40 @@ const TOOLBAR = `${COMMENTS} [role="toolbar"][aria-orientation="horizontal"]`;
 const TOKEN = /:emote\[([a-z0-9-]+)\]:|:gif\[test\]:/gi;
 const IMAGE = "[data-hikka-forge-sticker]";
 const stickerItems = new Map<string, StickerItem>();
+
+function hasEditorContent(nodes: EditorNode[]): boolean {
+	return nodes.some((node) => "text" in node
+		? node.text.trim().length > 0
+		: hasEditorContent(node.children));
+}
+
+function appendToLastTextNode(nodes: EditorNode[], text: string): boolean {
+	for (let index = nodes.length - 1; index >= 0; index -= 1) {
+		const node = nodes[index];
+		if ("text" in node) {
+			node.text += text;
+			return true;
+		}
+		if (appendToLastTextNode(node.children, text)) return true;
+	}
+	return false;
+}
+
+async function insertSticker(editorId: string, slug: string) {
+	const editor = editorApi(editorId);
+	const value: EditorValue = await editor.get();
+	const token = `:emote[${slug}]:`;
+
+	if (hasEditorContent(value)) {
+		if (!appendToLastTextNode(value, ` ${token}`)) {
+			throw new Error("The editor document has no text node to append the sticker to.");
+		}
+		await editor.set(value);
+		return;
+	}
+
+	await editor.set([{ type: "p", children: [{ text: token }] }]);
+}
 
 function contentEditorId(): string | null {
 	const segments = window.location.pathname.split("/").filter(Boolean);
@@ -90,7 +124,7 @@ function pickerPosition(anchor: HTMLElement, panelHeight: number) {
 
 function StickerPreview({ item }: { item: StickerItem }) {
 	const [loaded, setLoaded] = useState(false);
-	return <span className="relative flex size-14 items-center justify-center overflow-hidden rounded-md bg-muted/40 p-1">
+	return <span className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-md bg-muted/40 p-1">
 		{!loaded && <span className="absolute inset-1 animate-pulse rounded-md bg-muted" />}
 		<img src={item.url} alt={item.alt ?? item.title} onLoad={() => setLoaded(true)} className={`relative max-h-full max-w-full object-contain transition-opacity ${loaded ? "opacity-100" : "opacity-0"}`} />
 	</span>;
@@ -156,10 +190,10 @@ function Picker({ anchor, onClose }: { anchor: HTMLElement; onClose: () => void 
 		(!query || `${item.title} ${item.slug}`.toLowerCase().includes(query.toLowerCase()))), [items, category, query]);
 	return <div ref={ref} className="fixed z-[2147483647] w-80 max-h-[calc(100vh-1rem)] overflow-hidden rounded-xl border bg-popover p-2 text-popover-foreground shadow-md" style={position}>
 		<div className="mb-2 flex items-center gap-2"><div className="relative min-w-0 flex-1"><svg aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Пошук стікерів" className="h-10 w-full rounded-full border-0 bg-muted pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:outline-none" /></div></div>
-		<div className="mb-3 flex gap-1 overflow-x-auto"><button type="button" onClick={() => setCategory(null)} className={`rounded-md border px-2.5 py-1.5 text-xs ${!category ? "border-primary bg-primary text-primary-foreground" : "border-border bg-muted text-muted-foreground"}`}>Усі</button>{categories.map((value) => <button type="button" key={value.slug} onClick={() => setCategory(value.slug)} className={`whitespace-nowrap rounded-md border px-2.5 py-1.5 text-xs ${category === value.slug ? "border-primary bg-primary text-primary-foreground" : "border-border bg-muted text-muted-foreground"}`}>{value.title}</button>)}</div>
+		<div className="mb-3 flex gap-1 overflow-x-auto"><button type="button" onClick={() => setCategory(null)} className={`rounded-md border px-2.5 py-1.5 text-xs transition-colors ${!category ? "border-sky-400/80 bg-sky-400/10 text-sky-300" : "border-border bg-white/[0.08] text-muted-foreground hover:bg-white/[0.12] hover:text-foreground"}`}>Усі</button>{categories.map((value) => <button type="button" key={value.slug} onClick={() => setCategory(value.slug)} className={`whitespace-nowrap rounded-md border px-2.5 py-1.5 text-xs transition-colors ${category === value.slug ? "border-sky-400/80 bg-sky-400/10 text-sky-300" : "border-border bg-white/[0.08] text-muted-foreground hover:bg-white/[0.12] hover:text-foreground"}`}>{value.title}</button>)}</div>
 		{error && <p className="p-4 text-sm text-destructive">{error}</p>}
-		{loading && <div className="grid max-h-64 grid-cols-5 gap-2 overflow-y-auto">{Array.from({ length: 10 }, (_, index) => <span key={index} className="size-14 animate-pulse rounded-md bg-muted" />)}</div>}
-		{!loading && !error && <div className="grid max-h-64 grid-cols-5 gap-2 overflow-y-auto">{visible.map((item) => <button type="button" key={item.slug} title={item.title} disabled={!editorId} onClick={() => { if (!editorId) return; void editorApi(editorId).insert([{ type: "p", children: [{ text: `:emote[${item.slug}]: ` }] }]).then(() => StickerService.incrementUsage(item.slug)).catch(console.warn); onClose(); }} className="flex items-center justify-center rounded-md p-1 hover:bg-muted disabled:opacity-50"><StickerPreview item={item} /></button>)}</div>}
+		{loading && <div className="grid grid-cols-5 gap-2">{Array.from({ length: 5 }, (_, index) => <span key={index} className="aspect-square w-full animate-pulse rounded-md bg-muted" />)}</div>}
+		{!loading && !error && <div className="grid max-h-64 grid-cols-5 gap-2 overflow-y-auto">{visible.map((item) => <button type="button" key={item.slug} title={item.title} disabled={!editorId} onClick={() => { if (!editorId) return; void insertSticker(editorId, item.slug).then(() => StickerService.incrementUsage(item.slug)).catch(console.warn); onClose(); }} className="flex min-w-0 items-center justify-center rounded-md p-1 hover:bg-muted disabled:opacity-50"><StickerPreview item={item} /></button>)}</div>}
 		{!loading && !error && visible.length === 0 && <p className="p-4 text-center text-sm text-muted-foreground">Нічого не знайдено</p>}
 	</div>;
 }

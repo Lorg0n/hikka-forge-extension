@@ -143,8 +143,8 @@ function editorCandidates(toolbar: HTMLElement): string[] {
 function pickerPosition(anchor: HTMLElement, panelHeight: number) {
 	const rect = anchor.getBoundingClientRect();
 	const panelWidth = 320;
-	const left = Math.max(8, Math.min(rect.left, window.innerWidth - panelWidth - 8));
-	const aboveTop = rect.top - panelHeight;
+	const left = Math.max(8, Math.min(rect.left + rect.width / 2 - panelWidth / 2, window.innerWidth - panelWidth - 8));
+	const aboveTop = rect.top - panelHeight - 8;
 	const belowTop = rect.bottom + 8;
 	const top = aboveTop >= 8
 		? aboveTop

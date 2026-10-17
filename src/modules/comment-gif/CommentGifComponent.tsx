@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import forgeLogo from "@/assets/logo.svg";
 import { editorApi, editorIds, type EditorNode, type EditorValue } from "@/services/editorApiService";
@@ -15,7 +16,6 @@ let stickerCatalog: Promise<StickerItem[]> | null = null;
 
 type PickerAnchor = {
 	element: HTMLElement;
-	editor: HTMLElement | null;
 };
 
 function loadStickerCatalog(): Promise<StickerItem[]> {
@@ -68,38 +68,19 @@ async function insertSticker(editorId: string, slug: string) {
 	await editor.set([{ type: "p", children: [{ text: token }] }]);
 }
 
-function insertIntoFocusedEditor(editor: HTMLElement, slug: string): boolean {
-	const selection = window.getSelection();
-	if (!selection) return false;
-
-	const range = document.createRange();
-	range.selectNodeContents(editor);
-	range.collapse(false);
-	selection.removeAllRanges();
-	selection.addRange(range);
-	editor.focus({ preventScroll: true });
-
-	const prefix = editor.textContent?.trim() ? " " : "";
-	return document.execCommand("insertText", false, `${prefix}:emote[${slug}]:`);
-}
-
 function contentEditorId(): string | null {
 	const segments = window.location.pathname.split("/").filter(Boolean);
-	const contentOffset = segments[0] === "comments" ? 1 : 0;
-	const type = segments[contentOffset];
-	const slug = segments[contentOffset + 1];
-	if (!slug || !["anime", "manga", "novel", "article", "collection"].includes(type)) return null;
-	return editorIds.comment(type as never, decodeURIComponent(slug));
+	const slug = segments.at(-1);
+	const type = segments.at(-2)?.replace(/s$/, "");
+	return type && slug
+		? editorIds.comment(type as Parameters<typeof editorIds.comment>[0], decodeURIComponent(slug))
+		: null;
 }
 
 function toolbarForAnchor(anchor: HTMLElement): HTMLElement {
 	return anchor.closest<HTMLElement>(COMMENT_TOOLBAR) ??
 		anchor.closest<HTMLElement>(MOBILE_TOOLBAR) ??
 		anchor;
-}
-
-function editorForToolbar(toolbar: HTMLElement): HTMLElement | null {
-	return toolbar.parentElement?.parentElement?.querySelector<HTMLElement>('[data-slate-editor="true"]') ?? null;
 }
 
 function renderTokens(root: HTMLElement, items: Map<string, StickerItem>) {
@@ -155,7 +136,7 @@ function editorCandidates(toolbar: HTMLElement): string[] {
 	const threadCandidates = commentThread ? [editorIds.reply(commentThread), editorIds.edit(commentThread)] : [];
 	const referenceCandidates = reference ? [editorIds.reply(reference), editorIds.edit(reference)] : [];
 	const root = contentEditorId();
-	const result = root ? [root, ...threadCandidates, ...referenceCandidates] : [...threadCandidates, ...referenceCandidates];
+	const result = root ? [...threadCandidates, ...referenceCandidates, root] : [...threadCandidates, ...referenceCandidates];
 	return [...new Set(result)];
 }
 
@@ -257,12 +238,6 @@ function Picker({ anchor, onClose }: { anchor: PickerAnchor; onClose: () => void
 		const candidates = [...new Set([editorId, ...editorCandidates(toolbar)].filter((id): id is string => Boolean(id)))];
 		setInsertionError(null);
 
-		if (anchor.editor && insertIntoFocusedEditor(anchor.editor, item.slug)) {
-			void StickerService.incrementUsage(item.slug).catch(console.warn);
-			onClose();
-			return;
-		}
-
 		for (const candidate of candidates) {
 			try {
 				await insertSticker(candidate, item.slug);
@@ -272,10 +247,9 @@ function Picker({ anchor, onClose }: { anchor: PickerAnchor; onClose: () => void
 				return;
 			} catch { /* try the next mounted editor */ }
 		}
-
 		setInsertionError(`Не вдалося знайти активний редактор (${candidates.join(", ") || "ID не визначено"}).`);
 	};
-	return <div ref={ref} className="fixed z-[2147483647] w-80 max-h-[calc(100vh-1rem)] overflow-hidden rounded-xl border bg-popover p-2 text-popover-foreground shadow-md" style={position}>
+	return createPortal(<div ref={ref} className="fixed z-[2147483647] w-80 max-h-[calc(100vh-1rem)] overflow-hidden rounded-xl border bg-popover p-2 text-popover-foreground shadow-md" style={position}>
 		<div className="mb-2 flex items-center gap-2"><div className="relative min-w-0 flex-1"><svg aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Пошук стікерів" className="h-10 w-full rounded-full border-0 bg-muted pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:outline-none" /></div></div>
 		<div className="mb-3 flex gap-1 overflow-x-auto"><button type="button" onClick={() => setCategory(null)} className={`rounded-md border px-2.5 py-1.5 text-xs transition-colors ${!category ? "border-sky-600/80 bg-sky-500/10 text-sky-700 dark:border-sky-400/80 dark:bg-sky-400/10 dark:text-sky-300" : "border-border bg-muted/60 text-foreground/75 hover:bg-muted hover:text-foreground dark:bg-white/[0.08] dark:text-muted-foreground dark:hover:bg-white/[0.12]"}`}>Усі</button>{categories.map((value) => <button type="button" key={value.slug} onClick={() => setCategory(value.slug)} className={`whitespace-nowrap rounded-md border px-2.5 py-1.5 text-xs transition-colors ${category === value.slug ? "border-sky-600/80 bg-sky-500/10 text-sky-700 dark:border-sky-400/80 dark:bg-sky-400/10 dark:text-sky-300" : "border-border bg-muted/60 text-foreground/75 hover:bg-muted hover:text-foreground dark:bg-white/[0.08] dark:text-muted-foreground dark:hover:bg-white/[0.12]"}`}>{value.title}</button>)}</div>
 		{error && <p className="p-4 text-sm text-destructive">{error}</p>}
@@ -283,13 +257,13 @@ function Picker({ anchor, onClose }: { anchor: PickerAnchor; onClose: () => void
 		{loading && <div className="grid grid-cols-5 gap-2">{Array.from({ length: 5 }, (_, index) => <span key={index} className="aspect-square w-full animate-pulse rounded-md bg-muted" />)}</div>}
 		{!loading && !error && <div className="grid max-h-64 grid-cols-5 gap-2 overflow-y-auto">{visible.map((item) => <button type="button" key={item.slug} title={item.title} onClick={(event) => { event.stopPropagation(); void selectSticker(item).catch(console.warn); }} className="flex min-w-0 items-center justify-center rounded-md p-1 hover:bg-muted"><StickerPreview item={item} /></button>)}</div>}
 		{!loading && !error && visible.length === 0 && <p className="p-4 text-center text-sm text-muted-foreground">Нічого не знайдено</p>}
-	</div>;
+	</div>, document.body);
 }
 
 export default function CommentGifComponent() {
 	const [anchor, setAnchor] = useState<PickerAnchor | null>(null);
 	useEffect(() => {
-		const update = () => { document.querySelectorAll<HTMLElement>(TOOLBAR).forEach((toolbar) => { if (toolbar.querySelector("[data-hikka-sticker-trigger]")) return; const group = toolbar.querySelector<HTMLElement>(":scope > div:first-child"); if (!group) return; const button = document.createElement("button"); button.type = "button"; button.dataset.hikkaStickerTrigger = "true"; button.className = "inline-flex h-8 min-w-8 cursor-pointer items-center justify-center rounded-md bg-transparent px-1.5 text-sm font-medium transition-[color,box-shadow] hover:bg-muted hover:text-muted-foreground"; button.title = "Відкрити стікери"; button.setAttribute("aria-label", "Відкрити стікери"); button.innerHTML = `<img src="${forgeLogo}" alt="" aria-hidden="true" width="16" height="16" style="display:block;object-fit:contain"/>`; button.addEventListener("mousedown", (event) => event.preventDefault()); button.addEventListener("click", () => { const editor = editorForToolbar(toolbar) ?? document.activeElement?.closest<HTMLElement>('[data-slate-editor="true"]') ?? null; setAnchor((current) => current?.element === button ? null : { element: button, editor }); }); group.querySelector(".flex.items-center")?.append(button); }); };
+		const update = () => { document.querySelectorAll<HTMLElement>(TOOLBAR).forEach((toolbar) => { if (toolbar.querySelector("[data-hikka-sticker-trigger]")) return; const group = toolbar.querySelector<HTMLElement>(":scope > div:first-child"); if (!group) return; const button = document.createElement("button"); button.type = "button"; button.dataset.hikkaStickerTrigger = "true"; button.className = "inline-flex h-8 min-w-8 cursor-pointer items-center justify-center rounded-md bg-transparent px-1.5 text-sm font-medium transition-[color,box-shadow] hover:bg-muted hover:text-muted-foreground"; button.title = "Відкрити стікери"; button.setAttribute("aria-label", "Відкрити стікери"); button.innerHTML = `<img src="${forgeLogo}" alt="" aria-hidden="true" width="16" height="16" style="display:block;object-fit:contain"/>`; button.addEventListener("mousedown", (event) => event.preventDefault()); button.addEventListener("click", () => setAnchor((current) => current?.element === button ? null : { element: button })); group.querySelector(".flex.items-center")?.append(button); }); };
 		update(); const observer = new MutationObserver(update); observer.observe(document.body, { childList: true, subtree: true }); return () => observer.disconnect();
 	}, []);
 	useEffect(() => {

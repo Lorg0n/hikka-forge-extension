@@ -75,6 +75,36 @@ interface UploadStickerOptions {
 	categorySlugs?: string[];
 }
 
+const MAX_STICKER_SOURCE_PIXELS = 4_000_000;
+
+const isWebp = (file: File) =>
+	file.type.toLowerCase() === "image/webp" || file.name.toLowerCase().endsWith(".webp");
+
+/** Converts WebP before it reaches the backend, which intentionally has no WebP codec. */
+export async function prepareStickerFile(file: File): Promise<File> {
+	if (!isWebp(file)) return file;
+
+	const image = await createImageBitmap(file);
+	try {
+		const pixels = image.width * image.height;
+		const scale = pixels > MAX_STICKER_SOURCE_PIXELS
+			? Math.sqrt(MAX_STICKER_SOURCE_PIXELS / pixels)
+			: 1;
+		const width = Math.max(1, Math.round(image.width * scale));
+		const height = Math.max(1, Math.round(image.height * scale));
+		const canvas = document.createElement("canvas");
+		canvas.width = width;
+		canvas.height = height;
+		canvas.getContext("2d")?.drawImage(image, 0, 0, width, height);
+		const blob = await new Promise<Blob>((resolve, reject) =>
+			canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Не вдалося конвертувати WebP у PNG.")), "image/png"),
+		);
+		return new File([blob], file.name.replace(/\.webp$/i, "") + ".png", { type: "image/png" });
+	} finally {
+		image.close();
+	}
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
 	const token = await AuthService.getToken();
 	const response = await fetch(`${API_BACKEND_BASE}${path}`, {
@@ -169,9 +199,9 @@ export const StickerService = {
 			headers: { "content-type": "application/json" },
 			body: JSON.stringify(body),
 		}),
-	uploadItem: (packSlug: string, options: UploadStickerOptions) => {
+	uploadItem: async (packSlug: string, options: UploadStickerOptions) => {
 		const form = new FormData();
-		form.append("file", options.file);
+		form.append("file", await prepareStickerFile(options.file));
 		form.append("title", options.title);
 		if (options.itemSlug) form.append("itemSlug", options.itemSlug);
 		if (options.description) form.append("description", options.description);

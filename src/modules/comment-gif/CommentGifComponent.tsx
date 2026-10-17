@@ -8,7 +8,7 @@ const COMMENTS = "#comments";
 const COMMENT_TOOLBAR = `${COMMENTS} [role="toolbar"][aria-orientation="horizontal"]`;
 const MOBILE_TOOLBAR = `[data-slot="page-sheet-content"] [role="toolbar"][aria-orientation="horizontal"]`;
 const TOOLBAR = `${COMMENT_TOOLBAR}, ${MOBILE_TOOLBAR}`;
-const TOKEN = /:emote\[([a-z0-9-]+)\]:|:gif\[test\]:/gi;
+const TOKEN = /:emote\[([a-z0-9-]+)\]:/gi;
 const IMAGE = "[data-hikka-forge-sticker]";
 const stickerItems = new Map<string, StickerItem>();
 let stickerCatalog: Promise<StickerItem[]> | null = null;
@@ -119,8 +119,8 @@ function renderTokens(root: HTMLElement, items: Map<string, StickerItem>) {
 		let match: RegExpExecArray | null;
 		while ((match = TOKEN.exec(text.data))) {
 			fragment.append(document.createTextNode(text.data.slice(cursor, match.index)));
-			const slug = match[1] ?? "test";
-			const item = items.get(slug);
+			const slug = match[1];
+			const item = slug ? items.get(slug) : undefined;
 			if (!item) {
 				fragment.append(document.createTextNode(match[0]));
 			} else {
@@ -288,20 +288,40 @@ function Picker({ anchor, onClose }: { anchor: PickerAnchor; onClose: () => void
 
 export default function CommentGifComponent() {
 	const [anchor, setAnchor] = useState<PickerAnchor | null>(null);
-	stickerItems.set("test", { slug: "test", title: "Test", description: null, alt: "Test", type: "animated", contentType: "image/avif", format: "avif", width: 96, height: 96, size: 0, url: "https://cdn.7tv.app/emote/01H0Z79Q2G0007779TR98GKAZ3/4x.avif", packSlug: "legacy", categories: [], usageCount: 0 });
 	useEffect(() => {
 		const update = () => { document.querySelectorAll<HTMLElement>(TOOLBAR).forEach((toolbar) => { if (toolbar.querySelector("[data-hikka-sticker-trigger]")) return; const group = toolbar.querySelector<HTMLElement>(":scope > div:first-child"); if (!group) return; const button = document.createElement("button"); button.type = "button"; button.dataset.hikkaStickerTrigger = "true"; button.className = "inline-flex h-8 min-w-8 cursor-pointer items-center justify-center rounded-md bg-transparent px-1.5 text-sm font-medium transition-[color,box-shadow] hover:bg-muted hover:text-muted-foreground"; button.title = "Відкрити стікери"; button.setAttribute("aria-label", "Відкрити стікери"); button.innerHTML = `<img src="${forgeLogo}" alt="" aria-hidden="true" width="16" height="16" style="display:block;object-fit:contain"/>`; button.addEventListener("mousedown", (event) => event.preventDefault()); button.addEventListener("click", () => { const editor = editorForToolbar(toolbar) ?? document.activeElement?.closest<HTMLElement>('[data-slate-editor="true"]') ?? null; setAnchor((current) => current?.element === button ? null : { element: button, editor }); }); group.querySelector(".flex.items-center")?.append(button); }); };
 		update(); const observer = new MutationObserver(update); observer.observe(document.body, { childList: true, subtree: true }); return () => observer.disconnect();
 	}, []);
 	useEffect(() => {
-		const comments = document.querySelector<HTMLElement>(COMMENTS);
-		if (!comments) return;
-		const scan = () => renderTokens(comments, stickerItems);
-		scan();
-		void loadStickerCatalog().then(scan).catch(console.warn);
-		const observer = new MutationObserver(scan);
-		observer.observe(comments, { childList: true, characterData: true, subtree: true });
-		return () => observer.disconnect();
+		let comments: HTMLElement | null = null;
+		let commentsObserver: MutationObserver | null = null;
+		let active = true;
+
+		const scan = () => {
+			if (comments) renderTokens(comments, stickerItems);
+		};
+		const watchComments = () => {
+			const nextComments = document.querySelector<HTMLElement>(COMMENTS);
+			if (nextComments === comments) return;
+
+			commentsObserver?.disconnect();
+			comments = nextComments;
+			if (!comments) return;
+
+			scan();
+			void loadStickerCatalog().then(() => active && scan()).catch(console.warn);
+			commentsObserver = new MutationObserver(scan);
+			commentsObserver.observe(comments, { childList: true, characterData: true, subtree: true });
+		};
+
+		watchComments();
+		const pageObserver = new MutationObserver(watchComments);
+		pageObserver.observe(document.body, { childList: true, subtree: true });
+		return () => {
+			active = false;
+			commentsObserver?.disconnect();
+			pageObserver.disconnect();
+		};
 	}, []);
 	return anchor ? <Picker anchor={anchor} onClose={() => setAnchor(null)} /> : null;
 }

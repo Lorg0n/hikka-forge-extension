@@ -198,9 +198,21 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
     const [pan, setPan] = useState({ x: 0, y: 0 });
     const [zoom, setZoom] = useState(1);
     const [searchQuery, setSearchQuery] = useState('');
+    const [isSearchFocused, setIsSearchFocused] = useState(false);
+    const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>(currentNodeId);
     const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
     const stateRef = useRef({ pan, zoom });
+    const panAnimationRef = useRef<number | null>(null);
     stateRef.current = { pan, zoom };
+
+    const stopPanAnimation = useCallback(() => {
+        if (panAnimationRef.current !== null) {
+            window.cancelAnimationFrame(panAnimationRef.current);
+            panAnimationRef.current = null;
+        }
+    }, []);
+
+    useEffect(() => () => stopPanAnimation(), [stopPanAnimation]);
 
     useEffect(() => {
         const syncFullscreenState = () => {
@@ -246,6 +258,10 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
         return () => { active = false; window.clearTimeout(timeout); };
     }, [nodes, edges, currentNodeId]);
 
+    useEffect(() => {
+        setSelectedNodeId(currentNodeId);
+    }, [currentNodeId]);
+
     useLayoutEffect(() => {
         const updateSize = () => {
             const rect = viewportRef.current?.getBoundingClientRect();
@@ -271,30 +287,34 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
         };
     }, []);
 
-    // Open on a complete overview so the page is useful immediately. The user
-    // can still zoom into the current title with the regular map controls.
+    // The graph opens focused on the title from which the user entered it.
     useEffect(() => {
         if (!layout || !viewportSize.width || !viewportSize.height) return;
+        const currentNode = layout.nodes.find(node => node.id === currentNodeId) || layout.nodes[0];
+        if (!currentNode) return;
         const nextZoom = clampZoom(Math.min(
-            viewportSize.width / (layout.width * 1.12),
-            viewportSize.height / (layout.height * 1.12),
-            1.15,
+            0.85,
+            viewportSize.width / (CARD_WIDTH + GRAPH_PADDING * 2),
+            viewportSize.height / (CARD_HEIGHT + GRAPH_PADDING * 2),
         ));
         setZoom(nextZoom);
         setPan({
-            x: (viewportSize.width - layout.width * nextZoom) / 2,
-            y: (viewportSize.height - layout.height * nextZoom) / 2,
+            x: viewportSize.width / 2 - (currentNode.x + CARD_WIDTH / 2) * nextZoom,
+            y: viewportSize.height / 2 - (currentNode.y + CARD_HEIGHT / 2) * nextZoom,
         });
-    }, [layout, viewportSize.width, viewportSize.height]);
+    }, [layout, viewportSize.width, viewportSize.height, currentNodeId]);
 
-    const visibleNodes = useMemo(() => {
+    const searchResults = useMemo(() => {
         if (!layout) return [];
         const query = searchQuery.trim().toLowerCase();
-        if (!query) return layout.nodes;
-        return layout.nodes.filter(node => node.title.toLowerCase().includes(query) || node.type.includes(query) || String(node.year).includes(query));
+        if (!query) return [];
+        return layout.nodes
+            .filter(node => node.title.toLowerCase().includes(query) || node.type.includes(query) || String(node.year).includes(query))
+            .sort((left, right) => Number(!left.title.toLowerCase().startsWith(query)) - Number(!right.title.toLowerCase().startsWith(query)))
+            .slice(0, 10);
     }, [layout, searchQuery]);
-    const visibleIds = useMemo(() => new Set(visibleNodes.map(node => node.id)), [visibleNodes]);
-    const visibleEdges = useMemo(() => layout?.edges.filter(({ edge }) => visibleIds.has(edge.source) && visibleIds.has(edge.target)) || [], [layout, visibleIds]);
+    const visibleNodes = layout?.nodes || [];
+    const visibleEdges = layout?.edges || [];
 
     const clampZoom = (value: number) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value));
     const zoomAt = useCallback((x: number, y: number, nextZoom: number) => {
@@ -311,17 +331,53 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
         setPan({ x: (viewportSize.width - layout.width * nextZoom) / 2, y: (viewportSize.height - layout.height * nextZoom) / 2 });
     }, [layout, viewportSize]);
 
+    const focusNode = useCallback((node: LayoutNode) => {
+        if (!viewportSize.width || !viewportSize.height) return;
+        stopPanAnimation();
+        const startPan = stateRef.current.pan;
+        const activeZoom = stateRef.current.zoom;
+        const targetPan = {
+            x: viewportSize.width / 2 - (node.x + CARD_WIDTH / 2) * activeZoom,
+            y: viewportSize.height / 2 - (node.y + CARD_HEIGHT / 2) * activeZoom,
+        };
+        const startedAt = performance.now();
+        const duration = 360;
+        const animate = (now: number) => {
+            const progress = Math.min(1, (now - startedAt) / duration);
+            const eased = 1 - (1 - progress) ** 3;
+            setPan({
+                x: startPan.x + (targetPan.x - startPan.x) * eased,
+                y: startPan.y + (targetPan.y - startPan.y) * eased,
+            });
+            if (progress < 1) {
+                panAnimationRef.current = window.requestAnimationFrame(animate);
+            } else {
+                panAnimationRef.current = null;
+            }
+        };
+        panAnimationRef.current = window.requestAnimationFrame(animate);
+    }, [stopPanAnimation, viewportSize]);
+
+    const selectNode = useCallback((node: LayoutNode) => {
+        setSelectedNodeId(node.id);
+        setSearchQuery('');
+        setIsSearchFocused(false);
+        focusNode(node);
+    }, [focusNode]);
+
     useEffect(() => {
         const viewport = viewportRef.current;
         if (!viewport) return;
         const onWheel = (event: WheelEvent) => {
             event.preventDefault();
+            stopPanAnimation();
+            setSelectedNodeId(undefined);
             const rect = viewport.getBoundingClientRect();
             zoomAt(event.clientX - rect.left, event.clientY - rect.top, stateRef.current.zoom * (event.deltaY < 0 ? 1.1 : 0.9));
         };
         viewport.addEventListener('wheel', onWheel, { passive: false });
         return () => viewport.removeEventListener('wheel', onWheel);
-    }, [zoomAt]);
+    }, [stopPanAnimation, zoomAt]);
 
     const pointersRef = useRef(new Map<number, Point>());
     const gestureRef = useRef<{
@@ -355,6 +411,8 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
         if (event.pointerType === 'mouse' && event.button !== 0 && event.button !== 1) return;
         if ((event.target as HTMLElement).closest('input, button, a, [data-pan-exclude]')) return;
         event.preventDefault();
+        stopPanAnimation();
+        setSelectedNodeId(undefined);
         const point = getViewportPoint(event);
         pointersRef.current.set(event.pointerId, point);
         event.currentTarget.setPointerCapture(event.pointerId);
@@ -427,28 +485,62 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
 
     const toolbar = (
         <div className="flex shrink-0 items-center gap-3 border-b border-border px-3 py-2.5 sm:px-4 sm:py-3">
-            <div className="relative flex h-8 w-40 min-w-0 items-center overflow-hidden rounded-lg border border-border bg-background text-foreground shadow-xs dark:border-input dark:bg-input/30 sm:w-64 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
-                <Icon
-                    icon="material-symbols:search"
-                    className="pointer-events-none absolute left-2.5 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
-                />
-                <Input
-                    placeholder="Пошук у графі..."
-                    value={searchQuery}
-                    onChange={event => setSearchQuery(event.target.value)}
-                    className="h-8 w-full border-0 bg-transparent pl-8 pr-8 shadow-none outline-none ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 !border-none !ring-0"
-                />
-                {searchQuery && (
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => setSearchQuery('')}
-                        className="absolute right-1 top-1/2 z-10 -translate-y-1/2 hover:bg-transparent"
-                        aria-label="Очистити пошук"
-                    >
-                        <Icon icon="material-symbols:close" className="size-4" />
-                    </Button>
+            <div className="relative h-8 w-40 min-w-0 sm:w-64">
+                <div className="flex size-full items-center overflow-hidden rounded-lg border border-border bg-background text-foreground shadow-xs dark:border-input dark:bg-input/30 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
+                    <Icon
+                        icon="material-symbols:search"
+                        className="pointer-events-none absolute left-2.5 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
+                    />
+                    <Input
+                        placeholder="Пошук у графі..."
+                        value={searchQuery}
+                        onFocus={() => setIsSearchFocused(true)}
+                        onBlur={() => setIsSearchFocused(false)}
+                        onChange={event => setSearchQuery(event.target.value)}
+                        onKeyDown={event => {
+                            if (event.key === 'Enter' && searchResults[0]) {
+                                event.preventDefault();
+                                selectNode(searchResults[0]);
+                            }
+                        }}
+                        className="h-8 w-full border-0 bg-transparent pl-8 pr-8 shadow-none outline-none ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 !border-none !ring-0"
+                    />
+                    {searchQuery && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            onMouseDown={event => event.preventDefault()}
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-1 top-1/2 z-10 -translate-y-1/2 hover:bg-transparent"
+                            aria-label="Очистити пошук"
+                        >
+                            <Icon icon="material-symbols:close" className="size-4" />
+                        </Button>
+                    )}
+                </div>
+                {isSearchFocused && searchQuery.trim() && (
+                    <div className="absolute left-0 top-[calc(100%+0.5rem)] z-30 max-h-80 w-80 overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-md">
+                        {searchResults.length > 0 ? searchResults.map(node => (
+                            <button
+                                key={node.id}
+                                type="button"
+                                onMouseDown={event => {
+                                    event.preventDefault();
+                                    selectNode(node);
+                                }}
+                                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent"
+                            >
+                                <img src={node.imageUrl} alt="" className="h-10 w-7 shrink-0 rounded bg-muted object-cover" />
+                                <span className="min-w-0 flex-1">
+                                    <span className="block truncate text-xs font-medium text-foreground">{node.title}</span>
+                                    <span className="block truncate text-[11px] text-muted-foreground">{[getContentTypeLabel(node.type), node.year || null].filter(Boolean).join(' · ')}</span>
+                                </span>
+                            </button>
+                        )) : (
+                            <p className="px-2 py-3 text-center text-xs text-muted-foreground">Нічого не знайдено</p>
+                        )}
+                    </div>
                 )}
             </div>
             <div className="ml-auto flex shrink-0 gap-2">
@@ -482,9 +574,12 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
                 />
                 <svg className="absolute inset-0 size-full overflow-visible pointer-events-none" aria-hidden="true">
                     <defs>{Array.from(new Set(visibleEdges.map(({ edge }) => edge.relationType))).map(type => <marker key={type} id={`relation-arrow-${type}`} markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill={relationTypeColors[type] || relationTypeColors.OTHER} /></marker>)}</defs>
-                    {visibleEdges.flatMap(({ edge, id, sections }) => sections.map((section, index) => <path key={`${id}-${index}`} d={edgePath(section)} fill="none" stroke={relationTypeColors[edge.relationType] || relationTypeColors.OTHER} strokeOpacity="0.76" strokeWidth="2.2" markerEnd={`url(#relation-arrow-${edge.relationType})`} />))}
+                    {visibleEdges.flatMap(({ edge, id, sections }) => sections.map((section, index) => {
+                        const isConnectedToSelected = !selectedNodeId || edge.source === selectedNodeId || edge.target === selectedNodeId;
+                        return <path key={`${id}-${index}`} d={edgePath(section)} fill="none" stroke={relationTypeColors[edge.relationType] || relationTypeColors.OTHER} strokeOpacity={isConnectedToSelected ? 0.76 : 0.22} strokeWidth="2.2" markerEnd={`url(#relation-arrow-${edge.relationType})`} />;
+                    }))}
                 </svg>
-                {visibleNodes.map(node => <RelationCard key={node.id} node={node} isCurrent={node.id === currentNodeId} />)}
+                {visibleNodes.map(node => <RelationCard key={node.id} node={node} isSelected={node.id === selectedNodeId} isDimmed={Boolean(selectedNodeId && node.id !== selectedNodeId)} />)}
             </div>}
 
             {!layout && <div className="absolute inset-0 z-10 flex items-center justify-center text-sm text-muted-foreground">Підготовка графа…</div>}
@@ -550,20 +645,20 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
     );
 };
 
-const RelationCard: React.FC<{ node: LayoutNode; isCurrent: boolean }> = ({ node, isCurrent }) => {
+const RelationCard: React.FC<{ node: LayoutNode; isSelected: boolean; isDimmed: boolean }> = ({ node, isSelected, isDimmed }) => {
     const status = getReleaseStatusLabel(node.status);
     const mediaType = getMediaTypeLabel(node.format);
     const contentType = getContentTypeLabel(node.type);
 
     return (
-    <article className={cn('surface absolute flex h-[148px] w-[280px] gap-4 overflow-hidden rounded-lg border border-border p-3 transition-shadow', isCurrent ? 'border-primary-foreground/70 ring-2 ring-primary-foreground/20' : '')} style={{ left: node.x, top: node.y }} data-pan-exclude>
+    <article className={cn('surface absolute flex h-[148px] w-[280px] gap-4 overflow-hidden rounded-lg border border-border p-3 transition-[opacity,box-shadow,border-color] duration-200', isSelected ? 'border-primary-foreground/70 ring-2 ring-primary-foreground/20' : '', isDimmed ? 'opacity-45' : '')} style={{ left: node.x, top: node.y }} data-pan-exclude>
         <img src={node.imageUrl} alt="" className="h-[124px] w-[84px] shrink-0 rounded-lg bg-muted object-cover" />
         <div className="flex min-w-0 flex-1 flex-col py-0.5">
             <Link
                 href={`/${node.type}/${node.slug}`}
                 className={cn(
                     'line-clamp-3 text-[15px] font-semibold leading-5',
-                    isCurrent
+                    isSelected
                         ? 'text-primary-foreground hover:text-primary-foreground hover:underline'
                         : 'text-foreground hover:text-foreground hover:underline',
                 )}

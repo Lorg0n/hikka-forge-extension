@@ -13,6 +13,9 @@ const contentRelationsModule: ForgeModuleDef = {
         'https://dev.hikka.io/manga/*/franchise*=',
     ],
     enabledByDefault: true,
+    // Switching franchise views updates the URL but should not tear down the
+    // injected tab. The component synchronizes with Hikka's refreshed tablist.
+    persistent: true,
     category: 'content',
     elementSelector: {
         selector: 'div[role="tablist"]:has(> a[role="tab"][href*="/franchise"])',

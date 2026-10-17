@@ -134,6 +134,17 @@ const ContentRelationsButton: React.FC = () => {
             savedContent = null;
         };
 
+        const syncNativeContent = (toolbar: HTMLElement) => {
+            if (host.previousElementSibling !== toolbar) toolbar.after(host);
+            const nextNativeContent = findNativeContent(toolbar);
+            if (nextNativeContent === nativeContent) return;
+
+            // Hikka replaces only the view panel when switching tabs. Restore
+            // the old panel if it survived, then track the newly rendered one.
+            restoreNativeContent();
+            nativeContent = nextNativeContent;
+        };
+
         const setActiveView = (nextActive: boolean) => {
             setActive(nextActive);
             host.hidden = !nextActive;
@@ -192,11 +203,12 @@ const ContentRelationsButton: React.FC = () => {
                 tabList.append(forgeTab);
                 const toolbar = tabList.parentElement;
                 if (toolbar instanceof HTMLElement) {
-                    nativeContent = findNativeContent(toolbar);
-                    toolbar.after(host);
+                    syncNativeContent(toolbar);
                 }
             }
 
+            const toolbar = tabList.parentElement;
+            if (toolbar instanceof HTMLElement) syncNativeContent(toolbar);
             if (forgeTab) forgeTab.href = getGraphHref();
             setActiveView(isGraphView());
         };

@@ -37,10 +37,10 @@ export const RelationsGraph: React.FC<RelationsGraphProps> = ({
     return (
         <section className={cn('flex min-w-0 flex-col gap-5', className)}>
             <div
-                className="surface relative isolate min-h-0 w-full overflow-hidden rounded-xl shadow-2xl shadow-black/10"
+                className="surface relative isolate flex min-h-0 w-full flex-col gap-0 overflow-hidden rounded-lg border border-border p-0 will-change-transform"
             >
                 <div
-                    className="relative w-full overflow-hidden rounded-lg border border-border/50"
+                    className="relative w-full overflow-hidden"
                     style={{ height: 'clamp(420px, 78svh, 900px)' }}
                 >
                     <RelationsGraphContent

@@ -426,17 +426,18 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
     return (
         <div
             ref={viewportRef}
-            className="relative size-full touch-none overflow-hidden bg-black fullscreen:size-screen"
+            className="relative size-full touch-none overflow-hidden bg-transparent fullscreen:size-screen fullscreen:bg-background"
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
         >
+            <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 opacity-30 [background-size:24px_24px]"
+                style={{ backgroundImage: 'radial-gradient(var(--border) 1px, transparent 1px)' }}
+            />
             {layout && <div className="absolute left-0 top-0" style={{ width: layout.width, height: layout.height, transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: '0 0' }}>
-                <div
-                    className="pointer-events-none absolute opacity-60 [background-image:radial-gradient(var(--border)_1px,transparent_1px)] [background-size:24px_24px]"
-                    style={{ inset: -2048 }}
-                />
                 <svg className="absolute inset-0 size-full overflow-visible pointer-events-none" aria-hidden="true">
                     <defs>{Array.from(new Set(visibleEdges.map(({ edge }) => edge.relationType))).map(type => <marker key={type} id={`relation-arrow-${type}`} markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill={relationTypeColors[type] || relationTypeColors.OTHER} /></marker>)}</defs>
                     {visibleEdges.flatMap(({ edge, id, sections }) => sections.map((section, index) => <path key={`${id}-${index}`} d={edgePath(section)} fill="none" stroke={relationTypeColors[edge.relationType] || relationTypeColors.OTHER} strokeOpacity="0.76" strokeWidth="2.2" markerEnd={`url(#relation-arrow-${edge.relationType})`} />))}
@@ -447,7 +448,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
             {!layout && <div className="absolute inset-0 z-10 flex items-center justify-center text-sm text-muted-foreground">Підготовка графа…</div>}
 
             <div className="absolute inset-x-2 top-2 z-20 flex flex-col items-stretch gap-2 sm:inset-x-4 sm:top-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="relative flex min-w-0 w-full items-center overflow-hidden rounded-lg border border-border/70 bg-background/70 shadow-lg backdrop-blur-md sm:w-auto sm:max-w-[min(24rem,calc(100%-7rem))]">
+                <div className="relative flex min-w-0 w-full items-center overflow-hidden rounded-lg border border-border bg-background shadow-xs sm:w-auto sm:max-w-[min(24rem,calc(100%-7rem))]">
 
                     <Icon
                         icon="material-symbols:search"
@@ -475,7 +476,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
                     )}
 
                 </div>
-                <div className="flex shrink-0 self-end gap-1 rounded-lg border border-border/70 bg-background/70 p-1 shadow-lg backdrop-blur-md sm:self-auto">
+                <div className="flex shrink-0 self-end gap-1 rounded-lg border border-border bg-background p-1 shadow-xs sm:self-auto">
                     <Button size="icon-sm" variant="ghost" onClick={() => zoomAt(viewportSize.width / 2, viewportSize.height / 2, zoom * 1.2)} title="Збільшити" aria-label="Збільшити"><Icon icon="material-symbols:add" /></Button>
                     <Button size="icon-sm" variant="ghost" onClick={() => zoomAt(viewportSize.width / 2, viewportSize.height / 2, zoom * 0.8)} title="Зменшити" aria-label="Зменшити"><Icon icon="material-symbols:remove" /></Button>
                     <Button size="icon-sm" variant="ghost" onClick={handleFit} title="Вмістити" aria-label="Вмістити"><Icon icon="material-symbols:fit-screen" /></Button>
@@ -484,14 +485,14 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
             </div>
             <div className="absolute inset-x-2 bottom-2 z-20 flex max-h-[35%] flex-col items-stretch gap-2 overflow-hidden sm:inset-x-4 sm:bottom-4 sm:max-h-none sm:flex-row sm:items-end sm:overflow-visible">
 
-                <div className="flex w-fit max-w-full shrink-0 items-center rounded-lg border border-border/70 bg-background/90 px-2 py-1.5 text-[11px] text-muted-foreground shadow-lg backdrop-blur-md sm:px-3 sm:text-xs">
+                <div className="flex w-fit max-w-full shrink-0 items-center rounded-lg border border-border bg-background px-2 py-1.5 text-[11px] text-muted-foreground shadow-xs sm:px-3 sm:text-xs">
                     <span className="whitespace-nowrap font-mono">
                         {Math.round(zoom * 100)}% · {visibleNodes.length} вузлів
                     </span>
                 </div>
 
                 {relationTypes.length > 0 && (
-                    <div className="flex max-h-[8rem] max-w-full shrink-0 flex-wrap items-center gap-x-3 gap-y-1 overflow-y-auto rounded-lg border border-border/70 bg-background/90 px-2 py-1.5 text-[11px] text-muted-foreground shadow-lg backdrop-blur-md sm:max-h-none sm:max-w-[calc(100%-13rem)] sm:gap-x-4 sm:overflow-visible sm:px-3 sm:text-xs">
+                    <div className="flex max-h-[8rem] max-w-full shrink-0 flex-wrap items-center gap-x-3 gap-y-1 overflow-y-auto rounded-lg border border-border bg-background px-2 py-1.5 text-[11px] text-muted-foreground shadow-xs sm:max-h-none sm:max-w-[calc(100%-13rem)] sm:gap-x-4 sm:overflow-visible sm:px-3 sm:text-xs">
                         {relationTypes.map(type => (
                             <span key={type} className="flex items-center gap-1.5 whitespace-nowrap">
                                 <span
@@ -504,7 +505,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
                     </div>
                 )}
 
-                <div className="ml-auto hidden shrink-0 items-center rounded-lg border border-border/70 bg-background/90 px-3 py-1.5 text-[11px] text-muted-foreground shadow-lg backdrop-blur-md sm:flex sm:text-xs">
+                <div className="ml-auto hidden shrink-0 items-center rounded-lg border border-border bg-background px-3 py-1.5 text-[11px] text-muted-foreground shadow-xs sm:flex sm:text-xs">
                     <span className="whitespace-nowrap">
                         Перетягуйте, щоб оглянути · колесо — масштаб
                     </span>
@@ -521,7 +522,7 @@ const RelationCard: React.FC<{ node: LayoutNode; isCurrent: boolean }> = ({ node
     const contentType = getContentTypeLabel(node.type);
 
     return (
-    <article className={cn('surface bg-card/80 absolute flex h-[148px] w-[280px] gap-4 overflow-hidden rounded-xl border p-3 shadow-xl shadow-black/15 transition-shadow', isCurrent ? 'border-amber-400/80 ring-2 ring-amber-400/25' : 'border-border/70')} style={{ left: node.x, top: node.y }} data-pan-exclude>
+    <article className={cn('surface absolute flex h-[148px] w-[280px] gap-4 overflow-hidden rounded-lg border border-border p-3 transition-shadow', isCurrent ? 'border-primary-foreground/70 ring-2 ring-primary-foreground/20' : '')} style={{ left: node.x, top: node.y }} data-pan-exclude>
         <img src={node.imageUrl} alt="" className="h-[124px] w-[84px] shrink-0 rounded-lg bg-muted object-cover" />
         <div className="flex min-w-0 flex-1 flex-col py-0.5">
             <Link
@@ -529,7 +530,7 @@ const RelationCard: React.FC<{ node: LayoutNode; isCurrent: boolean }> = ({ node
                 className={cn(
                     'line-clamp-3 text-[15px] font-semibold leading-5',
                     isCurrent
-                        ? 'text-amber-500 hover:text-amber-300'
+                        ? 'text-primary-foreground hover:text-primary-foreground hover:underline'
                         : 'text-foreground hover:text-foreground hover:underline',
                 )}
             >

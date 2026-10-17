@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import forgeLogo from "@/assets/logo.svg";
 import { editorApi, editorIds, type EditorNode, type EditorValue } from "@/services/editorApiService";
@@ -115,10 +115,11 @@ function pickerPosition(anchor: HTMLElement, panelHeight: number) {
 	const rect = anchor.getBoundingClientRect();
 	const panelWidth = 320;
 	const left = Math.max(8, Math.min(rect.left, window.innerWidth - panelWidth - 8));
+	const aboveTop = rect.top - panelHeight;
 	const belowTop = rect.bottom + 8;
-	const top = belowTop + panelHeight <= window.innerHeight
-		? belowTop
-		: Math.max(8, rect.top - panelHeight - 8);
+	const top = aboveTop >= 8
+		? aboveTop
+		: Math.min(belowTop, window.innerHeight - panelHeight - 8);
 	return { left, top };
 }
 
@@ -171,19 +172,34 @@ function Picker({ anchor, onClose }: { anchor: HTMLElement; onClose: () => void 
 		return () => document.removeEventListener("mousedown", close);
 	}, [anchor, onClose]);
 
-	useEffect(() => {
+	useLayoutEffect(() => {
 		const updatePosition = () => {
 			const panelHeight = Math.min(ref.current?.offsetHeight ?? 280, window.innerHeight - 16);
-			setPosition(pickerPosition(anchor, panelHeight));
+			const nextPosition = pickerPosition(anchor, panelHeight);
+			if (!ref.current) {
+				setPosition(nextPosition);
+				return;
+			}
+			ref.current.style.left = `${nextPosition.left}px`;
+			ref.current.style.top = `${nextPosition.top}px`;
+		};
+		let frame: number | null = null;
+		const schedulePositionUpdate = () => {
+			if (frame !== null) return;
+			frame = window.requestAnimationFrame(() => {
+				frame = null;
+				updatePosition();
+			});
 		};
 		updatePosition();
-		window.addEventListener("scroll", updatePosition, true);
-		window.addEventListener("resize", updatePosition);
+		window.addEventListener("scroll", schedulePositionUpdate, true);
+		window.addEventListener("resize", schedulePositionUpdate);
 		return () => {
-			window.removeEventListener("scroll", updatePosition, true);
-			window.removeEventListener("resize", updatePosition);
+			if (frame !== null) window.cancelAnimationFrame(frame);
+			window.removeEventListener("scroll", schedulePositionUpdate, true);
+			window.removeEventListener("resize", schedulePositionUpdate);
 		};
-	}, [anchor]);
+	}, [anchor, categories.length, error, items.length, loading, query]);
 
 	const visible = useMemo(() => items.filter((item) =>
 		(!category || item.categories.some((value) => value.slug === category)) &&
@@ -204,7 +220,7 @@ export default function CommentGifComponent() {
 	useEffect(() => {
 		const comments = document.querySelector<HTMLElement>(COMMENTS);
 		if (!comments) return;
-		const update = () => { comments.querySelectorAll<HTMLElement>(TOOLBAR).forEach((toolbar) => { if (toolbar.querySelector("[data-hikka-sticker-trigger]")) return; const group = toolbar.querySelector<HTMLElement>(":scope > div:first-child"); if (!group) return; const button = document.createElement("button"); button.type = "button"; button.dataset.hikkaStickerTrigger = "true"; button.className = "inline-flex h-8 min-w-8 cursor-pointer items-center justify-center rounded-md bg-transparent px-1.5 text-sm font-medium transition-[color,box-shadow] hover:bg-muted hover:text-muted-foreground"; button.title = "Відкрити стікери"; button.setAttribute("aria-label", "Відкрити стікери"); button.innerHTML = `<img src="${forgeLogo}" alt="" aria-hidden="true" width="16" height="16" style="display:block;object-fit:contain"/>`; button.addEventListener("mousedown", (event) => event.preventDefault()); button.addEventListener("click", () => setAnchor(button)); group.querySelector(".flex.items-center")?.append(button); }); };
+		const update = () => { comments.querySelectorAll<HTMLElement>(TOOLBAR).forEach((toolbar) => { if (toolbar.querySelector("[data-hikka-sticker-trigger]")) return; const group = toolbar.querySelector<HTMLElement>(":scope > div:first-child"); if (!group) return; const button = document.createElement("button"); button.type = "button"; button.dataset.hikkaStickerTrigger = "true"; button.className = "inline-flex h-8 min-w-8 cursor-pointer items-center justify-center rounded-md bg-transparent px-1.5 text-sm font-medium transition-[color,box-shadow] hover:bg-muted hover:text-muted-foreground"; button.title = "Відкрити стікери"; button.setAttribute("aria-label", "Відкрити стікери"); button.innerHTML = `<img src="${forgeLogo}" alt="" aria-hidden="true" width="16" height="16" style="display:block;object-fit:contain"/>`; button.addEventListener("mousedown", (event) => event.preventDefault()); button.addEventListener("click", () => setAnchor((current) => current === button ? null : button)); group.querySelector(".flex.items-center")?.append(button); }); };
 		update(); const observer = new MutationObserver(update); observer.observe(comments, { childList: true, subtree: true }); return () => observer.disconnect();
 	}, []);
 	useEffect(() => { const comments = document.querySelector<HTMLElement>(COMMENTS); if (!comments) return; const scan = () => { renderTokens(comments, stickerItems); }; scan(); const observer = new MutationObserver(scan); observer.observe(comments, { childList: true, characterData: true, subtree: true }); return () => observer.disconnect(); }, []);

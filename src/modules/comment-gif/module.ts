@@ -14,10 +14,9 @@ const commentGifModule: ForgeModuleDef = {
 	enabledByDefault: true,
 	category: "other",
 	elementSelector: {
-		selector:
-			'#comments [role="toolbar"][aria-orientation="horizontal"] > div:first-child',
+		selector: "#comments",
 		position: "append",
-		hostWidth: "auto",
+		hostWidth: "0",
 		visibleOnly: true,
 	},
 	component: CommentGifComponent,

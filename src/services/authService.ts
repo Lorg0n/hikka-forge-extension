@@ -15,6 +15,10 @@ export interface UserProfile {
     updatedAt: string;
 }
 
+export function isAdminUser(user: UserProfile | null | undefined): boolean {
+    return user?.roles.some((role) => role.toUpperCase() === 'ADMIN') ?? false;
+}
+
 const AUTH_TOKEN_KEY = 'hikka_forge_auth_token';
 
 export class AuthService {

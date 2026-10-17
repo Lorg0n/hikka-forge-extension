@@ -21,6 +21,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         popup: path.resolve(__dirname, "src/pages/popup/popup.html"),
+        stickers_admin: path.resolve(__dirname, "src/pages/stickers-admin/stickers-admin.html"),
         background: path.resolve(__dirname, "src/background.ts"),
         content_loader: path.resolve(__dirname, "src/utils/content-loader.js"), 
         content: path.resolve(__dirname, "src/content.tsx"), 

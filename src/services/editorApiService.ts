@@ -1,6 +1,6 @@
 export const EDITOR_API_MESSAGE_SOURCE = "hikka-editor-api";
 
-export type EditorApiCommand = "get" | "set" | "insert";
+export type EditorApiCommand = "get" | "set" | "insert" | "insert_text";
 
 export type EditorTextNode = {
 	text: string;
@@ -30,7 +30,7 @@ interface EditorApiRequest {
 	requestId: string;
 	editorId: string;
 	command: EditorApiCommand;
-	value?: EditorValue;
+	value?: EditorValue | string;
 }
 
 interface EditorApiResponse {
@@ -50,6 +50,7 @@ export interface EditorApiClient {
 	get(): Promise<EditorValue>;
 	set(value: EditorValue): Promise<void>;
 	insert(value: EditorValue): Promise<void>;
+	insertText(value: string): Promise<void>;
 }
 
 export interface EditorApiOptions {
@@ -149,7 +150,7 @@ export function editorApi(
 
 	const send = <T extends EditorApiCommand>(
 		command: T,
-		value?: EditorValue,
+		value?: T extends "insert_text" ? string : EditorValue,
 	): Promise<T extends "get" ? EditorValue : void> =>
 		new Promise((resolve, reject) => {
 			const requestId = crypto.randomUUID();
@@ -212,5 +213,6 @@ export function editorApi(
 		get: () => send("get"),
 		set: (value) => send("set", value),
 		insert: (value) => send("insert", value),
+		insertText: (value) => send("insert_text", value),
 	};
 }

@@ -9,6 +9,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HIKKA_BASE } from '@/constants';
+import { STICKERS_ADMIN_PAGE } from '@/constants';
+import { isAdminUser } from '@/services/authService';
 
 interface UserMenuProps {
     onLoginClick?: () => void;
@@ -111,6 +113,18 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onLoginClick }) => {
                                 </span>
                             ))}
                         </div>
+                    )}
+
+                    {isAdminUser(user) && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => browser.tabs.create({ url: browser.runtime.getURL(STICKERS_ADMIN_PAGE) })}
+                            className="w-full gap-2"
+                        >
+                            <span aria-hidden="true">✦</span>
+                            Керування стікерами
+                        </Button>
                     )}
 
                     <div className="border-t pt-3">

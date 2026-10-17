@@ -84,6 +84,7 @@ export const MODULE_CATEGORIES = {
 export const HIKKA_BASE = "https://hikka.io" as const;
 export const HIKKA_API_BASE = "https://api.hikka.io" as const;
 export const API_BACKEND_BASE = "https://hikka-forge.lorgon.dev" as const;
+export const STICKERS_ADMIN_PAGE = "src/pages/stickers-admin/stickers-admin.html" as const;
 export const MAX_SIMILAR_PAGES = 10 as const;
 
 export const getHikkaBaseForUrl = (url: string | undefined): string => {

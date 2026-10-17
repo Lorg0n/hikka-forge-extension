@@ -5,6 +5,7 @@ import { GraphEdge, GraphNode } from '@/types';
 import Link from '@/components/typography/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Icon } from '@iconify/react';
 import { cn } from '@/lib/utils';
 import { getContentTypeLabel, getMediaTypeLabel, getReleaseStatusLabel } from '@/constants';
@@ -490,18 +491,12 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
 
             <div className="absolute inset-x-2 bottom-2 z-20 flex max-h-[35%] flex-col items-stretch gap-2 overflow-hidden sm:inset-x-4 sm:bottom-4 sm:max-h-none sm:flex-row sm:items-end sm:overflow-visible">
 
-                <div className="flex w-fit max-w-full shrink-0 items-center rounded-lg border border-border bg-background px-2 py-1.5 text-[11px] text-muted-foreground shadow-xs sm:px-3 sm:text-xs">
-                    <span className="whitespace-nowrap font-mono">
-                        {Math.round(zoom * 100)}% · {visibleNodes.length} вузлів
-                    </span>
-                </div>
-
                 {relationTypes.length > 0 && (
-                    <div className="flex max-h-[8rem] max-w-full shrink-0 flex-wrap items-center gap-x-3 gap-y-1 overflow-y-auto rounded-lg border border-border bg-background px-2 py-1.5 text-[11px] text-muted-foreground shadow-xs sm:max-h-none sm:max-w-[calc(100%-13rem)] sm:gap-x-4 sm:overflow-visible sm:px-3 sm:text-xs">
+                    <div className="flex min-h-8 max-h-[8rem] max-w-full shrink-0 flex-wrap items-center gap-x-4 gap-y-1 overflow-y-auto rounded-lg border border-border bg-background/80 px-2.5 py-1 text-xs text-muted-foreground shadow-xs backdrop-blur-sm dark:border-input dark:bg-input/60 sm:max-h-none sm:max-w-[calc(100%-13rem)] sm:overflow-visible">
                         {relationTypes.map(type => (
                             <span key={type} className="flex items-center gap-1.5 whitespace-nowrap">
                                 <span
-                                    className="inline-block size-2.5 shrink-0 rounded-full shadow-sm sm:size-3"
+                                    className="inline-block size-2 shrink-0 rounded-full shadow-sm"
                                     style={{ backgroundColor: relationTypeColors[type] || '#6b7280' }}
                                 />
                                 {relationTypeLabels[type] || type}
@@ -510,11 +505,44 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
                     </div>
                 )}
 
-                <div className="ml-auto hidden shrink-0 items-center rounded-lg border border-border bg-background px-3 py-1.5 text-[11px] text-muted-foreground shadow-xs sm:flex sm:text-xs">
-                    <span className="whitespace-nowrap">
-                        Перетягуйте, щоб оглянути · колесо — масштаб
-                    </span>
-                </div>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                            type="button"
+                            size="icon-sm"
+                            variant="outline"
+                            className="ml-auto shrink-0 bg-background/80 backdrop-blur-sm dark:bg-input/60"
+                            aria-label="Керування графом"
+                        >
+                            <Icon icon="material-symbols:help-outline-rounded" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent container={fullscreenRef.current} side="top" align="end" className="w-72 p-0" collisionPadding={12}>
+                        <div className="border-b border-border px-3 py-2.5 text-sm font-medium text-foreground">
+                            Керування графом
+                        </div>
+                        <div className="grid gap-1 p-2">
+                            <div className="flex items-center gap-3 rounded-md px-2 py-2">
+                                <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-foreground shadow-xs dark:border-input dark:bg-input/30">
+                                    <Icon icon="material-symbols:open-with-rounded" className="size-4" />
+                                </span>
+                                <div className="min-w-0">
+                                    <p className="text-xs font-medium text-foreground">Переміщення</p>
+                                    <p className="text-xs leading-4 text-muted-foreground">Затисніть та перетягуйте поле</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3 rounded-md px-2 py-2">
+                                <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-foreground shadow-xs dark:border-input dark:bg-input/30">
+                                    <Icon icon="material-symbols:zoom-in-rounded" className="size-4" />
+                                </span>
+                                <div className="min-w-0">
+                                    <p className="text-xs font-medium text-foreground">Масштабування</p>
+                                    <p className="text-xs leading-4 text-muted-foreground">Прокручуйте колесо миші</p>
+                                </div>
+                            </div>
+                        </div>
+                    </PopoverContent>
+                </Popover>
 
             </div>
             </div>

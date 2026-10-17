@@ -79,9 +79,38 @@ const relationTypeLabels: Record<string, string> = {
     SUMMARY: 'Підсумок', OTHER: 'Інше', ADAPTATION: 'Адаптація',
 };
 
+const darkenColor = (color: string, amount = 0.35) => {
+    const hex = color.replace('#', '');
+    if (!/^[\da-f]{6}$/i.test(hex)) return color;
+    const channel = (offset: number) => Math.round(parseInt(hex.slice(offset, offset + 2), 16) * (1 - amount));
+    return `rgb(${channel(0)} ${channel(2)} ${channel(4)})`;
+};
+
 const edgePath = (section: RoutedEdge['sections'][number]) => {
     const points = [section.startPoint, ...(section.bendPoints || []), section.endPoint];
     return points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+};
+
+const edgeLabelPoint = (sections: RoutedEdge['sections']): Point | null => {
+    const section = sections[0];
+    if (!section) return null;
+    const points = [section.startPoint, ...(section.bendPoints || []), section.endPoint];
+    const lengths = points.slice(1).map((point, index) => Math.hypot(point.x - points[index].x, point.y - points[index].y));
+    const totalLength = lengths.reduce((total, length) => total + length, 0);
+    if (!totalLength) return points[0] || null;
+
+    let remaining = totalLength / 2;
+    for (let index = 0; index < lengths.length; index += 1) {
+        if (remaining > lengths[index]) {
+            remaining -= lengths[index];
+            continue;
+        }
+        const start = points[index];
+        const end = points[index + 1];
+        const ratio = remaining / lengths[index];
+        return { x: start.x + (end.x - start.x) * ratio, y: start.y + (end.y - start.y) * ratio };
+    }
+    return points[points.length - 1] || null;
 };
 
 // Some browsers disallow extension workers from content-script contexts. Keep the
@@ -619,11 +648,13 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
             onPointerCancel={handlePointerUp}
         >
             {layout && <div className="absolute left-0 top-0" style={{ width: layout.width, height: layout.height, transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: '0 0' }}>
-                <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute opacity-70 [background-size:24px_24px]"
-                    style={{ inset: -2048, backgroundImage: 'radial-gradient(var(--border) 1px, transparent 1px)' }}
-                />
+                {zoom >= 0.35 && (
+                    <div
+                        aria-hidden="true"
+                        className="pointer-events-none absolute opacity-70 [background-size:24px_24px]"
+                        style={{ inset: -2048, backgroundImage: 'radial-gradient(var(--border) 1px, transparent 1px)' }}
+                    />
+                )}
                 <svg className="absolute inset-0 size-full overflow-visible pointer-events-none" aria-label="Зв'язки між творами">
                     <defs>{Array.from(new Set(visibleEdges.map(({ edge }) => edge.relationType))).map(type => <marker key={type} id={`relation-arrow-${type}`} markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill={relationTypeColors[type] || relationTypeColors.OTHER} /></marker>)}</defs>
                     {visibleEdges.flatMap(({ edge, id, sections }) => sections.map((section, index) => {
@@ -632,6 +663,22 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
                         const isDimmed = isSelectionDimmed && !(isSelected || isConnectedToSelectedNode);
                         return <path key={`${id}-${index}`} d={edgePath(section)} fill="none" stroke={relationTypeColors[edge.relationType] || relationTypeColors.OTHER} opacity={isDimmed ? 0.22 : 0.76} strokeWidth={isSelected ? 3.2 : 2.2} markerEnd={`url(#relation-arrow-${edge.relationType})`} className="pointer-events-auto cursor-pointer" onPointerDown={event => event.stopPropagation()} onClick={event => { event.stopPropagation(); selectEdge(id); }} />;
                     }))}
+                    {visibleEdges.map(({ edge, id, sections }) => {
+                        const isSelected = id === selectedEdgeId;
+                        const isConnectedToSelectedNode = Boolean(selectedNodeId && (edge.source === selectedNodeId || edge.target === selectedNodeId));
+                        if (!isSelected && !isConnectedToSelectedNode) return null;
+                        const point = edgeLabelPoint(sections);
+                        if (!point) return null;
+                        const label = relationTypeLabels[edge.relationType] || edge.relationType;
+                        const color = relationTypeColors[edge.relationType] || relationTypeColors.OTHER;
+                        const width = Math.max(72, label.length * 7 + 20);
+                        return (
+                            <g key={`${id}:label`} className="pointer-events-none">
+                                <rect x={point.x - width / 2} y={point.y - 12} width={width} height="24" rx="6" fill={color} stroke={darkenColor(color)} />
+                                <text x={point.x} y={point.y + 4} textAnchor="middle" fill={darkenColor(color, 0.82)} fontSize="11" fontWeight="600">{label}</text>
+                            </g>
+                        );
+                    })}
                 </svg>
                 {visibleNodes.map(node => <RelationCard key={node.id} node={node} isSelected={selectedNodeIds.has(node.id)} isDimmed={Boolean(isSelectionDimmed && selectedNodeIds.size > 0 && !selectedNodeIds.has(node.id))} onSelect={() => selectNode(node, false)} />)}
             </div>}

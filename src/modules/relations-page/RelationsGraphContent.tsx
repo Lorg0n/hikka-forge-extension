@@ -636,7 +636,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
     return (
         <div
             ref={fullscreenRef}
-            className="flex size-full min-h-0 flex-col overflow-hidden bg-transparent fullscreen:size-screen fullscreen:bg-background"
+            className={`flex min-h-0 flex-col overflow-hidden ${isFullscreen ? 'h-screen w-screen bg-background' : 'size-full bg-transparent'}`}
         >
             {toolbar}
             <div

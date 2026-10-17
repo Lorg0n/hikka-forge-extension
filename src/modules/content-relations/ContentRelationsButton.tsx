@@ -268,7 +268,14 @@ const ContentRelationsButton: React.FC = () => {
         return <NotFound title="Помилка завантаження" description={error} />;
     }
 
-    return <RelationsGraph className="mt-4" nodes={nodes} edges={edges} currentNodeId={currentNodeId} />;
+    return (
+        <RelationsGraph
+            className="mt-4 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 motion-reduce:animate-none"
+            nodes={nodes}
+            edges={edges}
+            currentNodeId={currentNodeId}
+        />
+    );
 };
 
 export default ContentRelationsButton;

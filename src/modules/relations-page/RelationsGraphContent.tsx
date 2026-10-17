@@ -190,6 +190,7 @@ const createLayout = async (nodes: GraphNode[], edges: GraphEdge[]): Promise<Gra
 };
 
 export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ nodes, edges, currentNodeId, relationTypes }) => {
+    const fullscreenRef = useRef<HTMLDivElement>(null);
     const viewportRef = useRef<HTMLDivElement>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [layout, setLayout] = useState<GraphLayout | null>(null);
@@ -202,7 +203,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
 
     useEffect(() => {
         const syncFullscreenState = () => {
-            setIsFullscreen(Boolean(viewportRef.current?.matches(':fullscreen')));
+            setIsFullscreen(Boolean(fullscreenRef.current?.matches(':fullscreen')));
         };
 
         document.addEventListener('fullscreenchange', syncFullscreenState);
@@ -211,17 +212,17 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
     }, []);
 
     const toggleFullscreen = async () => {
-        const viewport = viewportRef.current;
-        if (!viewport) return;
+        const container = fullscreenRef.current;
+        if (!container) return;
 
         try {
-            if (viewport.matches(':fullscreen')) {
+            if (container.matches(':fullscreen')) {
                 await document.exitFullscreen();
             } else {
-                await viewport.requestFullscreen();
+                await container.requestFullscreen();
             }
         } catch {
-            setIsFullscreen(viewport.matches(':fullscreen'));
+            setIsFullscreen(container.matches(':fullscreen'));
         }
     };
 
@@ -423,10 +424,50 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
         }
     };
 
+    const toolbar = (
+        <div className="flex shrink-0 items-center gap-3 border-b border-border px-3 py-2.5 sm:px-4 sm:py-3">
+            <div className="relative flex h-8 w-40 min-w-0 items-center overflow-hidden rounded-lg border border-border bg-background text-foreground shadow-xs dark:border-input dark:bg-input/30 sm:w-64 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
+                <Icon
+                    icon="material-symbols:search"
+                    className="pointer-events-none absolute left-2.5 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
+                />
+                <Input
+                    placeholder="Пошук у графі..."
+                    value={searchQuery}
+                    onChange={event => setSearchQuery(event.target.value)}
+                    className="h-8 w-full border-0 bg-transparent pl-8 pr-8 shadow-none outline-none ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 !border-none !ring-0"
+                />
+                {searchQuery && (
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-1 top-1/2 z-10 -translate-y-1/2 hover:bg-transparent"
+                        aria-label="Очистити пошук"
+                    >
+                        <Icon icon="material-symbols:close" className="size-4" />
+                    </Button>
+                )}
+            </div>
+            <div className="ml-auto flex shrink-0 gap-2">
+                <Button size="icon-sm" variant="outline" onClick={() => zoomAt(viewportSize.width / 2, viewportSize.height / 2, zoom * 1.2)} title="Збільшити" aria-label="Збільшити"><Icon icon="material-symbols:add" /></Button>
+                <Button size="icon-sm" variant="outline" onClick={() => zoomAt(viewportSize.width / 2, viewportSize.height / 2, zoom * 0.8)} title="Зменшити" aria-label="Зменшити"><Icon icon="material-symbols:remove" /></Button>
+                <Button size="icon-sm" variant="outline" onClick={handleFit} title="Вмістити" aria-label="Вмістити"><Icon icon="material-symbols:fit-screen" /></Button>
+                <Button size="icon-sm" variant="outline" onClick={() => void toggleFullscreen()} title={isFullscreen ? 'Вийти з повного екрана' : 'На весь екран'} aria-label={isFullscreen ? 'Вийти з повного екрана' : 'На весь екран'}><Icon icon={isFullscreen ? 'material-symbols:fullscreen-exit' : 'material-symbols:fullscreen'} /></Button>
+            </div>
+        </div>
+    );
+
     return (
         <div
+            ref={fullscreenRef}
+            className="flex size-full min-h-0 flex-col overflow-hidden bg-transparent fullscreen:size-screen fullscreen:bg-background"
+        >
+            {toolbar}
+            <div
             ref={viewportRef}
-            className="relative size-full touch-none overflow-hidden bg-transparent fullscreen:size-screen fullscreen:bg-background"
+            className="relative min-h-0 flex-1 touch-none overflow-hidden"
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -447,42 +488,6 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
 
             {!layout && <div className="absolute inset-0 z-10 flex items-center justify-center text-sm text-muted-foreground">Підготовка графа…</div>}
 
-            <div className="absolute inset-x-2 top-2 z-20 flex flex-col items-stretch gap-2 sm:inset-x-4 sm:top-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="relative flex min-w-0 w-full items-center overflow-hidden rounded-lg border border-border bg-background shadow-xs sm:w-auto sm:max-w-[min(24rem,calc(100%-7rem))]">
-
-                    <Icon
-                        icon="material-symbols:search"
-                        className="pointer-events-none absolute left-2.5 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
-                    />
-
-                    <Input
-                        placeholder="Пошук у графі..."
-                        value={searchQuery}
-                        onChange={event => setSearchQuery(event.target.value)}
-                        className="h-9 w-full border-0 bg-transparent pl-8 pr-8 shadow-none outline-none ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 !border-none !ring-0"
-                    />
-
-                    {searchQuery && (
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-xs"
-                            onClick={() => setSearchQuery('')}
-                            className="absolute right-1 top-1/2 z-10 -translate-y-1/2 hover:bg-transparent"
-                            aria-label="Очистити пошук"
-                        >
-                            <Icon icon="material-symbols:close" className="size-4" />
-                        </Button>
-                    )}
-
-                </div>
-                <div className="flex shrink-0 self-end gap-1 rounded-lg border border-border bg-background p-1 shadow-xs sm:self-auto">
-                    <Button size="icon-sm" variant="ghost" onClick={() => zoomAt(viewportSize.width / 2, viewportSize.height / 2, zoom * 1.2)} title="Збільшити" aria-label="Збільшити"><Icon icon="material-symbols:add" /></Button>
-                    <Button size="icon-sm" variant="ghost" onClick={() => zoomAt(viewportSize.width / 2, viewportSize.height / 2, zoom * 0.8)} title="Зменшити" aria-label="Зменшити"><Icon icon="material-symbols:remove" /></Button>
-                    <Button size="icon-sm" variant="ghost" onClick={handleFit} title="Вмістити" aria-label="Вмістити"><Icon icon="material-symbols:fit-screen" /></Button>
-                    <Button size="icon-sm" variant="ghost" onClick={() => void toggleFullscreen()} title={isFullscreen ? 'Вийти з повного екрана' : 'На весь екран'} aria-label={isFullscreen ? 'Вийти з повного екрана' : 'На весь екран'}><Icon icon={isFullscreen ? 'material-symbols:fullscreen-exit' : 'material-symbols:fullscreen'} /></Button>
-                </div>
-            </div>
             <div className="absolute inset-x-2 bottom-2 z-20 flex max-h-[35%] flex-col items-stretch gap-2 overflow-hidden sm:inset-x-4 sm:bottom-4 sm:max-h-none sm:flex-row sm:items-end sm:overflow-visible">
 
                 <div className="flex w-fit max-w-full shrink-0 items-center rounded-lg border border-border bg-background px-2 py-1.5 text-[11px] text-muted-foreground shadow-xs sm:px-3 sm:text-xs">
@@ -511,6 +516,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
                     </span>
                 </div>
 
+            </div>
             </div>
         </div>
     );

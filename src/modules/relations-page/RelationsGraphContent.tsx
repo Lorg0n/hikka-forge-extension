@@ -663,6 +663,9 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
                         const isDimmed = isSelectionDimmed && !(isSelected || isConnectedToSelectedNode);
                         return <path key={`${id}-${index}`} d={edgePath(section)} fill="none" stroke={relationTypeColors[edge.relationType] || relationTypeColors.OTHER} opacity={isDimmed ? 0.22 : 0.76} strokeWidth={isSelected ? 3.2 : 2.2} markerEnd={`url(#relation-arrow-${edge.relationType})`} className="pointer-events-auto cursor-pointer" onPointerDown={event => event.stopPropagation()} onClick={event => { event.stopPropagation(); selectEdge(id); }} />;
                     }))}
+                </svg>
+                {visibleNodes.map(node => <RelationCard key={node.id} node={node} isSelected={selectedNodeIds.has(node.id)} isDimmed={Boolean(isSelectionDimmed && selectedNodeIds.size > 0 && !selectedNodeIds.has(node.id))} onSelect={() => selectNode(node, false)} />)}
+                <svg className="pointer-events-none absolute inset-0 z-10 size-full overflow-visible" aria-hidden="true">
                     {visibleEdges.map(({ edge, id, sections }) => {
                         const isSelected = id === selectedEdgeId;
                         const isConnectedToSelectedNode = Boolean(selectedNodeId && (edge.source === selectedNodeId || edge.target === selectedNodeId));
@@ -673,14 +676,13 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
                         const color = relationTypeColors[edge.relationType] || relationTypeColors.OTHER;
                         const width = Math.max(72, label.length * 7 + 20);
                         return (
-                            <g key={`${id}:label`} className="pointer-events-none">
+                            <g key={`${id}:label`}>
                                 <rect x={point.x - width / 2} y={point.y - 12} width={width} height="24" rx="6" fill={color} stroke={darkenColor(color)} />
                                 <text x={point.x} y={point.y + 4} textAnchor="middle" fill={darkenColor(color, 0.82)} fontSize="11" fontWeight="600">{label}</text>
                             </g>
                         );
                     })}
                 </svg>
-                {visibleNodes.map(node => <RelationCard key={node.id} node={node} isSelected={selectedNodeIds.has(node.id)} isDimmed={Boolean(isSelectionDimmed && selectedNodeIds.size > 0 && !selectedNodeIds.has(node.id))} onSelect={() => selectNode(node, false)} />)}
             </div>}
 
             {!layout && <div className="absolute inset-0 z-10 flex items-center justify-center text-sm text-muted-foreground">Підготовка графа…</div>}

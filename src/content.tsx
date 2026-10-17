@@ -501,7 +501,10 @@ class ModuleManager {
 				.replace(/[.+?^${}()|[\]\\]/g, "\\$&")
 				.replace(/\*/g, hashless ? "[^#]*" : ".*");
 			try {
-				return new RegExp(`^${regexPattern}$`).test(url);
+				// The hashless wildcard must still consume an optional fragment.
+				// Without this suffix, `[^#]*` stops before the hash and the end
+				// anchor rejects an otherwise matching URL.
+				return new RegExp(`^${regexPattern}${hashless ? "(?:#.*)?" : ""}$`).test(url);
 			} catch (error) {
 				logger.error(`[Hikka Forge] Invalid URL pattern: ${pattern}`, error);
 				return false;

@@ -9,7 +9,7 @@ import type { FranchiseContentType, GraphNode } from '@/types';
 
 const TABLIST_SELECTOR = 'div[role="tablist"]:has(> a[role="tab"][href*="/franchise"])';
 const TAB_MARKER = 'data-hikka-forge-franchise-graph-tab';
-const GRAPH_VIEW = 'graph-hikka';
+const GRAPH_HASH = '#hikka-forge-franchise-graph';
 const TAB_IDLE_CLASS =
     'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md font-medium transition-colors cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring border border-transparent px-3.5 text-sm bg-secondary/40 text-muted-foreground hover:bg-accent';
 const TAB_ACTIVE_CLASS =
@@ -41,14 +41,21 @@ function parseFranchisePath(pathname: string): { contentType: FranchiseContentTy
 }
 
 function isGraphView(): boolean {
-    return new URLSearchParams(window.location.search).get('view') === GRAPH_VIEW;
+    return window.location.hash === GRAPH_HASH;
 }
 
 function getGraphHref(): string {
     const url = new URL(window.location.href);
-    url.searchParams.set('view', GRAPH_VIEW);
+    url.hash = GRAPH_HASH;
+    return `${url.pathname}${url.search}${url.hash}`;
+}
+
+function clearGraphView(): void {
+    const url = new URL(window.location.href);
+    if (url.hash !== GRAPH_HASH) return;
+
     url.hash = '';
-    return `${url.pathname}${url.search}`;
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}`);
 }
 
 function setTabState(tab: HTMLElement, active: boolean): void {
@@ -235,6 +242,12 @@ const ContentRelationsButton: React.FC = () => {
                 return;
             }
 
+            // Hikka can switch its view without changing the URL. Do not leave
+            // our hash marker behind: a later reconciliation (for example after
+            // returning to the tab) would otherwise treat it as a request to
+            // show the Forge graph again. Query parameters belong to Hikka and
+            // are deliberately left untouched.
+            clearGraphView();
             setActiveView(false);
         };
 

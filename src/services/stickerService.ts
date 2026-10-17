@@ -199,6 +199,8 @@ export const StickerService = {
 			headers: { "content-type": "application/json" },
 			body: JSON.stringify(body),
 		}),
+	deleteCategory: (slug: string) =>
+		request<void>(`/admin/categories/${encodeURIComponent(slug)}`, { method: "DELETE" }),
 	uploadItem: async (packSlug: string, options: UploadStickerOptions) => {
 		const form = new FormData();
 		form.append("file", await prepareStickerFile(options.file));

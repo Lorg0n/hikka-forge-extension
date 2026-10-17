@@ -200,6 +200,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearchFocused, setIsSearchFocused] = useState(false);
     const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>(currentNodeId);
+    const [isSelectionDimmed, setIsSelectionDimmed] = useState(Boolean(currentNodeId));
     const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
     const stateRef = useRef({ pan, zoom });
     const panAnimationRef = useRef<number | null>(null);
@@ -260,6 +261,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
 
     useEffect(() => {
         setSelectedNodeId(currentNodeId);
+        setIsSelectionDimmed(Boolean(currentNodeId));
     }, [currentNodeId]);
 
     useLayoutEffect(() => {
@@ -341,7 +343,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
             y: viewportSize.height / 2 - (node.y + CARD_HEIGHT / 2) * activeZoom,
         };
         const startedAt = performance.now();
-        const duration = 360;
+        const duration = 560;
         const animate = (now: number) => {
             const progress = Math.min(1, (now - startedAt) / duration);
             const eased = 1 - (1 - progress) ** 3;
@@ -360,6 +362,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
 
     const selectNode = useCallback((node: LayoutNode) => {
         setSelectedNodeId(node.id);
+        setIsSelectionDimmed(true);
         setSearchQuery('');
         setIsSearchFocused(false);
         focusNode(node);
@@ -371,7 +374,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
         const onWheel = (event: WheelEvent) => {
             event.preventDefault();
             stopPanAnimation();
-            setSelectedNodeId(undefined);
+            setIsSelectionDimmed(false);
             const rect = viewport.getBoundingClientRect();
             zoomAt(event.clientX - rect.left, event.clientY - rect.top, stateRef.current.zoom * (event.deltaY < 0 ? 1.1 : 0.9));
         };
@@ -412,7 +415,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
         if ((event.target as HTMLElement).closest('input, button, a, [data-pan-exclude]')) return;
         event.preventDefault();
         stopPanAnimation();
-        setSelectedNodeId(undefined);
+        setIsSelectionDimmed(false);
         const point = getViewportPoint(event);
         pointersRef.current.set(event.pointerId, point);
         event.currentTarget.setPointerCapture(event.pointerId);
@@ -485,7 +488,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
 
     const toolbar = (
         <div className="flex shrink-0 items-center gap-3 border-b border-border px-3 py-2.5 sm:px-4 sm:py-3">
-            <div className="relative h-8 w-40 min-w-0 sm:w-64">
+            <div className="relative h-8 w-40 min-w-0 sm:w-80">
                 <div className="flex size-full items-center overflow-hidden rounded-lg border border-border bg-background text-foreground shadow-xs dark:border-input dark:bg-input/30 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
                     <Icon
                         icon="material-symbols:search"
@@ -520,7 +523,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
                     )}
                 </div>
                 {isSearchFocused && searchQuery.trim() && (
-                    <div className="absolute left-0 top-[calc(100%+0.5rem)] z-30 max-h-80 w-80 overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-md">
+                    <div className="absolute left-0 top-[calc(100%+0.5rem)] z-30 max-h-80 w-full overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-md">
                         {searchResults.length > 0 ? searchResults.map(node => (
                             <button
                                 key={node.id}
@@ -576,10 +579,11 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
                     <defs>{Array.from(new Set(visibleEdges.map(({ edge }) => edge.relationType))).map(type => <marker key={type} id={`relation-arrow-${type}`} markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill={relationTypeColors[type] || relationTypeColors.OTHER} /></marker>)}</defs>
                     {visibleEdges.flatMap(({ edge, id, sections }) => sections.map((section, index) => {
                         const isConnectedToSelected = !selectedNodeId || edge.source === selectedNodeId || edge.target === selectedNodeId;
-                        return <path key={`${id}-${index}`} d={edgePath(section)} fill="none" stroke={relationTypeColors[edge.relationType] || relationTypeColors.OTHER} strokeOpacity={isConnectedToSelected ? 0.76 : 0.22} strokeWidth="2.2" markerEnd={`url(#relation-arrow-${edge.relationType})`} />;
+                        const isDimmed = isSelectionDimmed && !isConnectedToSelected;
+                        return <path key={`${id}-${index}`} d={edgePath(section)} fill="none" stroke={relationTypeColors[edge.relationType] || relationTypeColors.OTHER} opacity={isDimmed ? 0.22 : 0.76} strokeWidth="2.2" markerEnd={`url(#relation-arrow-${edge.relationType})`} />;
                     }))}
                 </svg>
-                {visibleNodes.map(node => <RelationCard key={node.id} node={node} isSelected={node.id === selectedNodeId} isDimmed={Boolean(selectedNodeId && node.id !== selectedNodeId)} />)}
+                {visibleNodes.map(node => <RelationCard key={node.id} node={node} isSelected={node.id === selectedNodeId} isDimmed={Boolean(isSelectionDimmed && selectedNodeId && node.id !== selectedNodeId)} />)}
             </div>}
 
             {!layout && <div className="absolute inset-0 z-10 flex items-center justify-center text-sm text-muted-foreground">Підготовка графа…</div>}

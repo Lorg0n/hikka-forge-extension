@@ -200,10 +200,13 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearchFocused, setIsSearchFocused] = useState(false);
     const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>(currentNodeId);
+    const [selectedEdgeId, setSelectedEdgeId] = useState<string | undefined>();
     const [isSelectionDimmed, setIsSelectionDimmed] = useState(Boolean(currentNodeId));
     const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
     const stateRef = useRef({ pan, zoom });
     const panAnimationRef = useRef<number | null>(null);
+    const initiallyFocusedLayoutRef = useRef<GraphLayout | null>(null);
+    const previousViewportSizeRef = useRef({ width: 0, height: 0 });
     stateRef.current = { pan, zoom };
 
     const stopPanAnimation = useCallback(() => {
@@ -261,8 +264,20 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
 
     useEffect(() => {
         setSelectedNodeId(currentNodeId);
+        setSelectedEdgeId(undefined);
         setIsSelectionDimmed(Boolean(currentNodeId));
     }, [currentNodeId]);
+
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key !== 'Escape') return;
+            setSelectedNodeId(undefined);
+            setSelectedEdgeId(undefined);
+            setIsSelectionDimmed(false);
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     useLayoutEffect(() => {
         const updateSize = () => {
@@ -289,9 +304,23 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
         };
     }, []);
 
+    // Keep the same graph point centered when the viewport changes size, most
+    // notably when switching to and from fullscreen.
+    useLayoutEffect(() => {
+        const previous = previousViewportSizeRef.current;
+        previousViewportSizeRef.current = viewportSize;
+        if (!previous.width || !previous.height || !viewportSize.width || !viewportSize.height) return;
+        const offsetX = (viewportSize.width - previous.width) / 2;
+        const offsetY = (viewportSize.height - previous.height) / 2;
+        if (!offsetX && !offsetY) return;
+        setPan(current => ({ x: current.x + offsetX, y: current.y + offsetY }));
+    }, [viewportSize]);
+
     // The graph opens focused on the title from which the user entered it.
     useEffect(() => {
         if (!layout || !viewportSize.width || !viewportSize.height) return;
+        if (initiallyFocusedLayoutRef.current === layout) return;
+        initiallyFocusedLayoutRef.current = layout;
         const currentNode = layout.nodes.find(node => node.id === currentNodeId) || layout.nodes[0];
         if (!currentNode) return;
         const nextZoom = clampZoom(Math.min(
@@ -317,6 +346,13 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
     }, [layout, searchQuery]);
     const visibleNodes = layout?.nodes || [];
     const visibleEdges = layout?.edges || [];
+    const selectedNodeIds = useMemo(() => {
+        if (selectedEdgeId) {
+            const selectedEdge = visibleEdges.find(({ id }) => id === selectedEdgeId)?.edge;
+            return new Set(selectedEdge ? [selectedEdge.source, selectedEdge.target] : []);
+        }
+        return new Set(selectedNodeId ? [selectedNodeId] : []);
+    }, [selectedEdgeId, selectedNodeId, visibleEdges]);
 
     const clampZoom = (value: number) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value));
     const zoomAt = useCallback((x: number, y: number, nextZoom: number) => {
@@ -360,13 +396,20 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
         panAnimationRef.current = window.requestAnimationFrame(animate);
     }, [stopPanAnimation, viewportSize]);
 
-    const selectNode = useCallback((node: LayoutNode) => {
+    const selectNode = useCallback((node: LayoutNode, shouldFocus = true) => {
         setSelectedNodeId(node.id);
+        setSelectedEdgeId(undefined);
         setIsSelectionDimmed(true);
         setSearchQuery('');
         setIsSearchFocused(false);
-        focusNode(node);
+        if (shouldFocus) focusNode(node);
     }, [focusNode]);
+
+    const selectEdge = useCallback((edgeId: string) => {
+        setSelectedNodeId(undefined);
+        setSelectedEdgeId(edgeId);
+        setIsSelectionDimmed(true);
+    }, []);
 
     useEffect(() => {
         const viewport = viewportRef.current;
@@ -374,7 +417,6 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
         const onWheel = (event: WheelEvent) => {
             event.preventDefault();
             stopPanAnimation();
-            setIsSelectionDimmed(false);
             const rect = viewport.getBoundingClientRect();
             zoomAt(event.clientX - rect.left, event.clientY - rect.top, stateRef.current.zoom * (event.deltaY < 0 ? 1.1 : 0.9));
         };
@@ -415,7 +457,6 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
         if ((event.target as HTMLElement).closest('input, button, a, [data-pan-exclude]')) return;
         event.preventDefault();
         stopPanAnimation();
-        setIsSelectionDimmed(false);
         const point = getViewportPoint(event);
         pointersRef.current.set(event.pointerId, point);
         event.currentTarget.setPointerCapture(event.pointerId);
@@ -468,6 +509,9 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
     };
 
     const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+        const gesture = gestureRef.current;
+        const point = getViewportPoint(event);
+        const isClick = gesture?.type === 'pan' && gesture.startPoint && Math.hypot(point.x - gesture.startPoint.x, point.y - gesture.startPoint.y) < 6;
         pointersRef.current.delete(event.pointerId);
         if (event.currentTarget.hasPointerCapture(event.pointerId)) {
             event.currentTarget.releasePointerCapture(event.pointerId);
@@ -483,6 +527,11 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
             };
         } else {
             gestureRef.current = null;
+            if (isClick) {
+                setSelectedNodeId(undefined);
+                setSelectedEdgeId(undefined);
+                setIsSelectionDimmed(false);
+            }
         }
     };
 
@@ -575,15 +624,16 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
                     className="pointer-events-none absolute opacity-70 [background-size:24px_24px]"
                     style={{ inset: -2048, backgroundImage: 'radial-gradient(var(--border) 1px, transparent 1px)' }}
                 />
-                <svg className="absolute inset-0 size-full overflow-visible pointer-events-none" aria-hidden="true">
+                <svg className="absolute inset-0 size-full overflow-visible pointer-events-none" aria-label="Зв'язки між творами">
                     <defs>{Array.from(new Set(visibleEdges.map(({ edge }) => edge.relationType))).map(type => <marker key={type} id={`relation-arrow-${type}`} markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill={relationTypeColors[type] || relationTypeColors.OTHER} /></marker>)}</defs>
                     {visibleEdges.flatMap(({ edge, id, sections }) => sections.map((section, index) => {
-                        const isConnectedToSelected = !selectedNodeId || edge.source === selectedNodeId || edge.target === selectedNodeId;
-                        const isDimmed = isSelectionDimmed && !isConnectedToSelected;
-                        return <path key={`${id}-${index}`} d={edgePath(section)} fill="none" stroke={relationTypeColors[edge.relationType] || relationTypeColors.OTHER} opacity={isDimmed ? 0.22 : 0.76} strokeWidth="2.2" markerEnd={`url(#relation-arrow-${edge.relationType})`} />;
+                        const isSelected = id === selectedEdgeId;
+                        const isConnectedToSelectedNode = Boolean(selectedNodeId && (edge.source === selectedNodeId || edge.target === selectedNodeId));
+                        const isDimmed = isSelectionDimmed && !(isSelected || isConnectedToSelectedNode);
+                        return <path key={`${id}-${index}`} d={edgePath(section)} fill="none" stroke={relationTypeColors[edge.relationType] || relationTypeColors.OTHER} opacity={isDimmed ? 0.22 : 0.76} strokeWidth={isSelected ? 3.2 : 2.2} markerEnd={`url(#relation-arrow-${edge.relationType})`} className="pointer-events-auto cursor-pointer" onPointerDown={event => event.stopPropagation()} onClick={event => { event.stopPropagation(); selectEdge(id); }} />;
                     }))}
                 </svg>
-                {visibleNodes.map(node => <RelationCard key={node.id} node={node} isSelected={node.id === selectedNodeId} isDimmed={Boolean(isSelectionDimmed && selectedNodeId && node.id !== selectedNodeId)} />)}
+                {visibleNodes.map(node => <RelationCard key={node.id} node={node} isSelected={selectedNodeIds.has(node.id)} isDimmed={Boolean(isSelectionDimmed && selectedNodeIds.size > 0 && !selectedNodeIds.has(node.id))} onSelect={() => selectNode(node, false)} />)}
             </div>}
 
             {!layout && <div className="absolute inset-0 z-10 flex items-center justify-center text-sm text-muted-foreground">Підготовка графа…</div>}
@@ -649,13 +699,21 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
     );
 };
 
-const RelationCard: React.FC<{ node: LayoutNode; isSelected: boolean; isDimmed: boolean }> = ({ node, isSelected, isDimmed }) => {
+const RelationCard: React.FC<{ node: LayoutNode; isSelected: boolean; isDimmed: boolean; onSelect: () => void }> = ({ node, isSelected, isDimmed, onSelect }) => {
     const status = getReleaseStatusLabel(node.status);
     const mediaType = getMediaTypeLabel(node.format);
     const contentType = getContentTypeLabel(node.type);
 
     return (
-    <article className={cn('surface absolute flex h-[148px] w-[280px] gap-4 overflow-hidden rounded-lg border border-border p-3 transition-[opacity,box-shadow,border-color] duration-200', isSelected ? 'border-primary-foreground/70 ring-2 ring-primary-foreground/20' : '', isDimmed ? 'opacity-45' : '')} style={{ left: node.x, top: node.y }} data-pan-exclude>
+    <article
+        className={cn('surface absolute flex h-[148px] w-[280px] gap-4 overflow-hidden rounded-lg border border-border p-3 backdrop-blur-md transition-[opacity,box-shadow,border-color,transform] duration-200', isSelected ? 'scale-[1.02] border-primary-foreground/70 ring-2 ring-primary-foreground/20' : '', isDimmed ? 'opacity-45' : '')}
+        style={{ left: node.x, top: node.y, backgroundColor: 'color-mix(in oklab, var(--card) 96%, transparent)' }}
+        onPointerDown={event => event.stopPropagation()}
+        onClick={event => {
+            if ((event.target as HTMLElement).closest('a')) return;
+            onSelect();
+        }}
+    >
         <img src={node.imageUrl} alt="" className="h-[124px] w-[84px] shrink-0 rounded-lg bg-muted object-cover" />
         <div className="flex min-w-0 flex-1 flex-col py-0.5">
             <Link

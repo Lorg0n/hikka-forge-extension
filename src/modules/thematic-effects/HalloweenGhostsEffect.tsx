@@ -607,8 +607,8 @@ function createGhost(
     strokePhase: Math.random() * Math.PI * 2,
     opacity:
       variant >= 2
-        ? 0.36 + Math.random() * 0.16
-        : 0.19 + Math.random() * 0.13,
+        ? 0.28 + Math.random() * 0.12
+        : 0.15 + Math.random() * 0.1,
     presence: 0,
     age: 0,
     vanishAt: 600 + Math.random() * 900,
@@ -648,8 +648,9 @@ function drawGhost(
   const isContrastGhost = ghost.variant >= 2;
 
   context.save();
+  // Keep a faint, slow shimmer rather than the frequent opacity pulse.
   const shimmer =
-    0.55 + 0.45 * (0.5 + 0.5 * Math.sin(time * 0.0018 + ghost.phase));
+    0.72 + 0.16 * (0.5 + 0.5 * Math.sin(time * 0.00065 + ghost.phase));
   const easedPresence =
     ghost.presence * ghost.presence * (3 - 2 * ghost.presence);
   context.globalAlpha = ghost.opacity * shimmer * easedPresence;
@@ -918,8 +919,8 @@ function createBat(width: number, height: number, appearDelay = 0): Bat {
     wingFrameElapsed: 0,
     phase: Math.random() * Math.PI * 2,
     opacity: isOutline
-      ? 0.52 + Math.random() * 0.16
-      : 0.24 + Math.random() * 0.14,
+      ? 0.4 + Math.random() * 0.12
+      : 0.18 + Math.random() * 0.1,
     presence: 0,
     age: 0,
     appearDelay,

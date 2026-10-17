@@ -4,9 +4,9 @@ import CommentGifComponent from "./CommentGifComponent";
 
 const commentGifModule: ForgeModuleDef = {
 	id: "hikka-stickers",
-	name: "Стікери Hikka",
+	name: "Стікери",
 	description:
-		"Додає до коментарів стікери, GIF-емодзі та інші реакції у стилі 7TV.",
+		"Додає до коментарів стікери, GIF-емодзі та інші реакції.",
 	urlPatterns: [
 		"https://hikka.io/*",
 		"https://dev.hikka.io/*",

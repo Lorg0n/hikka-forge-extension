@@ -432,12 +432,12 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
         >
-            <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 opacity-30 [background-size:24px_24px]"
-                style={{ backgroundImage: 'radial-gradient(var(--border) 1px, transparent 1px)' }}
-            />
             {layout && <div className="absolute left-0 top-0" style={{ width: layout.width, height: layout.height, transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: '0 0' }}>
+                <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute opacity-70 [background-size:24px_24px]"
+                    style={{ inset: -2048, backgroundImage: 'radial-gradient(var(--border) 1px, transparent 1px)' }}
+                />
                 <svg className="absolute inset-0 size-full overflow-visible pointer-events-none" aria-hidden="true">
                     <defs>{Array.from(new Set(visibleEdges.map(({ edge }) => edge.relationType))).map(type => <marker key={type} id={`relation-arrow-${type}`} markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill={relationTypeColors[type] || relationTypeColors.OTHER} /></marker>)}</defs>
                     {visibleEdges.flatMap(({ edge, id, sections }) => sections.map((section, index) => <path key={`${id}-${index}`} d={edgePath(section)} fill="none" stroke={relationTypeColors[edge.relationType] || relationTypeColors.OTHER} strokeOpacity="0.76" strokeWidth="2.2" markerEnd={`url(#relation-arrow-${edge.relationType})`} />))}

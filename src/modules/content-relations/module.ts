@@ -5,7 +5,6 @@ const contentRelationsModule: ForgeModuleDef = {
     id: 'content-relations',
     name: 'Граф франшизи',
     description: 'Додає вкладку Hikka Forge з інтерактивним графом зв’язків на сторінці франшизи.',
-    beta: true,
     urlPatterns: [
         'https://hikka.io/anime/*/franchise*=',
         'https://hikka.io/manga/*/franchise*=',

@@ -7,6 +7,7 @@ const commentGifModule: ForgeModuleDef = {
 	name: "Стікери",
 	description:
 		"Додає до коментарів стікери, GIF-емодзі та інші реакції.",
+	beta: true,
 	urlPatterns: [
 		"https://hikka.io/*",
 		"https://dev.hikka.io/*",

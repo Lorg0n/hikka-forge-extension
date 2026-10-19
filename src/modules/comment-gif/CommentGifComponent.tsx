@@ -12,6 +12,7 @@ const TOOLBAR = `${COMMENT_TOOLBAR}, ${MOBILE_TOOLBAR}`;
 const TOKEN = /:emote\[([a-z0-9-]+)\]:/gi;
 const IMAGE = "[data-hikka-forge-sticker]";
 const stickerItems = new Map<string, StickerItem>();
+const stickerPackTitles = new Map<string, string>();
 let stickerCatalog: Promise<StickerItem[]> | null = null;
 
 const stickerWidthUnits = (item: StickerItem): number => {
@@ -26,7 +27,10 @@ type PickerAnchor = {
 function loadStickerCatalog(): Promise<StickerItem[]> {
 	if (!stickerCatalog) {
 		stickerCatalog = StickerService.listAllPacks()
-			.then((packs) => StickerService.listAllItems(packs))
+			.then(async (packs) => {
+				packs.forEach((pack) => stickerPackTitles.set(pack.slug, pack.title));
+				return StickerService.listAllItems(packs);
+			})
 			.then((items) => {
 				items.forEach((item) => stickerItems.set(item.slug, item));
 				return items;
@@ -257,6 +261,22 @@ function Picker({ anchor, onClose }: { anchor: PickerAnchor; onClose: () => void
 	const visible = useMemo(() => items.filter((item) =>
 		(!category || item.categories.some((value) => value.slug === category)) &&
 		(!query || `${item.title} ${item.slug}`.toLowerCase().includes(query.toLowerCase()))), [items, category, query]);
+	const groupedItems = useMemo(() => {
+		const groups = new Map<string, StickerItem[]>();
+		for (const item of visible) {
+			const group = groups.get(item.packSlug);
+			if (group) group.push(item);
+			else groups.set(item.packSlug, [item]);
+		}
+		return [...groups.entries()].map(([slug, packItems]) => ({
+			slug,
+			title: stickerPackTitles.get(slug) ?? slug,
+			items: packItems,
+		}));
+	}, [visible]);
+	const filterButtonStyle = (selected: boolean): React.CSSProperties => selected
+		? { background: "rgb(203 213 225)", borderColor: "rgb(148 163 184)", color: "rgb(15 23 42)", boxShadow: "0 1px 2px rgb(0 0 0 / 0.16)" }
+		: { background: "transparent", borderColor: "transparent", color: "rgb(148 163 184)" };
 	const selectSticker = async (item: StickerItem) => {
 		const toolbar = toolbarForAnchor(anchor.element);
 		const candidates = [...new Set([editorId, ...editorCandidates(toolbar)].filter((id): id is string => Boolean(id)))];
@@ -274,11 +294,17 @@ function Picker({ anchor, onClose }: { anchor: PickerAnchor; onClose: () => void
 	};
 	return createPortal(<div ref={ref} className="fixed w-80 max-h-[calc(100vh-1rem)] overflow-hidden rounded-xl border bg-popover p-2 text-popover-foreground shadow-md" style={{ ...position, zIndex: 2147483647, isolation: "isolate" }}>
 		<div className="mb-2 flex items-center gap-2"><div className="relative min-w-0 flex-1"><svg aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Пошук стікерів" className="h-10 w-full rounded-full border-0 bg-muted pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:outline-none" /></div></div>
-		<div className="mb-3 flex gap-1 overflow-x-auto"><button type="button" onClick={() => setCategory(null)} className={`rounded-md border px-2.5 py-1.5 text-xs transition-colors ${!category ? "border-sky-600/80 bg-sky-500/10 text-sky-700 dark:border-sky-400/80 dark:bg-sky-400/10 dark:text-sky-300" : "border-border bg-muted/60 text-foreground/75 hover:bg-muted hover:text-foreground dark:bg-white/[0.08] dark:text-muted-foreground dark:hover:bg-white/[0.12]"}`}>Усі</button>{categories.map((value) => <button type="button" key={value.slug} onClick={() => setCategory(value.slug)} className={`whitespace-nowrap rounded-md border px-2.5 py-1.5 text-xs transition-colors ${category === value.slug ? "border-sky-600/80 bg-sky-500/10 text-sky-700 dark:border-sky-400/80 dark:bg-sky-400/10 dark:text-sky-300" : "border-border bg-muted/60 text-foreground/75 hover:bg-muted hover:text-foreground dark:bg-white/[0.08] dark:text-muted-foreground dark:hover:bg-white/[0.12]"}`}>{value.title}</button>)}</div>
+		<div className="mb-2.5 flex gap-1 overflow-x-auto pb-0.5">
+			<button type="button" aria-pressed={!category} onClick={() => setCategory(null)} className="rounded-full border px-2.5 py-1 text-xs font-medium transition-[background-color,border-color,color,box-shadow] hover:bg-white/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400" style={filterButtonStyle(!category)}>Усі</button>
+			{categories.map((value) => {
+				const selected = category === value.slug;
+				return <button type="button" aria-pressed={selected} key={value.slug} onClick={() => setCategory(value.slug)} className="whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium transition-[background-color,border-color,color,box-shadow] hover:bg-white/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400" style={filterButtonStyle(selected)}>{value.title}</button>;
+			})}
+		</div>
 		{error && <div className="flex items-center justify-between gap-3 rounded-md bg-destructive/10 p-3 text-sm text-destructive"><span>Не вдалося завантажити стікери.</span><button type="button" className="rounded-md border border-destructive/30 px-2 py-1 text-xs hover:bg-destructive/10" onClick={() => setReloadKey((value) => value + 1)}>Повторити</button></div>}
 		{insertionError && <p className="px-2 pb-2 text-xs text-destructive">{insertionError}</p>}
-				{loading && <div className="flex max-h-64 flex-wrap content-start gap-2 overflow-hidden" style={{ maxHeight: "16rem" }}>{Array.from({ length: 5 }, (_, index) => <span key={index} className="shrink-0 animate-pulse rounded-md bg-muted" style={{ display: "block", width: "3.25rem", height: "3.25rem" }} />)}</div>}
-			{!loading && !error && <div className="flex max-h-64 flex-wrap content-start items-start gap-2 overflow-y-auto" style={{ maxHeight: "16rem" }}>{visible.map((item) => { const widthUnits = stickerWidthUnits(item); return <button type="button" key={item.slug} title={item.title} style={{ width: `min(${widthUnits * 3.25}rem, 100%)`, height: "3.25rem", contain: "layout size paint" }} onClick={(event) => { event.stopPropagation(); void selectSticker(item).catch(console.warn); }} className="relative block min-h-0 min-w-0 shrink-0 overflow-hidden rounded-md hover:bg-muted"><StickerPreview item={item} /></button>; })}</div>}
+			{loading && <div className="max-h-64 overflow-hidden pr-1" style={{ maxHeight: "16rem" }}>{[3, 2].map((tileCount, groupIndex) => <section key={groupIndex} className="pb-3 last:pb-0"><div className="mb-1.5 flex items-center gap-2 py-1"><span className="animate-pulse rounded bg-muted" style={{ display: "block", width: groupIndex === 0 ? "5.5rem" : "7rem", height: "0.75rem" }} /><span className="h-px flex-1 bg-border" /><span className="animate-pulse rounded bg-muted" style={{ display: "block", width: "0.75rem", height: "0.65rem" }} /></div><div className="flex flex-wrap gap-2">{Array.from({ length: tileCount }, (_, index) => <span key={index} className="shrink-0 animate-pulse rounded-md bg-muted" style={{ display: "block", width: "3.25rem", height: "3.25rem" }} />)}</div></section>)}</div>}
+			{!loading && !error && <div className="max-h-64 overflow-y-auto pr-1" style={{ maxHeight: "16rem" }}>{groupedItems.map((pack) => <section key={pack.slug} className="pb-3 last:pb-0"><div className="sticky top-0 z-10 mb-1.5 flex items-center gap-2 bg-popover py-1"><span className="truncate text-xs font-semibold text-foreground">{pack.title}</span><span className="h-px flex-1 bg-border" /><span className="text-[11px] tabular-nums text-muted-foreground">{pack.items.length}</span></div><div className="flex flex-wrap content-start items-start gap-2">{pack.items.map((item) => { const widthUnits = stickerWidthUnits(item); return <button type="button" key={item.slug} title={item.title} style={{ width: `min(${widthUnits * 3.25}rem, 100%)`, height: "3.25rem", contain: "layout size paint" }} onClick={(event) => { event.stopPropagation(); void selectSticker(item).catch(console.warn); }} className="relative block min-h-0 min-w-0 shrink-0 overflow-hidden rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"><StickerPreview item={item} /></button>; })}</div></section>)}</div>}
 		{!loading && !error && visible.length === 0 && <p className="p-4 text-center text-sm text-muted-foreground">Нічого не знайдено</p>}
 	</div>, document.body);
 }

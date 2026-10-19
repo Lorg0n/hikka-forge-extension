@@ -7,7 +7,7 @@ import { useContentRelations } from '@/hooks/useContentRelations';
 import { RelationsGraph } from '@/modules/relations-page/RelationsGraph';
 import type { FranchiseContentType, GraphNode } from '@/types';
 
-const TABLIST_SELECTOR = 'div[role="tablist"]:has(> a[role="tab"][href*="/franchise"])';
+const TABLIST_SELECTOR = 'div.no-scrollbar:has(> a[href*="/franchise"])';
 const TAB_MARKER = 'data-hikka-forge-franchise-graph-tab';
 const GRAPH_HASH = '#hikka-forge-franchise-graph';
 const TAB_IDLE_CLASS =
@@ -48,6 +48,12 @@ function getGraphHref(): string {
     const url = new URL(window.location.href);
     url.hash = GRAPH_HASH;
     return `${url.pathname}${url.search}${url.hash}`;
+}
+
+function findNativeFranchiseTabList(): HTMLElement | null {
+    const chronology = Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href*="/franchise"]'))
+        .find((anchor) => anchor.textContent?.includes('Хронологія'));
+    return chronology?.parentElement instanceof HTMLElement ? chronology.parentElement : null;
 }
 
 function clearGraphView(): void {
@@ -95,7 +101,7 @@ const ContentRelationsButton: React.FC = () => {
 
         const nativeTabs = (): HTMLElement[] => tabList
             ? Array.from(tabList.querySelectorAll<HTMLElement>(
-                `:scope > [role="tab"]:not([${TAB_MARKER}])`,
+                `:scope > a[href*="/franchise"]:not([${TAB_MARKER}])`,
             ))
             : [];
 
@@ -182,6 +188,7 @@ const ContentRelationsButton: React.FC = () => {
             const tab = document.createElement('a');
             tab.href = getGraphHref();
             tab.id = 'hikka-forge-franchise-graph-tab';
+            tab.className = TAB_IDLE_CLASS;
             tab.setAttribute('role', 'tab');
             tab.setAttribute(TAB_MARKER, 'true');
             tab.setAttribute('aria-label', 'Граф Hikka Forge');
@@ -195,7 +202,13 @@ const ContentRelationsButton: React.FC = () => {
         };
 
         const sync = () => {
-            const nextTabList = document.querySelector<HTMLElement>(TABLIST_SELECTOR);
+            // The tab labels are the stable contract; class names and wrapper
+            // roles changed in Hikka's latest layout. Use "Хронологія" itself
+            // and its parent as the insertion row.
+            const nextTabList = findNativeFranchiseTabList() ??
+                (ui.targetElement instanceof HTMLElement && ui.targetElement.isConnected
+                    ? ui.targetElement
+                    : document.querySelector<HTMLElement>(TABLIST_SELECTOR));
             if (!nextTabList) {
                 setActiveView(false);
                 return;
@@ -206,14 +219,29 @@ const ContentRelationsButton: React.FC = () => {
                 restoreNativeContent();
                 forgeTab?.remove();
                 tabList = nextTabList;
-                forgeTab = tabList.querySelector<HTMLAnchorElement>(`[${TAB_MARKER}]`) ?? createTab();
+                const existingForgeTab = tabList.querySelector<HTMLAnchorElement>(`[${TAB_MARKER}]`);
+                const isNewForgeTab = !existingForgeTab;
+                forgeTab = existingForgeTab ?? createTab();
                 tabList.append(forgeTab);
+                if (isNewForgeTab) {
+                    forgeTab.style.opacity = '0';
+                    forgeTab.style.transform = 'translateY(4px)';
+                    forgeTab.style.transition = 'opacity 220ms ease, transform 220ms ease';
+                    requestAnimationFrame(() => {
+                        if (!forgeTab?.isConnected) return;
+                        forgeTab.style.opacity = '1';
+                        forgeTab.style.transform = 'translateY(0)';
+                    });
+                }
                 const toolbar = tabList.parentElement;
                 if (toolbar instanceof HTMLElement) {
                     syncNativeContent(toolbar);
                 }
             }
 
+            // Hikka may replace the tab row while keeping our mounted host.
+            // Always re-home the Forge tab in the exact native tab container.
+            if (forgeTab && forgeTab.parentElement !== tabList) tabList.append(forgeTab);
             const toolbar = tabList.parentElement;
             if (toolbar instanceof HTMLElement) syncNativeContent(toolbar);
             if (forgeTab) forgeTab.href = getGraphHref();
@@ -231,7 +259,7 @@ const ContentRelationsButton: React.FC = () => {
         const handleTabClick = (event: Event) => {
             const target = event.target;
             if (!(target instanceof Element)) return;
-            const tab = target.closest<HTMLElement>('[role="tab"]');
+            const tab = target.closest<HTMLElement>(`a[href*="/franchise"], [${TAB_MARKER}]`);
             if (!tab) return;
 
             if (tab.hasAttribute(TAB_MARKER)) {

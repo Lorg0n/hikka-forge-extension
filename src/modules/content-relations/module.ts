@@ -17,7 +17,7 @@ const contentRelationsModule: ForgeModuleDef = {
     persistent: true,
     category: 'content',
     elementSelector: {
-        selector: 'div[role="tablist"]:has(> a[role="tab"][href*="/franchise"])',
+        selector: 'div.no-scrollbar:has(> a[href*="/franchise"])',
         position: 'append',
         hostWidth: 'auto',
         initiallyHidden: true,

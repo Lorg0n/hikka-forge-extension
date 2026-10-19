@@ -112,13 +112,17 @@ function renderTokens(root: HTMLElement, items: Map<string, StickerItem>) {
 				wrapper.style.display = "inline-flex";
 				wrapper.style.verticalAlign = "middle";
 				wrapper.style.margin = "0 0.12em";
+					wrapper.style.width = `${Math.max(1, item.widthUnits) * 3}em`;
+					wrapper.style.maxWidth = "100%";
+					wrapper.style.height = "3em";
 				image.src = item.url;
 				image.alt = item.alt ?? item.title;
 				image.loading = "lazy";
 				image.decoding = "async";
-				image.style.width = "3em";
-				image.style.height = "3em";
+					image.style.width = "100%";
+					image.style.height = "100%";
 				image.style.objectFit = "contain";
+					image.style.objectPosition = "left center";
 				wrapper.append(image);
 				fragment.append(wrapper);
 			}
@@ -154,7 +158,7 @@ function pickerPosition(anchor: HTMLElement, panelHeight: number) {
 
 function StickerPreview({ item }: { item: StickerItem }) {
 	const [loaded, setLoaded] = useState(false);
-	return <span className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-md bg-muted/40 p-1">
+	return <span className="relative flex w-full items-center justify-center overflow-hidden rounded-md bg-muted/40 p-1" style={{ aspectRatio: `${item.widthUnits} / 1` }}>
 		{!loaded && <span className="absolute inset-1 animate-pulse rounded-md bg-muted" />}
 		<img src={item.url} alt={item.alt ?? item.title} onLoad={() => setLoaded(true)} className={`relative max-h-full max-w-full object-contain transition-opacity ${loaded ? "opacity-100" : "opacity-0"}`} />
 	</span>;
@@ -254,8 +258,8 @@ function Picker({ anchor, onClose }: { anchor: PickerAnchor; onClose: () => void
 		<div className="mb-3 flex gap-1 overflow-x-auto"><button type="button" onClick={() => setCategory(null)} className={`rounded-md border px-2.5 py-1.5 text-xs transition-colors ${!category ? "border-sky-600/80 bg-sky-500/10 text-sky-700 dark:border-sky-400/80 dark:bg-sky-400/10 dark:text-sky-300" : "border-border bg-muted/60 text-foreground/75 hover:bg-muted hover:text-foreground dark:bg-white/[0.08] dark:text-muted-foreground dark:hover:bg-white/[0.12]"}`}>Усі</button>{categories.map((value) => <button type="button" key={value.slug} onClick={() => setCategory(value.slug)} className={`whitespace-nowrap rounded-md border px-2.5 py-1.5 text-xs transition-colors ${category === value.slug ? "border-sky-600/80 bg-sky-500/10 text-sky-700 dark:border-sky-400/80 dark:bg-sky-400/10 dark:text-sky-300" : "border-border bg-muted/60 text-foreground/75 hover:bg-muted hover:text-foreground dark:bg-white/[0.08] dark:text-muted-foreground dark:hover:bg-white/[0.12]"}`}>{value.title}</button>)}</div>
 		{error && <p className="p-4 text-sm text-destructive">{error}</p>}
 		{insertionError && <p className="px-2 pb-2 text-xs text-destructive">{insertionError}</p>}
-		{loading && <div className="grid grid-cols-5 gap-2">{Array.from({ length: 5 }, (_, index) => <span key={index} className="aspect-square w-full animate-pulse rounded-md bg-muted" />)}</div>}
-		{!loading && !error && <div className="grid max-h-64 grid-cols-5 gap-2 overflow-y-auto">{visible.map((item) => <button type="button" key={item.slug} title={item.title} onClick={(event) => { event.stopPropagation(); void selectSticker(item).catch(console.warn); }} className="flex min-w-0 items-center justify-center rounded-md p-1 hover:bg-muted"><StickerPreview item={item} /></button>)}</div>}
+			{loading && <div className="grid grid-cols-12 gap-2">{Array.from({ length: 5 }, (_, index) => <span key={index} className="col-span-2 aspect-square w-full animate-pulse rounded-md bg-muted" />)}</div>}
+			{!loading && !error && <div className="grid max-h-64 grid-cols-12 gap-2 overflow-y-auto">{visible.map((item) => <button type="button" key={item.slug} title={item.title} style={{ gridColumn: `span ${item.widthUnits}` }} onClick={(event) => { event.stopPropagation(); void selectSticker(item).catch(console.warn); }} className="flex min-w-0 items-center justify-center rounded-md p-1 hover:bg-muted"><StickerPreview item={item} /></button>)}</div>}
 		{!loading && !error && visible.length === 0 && <p className="p-4 text-center text-sm text-muted-foreground">Нічого не знайдено</p>}
 	</div>, document.body);
 }

@@ -30,6 +30,7 @@ export interface StickerItem {
 	format: string;
 	width: number;
 	height: number;
+	widthUnits: number;
 	size: number;
 	url: string;
 	packSlug: string;
@@ -55,6 +56,7 @@ export interface CreatePackRequest {
 }
 
 export interface UpdatePackRequest {
+	slug?: string;
 	title: string;
 	description?: string;
 	categorySlugs?: string[];
@@ -66,13 +68,24 @@ export interface CreateCategoryRequest {
 	description?: string;
 }
 
-interface UploadStickerOptions {
+export interface UploadStickerOptions {
 	file: File;
 	title: string;
 	itemSlug?: string;
 	description?: string;
 	alt?: string;
 	categorySlugs?: string[];
+	widthUnits: number;
+}
+
+export interface UpdateStickerItemRequest {
+	slug?: string;
+	title?: string;
+	description?: string;
+	alt?: string;
+	packSlug?: string;
+	categorySlugs?: string[];
+	widthUnits?: number;
 }
 
 const MAX_STICKER_SOURCE_PIXELS = 4_000_000;
@@ -208,11 +221,27 @@ export const StickerService = {
 		if (options.itemSlug) form.append("itemSlug", options.itemSlug);
 		if (options.description) form.append("description", options.description);
 		if (options.alt) form.append("alt", options.alt);
+		form.append("widthUnits", String(options.widthUnits));
 		for (const category of options.categorySlugs ?? []) {
 			form.append("categorySlugs", category);
 		}
 		return request<StickerItem>(`/admin/packs/${encodeURIComponent(packSlug)}/items`, {
 			method: "POST",
+			body: form,
+		});
+	},
+	updateItem: (slug: string, body: UpdateStickerItemRequest) =>
+		request<StickerItem>(`/admin/items/${encodeURIComponent(slug)}`, {
+			method: "PATCH",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify(body),
+		}),
+	replaceItemFile: async (slug: string, file: File, widthUnits: number) => {
+		const form = new FormData();
+		form.append("file", file);
+		form.append("widthUnits", String(widthUnits));
+		return request<StickerItem>(`/admin/items/${encodeURIComponent(slug)}/file`, {
+			method: "PUT",
 			body: form,
 		});
 	},

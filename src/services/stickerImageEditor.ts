@@ -26,6 +26,65 @@ const isGif = (file: File) => file.type === "image/gif" || /\.gif$/i.test(file.n
 const createCanvas = (width: number, height: number) => { const canvas = document.createElement("canvas"); canvas.width = width; canvas.height = height; return canvas; };
 const MAX_GIF_FRAMES = 240;
 const MAX_GIF_COMPOSITED_PIXELS = 24_000_000;
+const MAX_MP4_SIZE = 5 * 1024 * 1024;
+const MAX_MP4_DURATION_SECONDS = 6;
+const MP4_FRAME_RATE = 12;
+const MAX_VIDEO_SIDE = 480;
+const MAX_ENCODED_GIF_SIZE = 10 * 1024 * 1024;
+
+const isMp4 = (file: File) => file.type === "video/mp4" || /\.mp4$/i.test(file.name);
+
+function waitForMediaEvent(target: HTMLMediaElement, event: "loadeddata" | "loadedmetadata" | "seeked"): Promise<void> {
+	if (event === "loadedmetadata" && target.readyState >= HTMLMediaElement.HAVE_METADATA) return Promise.resolve();
+	if (event === "loadeddata" && target.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) return Promise.resolve();
+	return new Promise((resolve, reject) => {
+		const done = () => { cleanup(); resolve(); };
+		const failed = () => { cleanup(); reject(new Error("Не вдалося декодувати MP4 у цьому браузері.")); };
+		const cleanup = () => { target.removeEventListener(event, done); target.removeEventListener("error", failed); };
+		target.addEventListener(event, done, { once: true });
+		target.addEventListener("error", failed, { once: true });
+	});
+}
+
+async function convertSmallMp4ToGif(file: File): Promise<File> {
+	if (file.size > MAX_MP4_SIZE) throw new Error("MP4 має бути не більшим за 5 МБ.");
+	const url = URL.createObjectURL(file);
+	const video = document.createElement("video");
+	video.muted = true; video.playsInline = true; video.preload = "auto";
+	try {
+		video.src = url;
+		await waitForMediaEvent(video, "loadedmetadata");
+		if (!Number.isFinite(video.duration) || video.duration <= 0 || video.duration > MAX_MP4_DURATION_SECONDS) throw new Error("MP4 має тривати не більше 6 секунд.");
+		await waitForMediaEvent(video, "loadeddata");
+		const scale = Math.min(1, MAX_VIDEO_SIDE / Math.max(video.videoWidth, video.videoHeight));
+		const width = Math.max(1, Math.round(video.videoWidth * scale));
+		const height = Math.max(1, Math.round(video.videoHeight * scale));
+		const canvas = createCanvas(width, height);
+		const context = canvas.getContext("2d", { willReadFrequently: true });
+		if (!context) throw new Error("Canvas недоступний у цьому браузері.");
+		const frameCount = Math.max(1, Math.min(MAX_GIF_FRAMES, Math.ceil(video.duration * MP4_FRAME_RATE)));
+		const delay = 1000 / MP4_FRAME_RATE;
+		const encoder = GIFEncoder();
+		for (let index = 0; index < frameCount; index++) {
+			const time = Math.min(video.duration - 0.001, index / MP4_FRAME_RATE);
+			if (Math.abs(video.currentTime - time) > 0.001) { video.currentTime = time; await waitForMediaEvent(video, "seeked"); }
+			context.drawImage(video, 0, 0, width, height);
+			const pixels = context.getImageData(0, 0, width, height).data;
+			const palette = quantize(pixels, 256);
+			encoder.writeFrame(applyPalette(pixels, palette), width, height, { palette, delay, repeat: 0 });
+		}
+		encoder.finish();
+		const bytes = encoder.bytes();
+		if (bytes.byteLength > MAX_ENCODED_GIF_SIZE) throw new Error("Після конвертації GIF перевищує 10 МБ. Скоротіть або зменште MP4.");
+		return new File([bytes], file.name.replace(/\.mp4$/i, "") + ".gif", { type: "image/gif" });
+	} finally {
+		video.removeAttribute("src"); video.load(); URL.revokeObjectURL(url);
+	}
+}
+
+export async function prepareStickerInputFile(file: File): Promise<File> {
+	return isMp4(file) ? convertSmallMp4ToGif(file) : file;
+}
 
 export function cropForRatio(width: number, height: number, widthUnits: number, center?: { x: number; y: number }): CropRect {
 	const ratio = widthUnits;

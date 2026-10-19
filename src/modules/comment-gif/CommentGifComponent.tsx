@@ -14,6 +14,8 @@ const IMAGE = "[data-hikka-forge-sticker]";
 const stickerItems = new Map<string, StickerItem>();
 const stickerPackTitles = new Map<string, string>();
 let stickerCatalog: Promise<StickerItem[]> | null = null;
+let stickerPreviewTimer: number | null = null;
+let stickerPreviewOverlay: HTMLElement | null = null;
 
 const stickerWidthUnits = (item: StickerItem): number => {
 	const value = Number(item.widthUnits);
@@ -92,6 +94,94 @@ function toolbarForAnchor(anchor: HTMLElement): HTMLElement {
 		anchor;
 }
 
+function hideStickerPreview(): void {
+	if (stickerPreviewTimer !== null) {
+		window.clearTimeout(stickerPreviewTimer);
+		stickerPreviewTimer = null;
+	}
+	stickerPreviewOverlay?.remove();
+	stickerPreviewOverlay = null;
+}
+
+function showStickerPreview(wrapper: HTMLElement, item: StickerItem): void {
+	hideStickerPreview();
+	const overlay = document.createElement("div");
+	overlay.setAttribute("role", "dialog");
+	overlay.setAttribute("aria-label", item.title);
+	overlay.style.position = "fixed";
+	overlay.style.zIndex = "2147483647";
+	overlay.style.display = "flex";
+	overlay.style.flexDirection = "column";
+	overlay.style.alignItems = "center";
+	overlay.style.gap = "6px";
+	overlay.style.maxWidth = "min(340px, calc(100vw - 16px))";
+	overlay.style.padding = "8px";
+	overlay.style.border = "1px solid rgb(148 163 184 / 0.32)";
+	overlay.style.borderRadius = "12px";
+	overlay.style.background = "rgb(15 23 42 / 0.96)";
+	overlay.style.boxShadow = "0 12px 32px rgb(0 0 0 / 0.38)";
+	overlay.style.pointerEvents = "none";
+	overlay.style.opacity = "0";
+	overlay.style.transform = "translateY(4px)";
+	overlay.style.transition = "opacity 140ms ease, transform 140ms ease";
+
+	const image = document.createElement("img");
+	image.src = item.url;
+	image.alt = item.alt ?? item.title;
+	image.style.display = "block";
+	image.style.width = "auto";
+	image.style.height = "auto";
+	image.style.maxWidth = "320px";
+	image.style.maxHeight = "280px";
+	image.style.objectFit = "contain";
+	image.style.borderRadius = "7px";
+	overlay.append(image);
+	const label = document.createElement("span");
+	label.textContent = item.title;
+	label.style.maxWidth = "100%";
+	label.style.overflow = "hidden";
+	label.style.textOverflow = "ellipsis";
+	label.style.whiteSpace = "nowrap";
+	label.style.color = "rgb(226 232 240)";
+	label.style.font = "500 12px/16px system-ui, sans-serif";
+	overlay.append(label);
+	document.body.append(overlay);
+	stickerPreviewOverlay = overlay;
+
+	const positionOverlay = () => {
+		if (stickerPreviewOverlay !== overlay) return;
+		const wrapperRect = wrapper.getBoundingClientRect();
+		const overlayRect = overlay.getBoundingClientRect();
+		const left = Math.max(8, Math.min(
+			wrapperRect.left + wrapperRect.width / 2 - overlayRect.width / 2,
+			window.innerWidth - overlayRect.width - 8,
+		));
+		const above = wrapperRect.top - overlayRect.height - 10;
+		const below = wrapperRect.bottom + 10;
+		overlay.style.left = `${left}px`;
+		overlay.style.top = `${above >= 8 ? above : Math.min(below, window.innerHeight - overlayRect.height - 8)}px`;
+	};
+	image.addEventListener("load", positionOverlay);
+	positionOverlay();
+	requestAnimationFrame(() => {
+		if (stickerPreviewOverlay !== overlay) return;
+		overlay.style.opacity = "1";
+		overlay.style.transform = "translateY(0)";
+	});
+}
+
+function attachStickerPreview(wrapper: HTMLElement, item: StickerItem): void {
+	const start = () => {
+		hideStickerPreview();
+		stickerPreviewTimer = window.setTimeout(() => {
+			stickerPreviewTimer = null;
+			showStickerPreview(wrapper, item);
+		}, 450);
+	};
+	wrapper.addEventListener("mouseenter", start);
+	wrapper.addEventListener("mouseleave", hideStickerPreview);
+}
+
 function renderTokens(root: HTMLElement, items: Map<string, StickerItem>) {
 	const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
 	const nodes: Text[] = [];
@@ -133,6 +223,7 @@ function renderTokens(root: HTMLElement, items: Map<string, StickerItem>) {
 				image.style.objectFit = "contain";
 					image.style.objectPosition = "left center";
 				wrapper.append(image);
+				attachStickerPreview(wrapper, item);
 				fragment.append(wrapper);
 			}
 			cursor = match.index + match[0].length;

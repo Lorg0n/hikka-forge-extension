@@ -9,7 +9,7 @@ const weeklyTopAnimeModule: ForgeModuleDef = {
     enabledByDefault: true,
     category: 'content',
     elementSelector: {
-        selector: '#ongoings section > div.flex.items-center.justify-between.gap-2 > div.flex.flex-1 > div.flex.items-center.gap-4',
+        selector: '#ongoings .flex.min-h-8.items-center.gap-3',
         position: 'append',
         visibleOnly: true,
         hostWidth: 'auto',

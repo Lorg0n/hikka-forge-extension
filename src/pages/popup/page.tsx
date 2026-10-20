@@ -18,6 +18,13 @@ import type {
 } from "@/types/module";
 import { GITHUB_REPO, getHikkaBaseForUrl, HIKKA_BASE, POLICY_PAGE } from "@/constants";
 
+const REQUIRED_ORIGINS = [
+	"https://hikka.io/*",
+	"https://dev.hikka.io/*",
+	"https://api.hikka.io/*",
+	"https://hikka-forge.lorgon.dev/*",
+] as const;
+
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }
@@ -73,7 +80,7 @@ function App() {
 
 	const checkPermissions = useCallback(async () => {
 		const has = await browser.permissions.contains({
-			origins: ["https://hikka.io/*", "https://dev.hikka.io/*"],
+			origins: [...REQUIRED_ORIGINS],
 		});
 		setHasPermission(has);
 		if (has) {
@@ -110,7 +117,7 @@ function App() {
 
 	const handleRequestPermission = useCallback(async () => {
 		const granted = await browser.permissions.request({
-			origins: ["https://hikka.io/*", "https://dev.hikka.io/*"],
+			origins: [...REQUIRED_ORIGINS],
 		});
 		if (granted) {
 			setHasPermission(true);
@@ -341,7 +348,7 @@ function App() {
 			<div className="flex w-full flex-col gap-4 bg-background p-4 text-foreground">
 				<h1 className="font-bold text-xl">Потрібен дозвіл</h1>
 				<p className="text-sm text-muted-foreground">
-					Hikka Forge потрібен дозвіл для роботи на сайті hikka.io.
+					Hikka Forge потрібен доступ до Hikka, dev Hikka та Hikka Forge для модулів і авторизації.
 				</p>
 				<Button variant={"default"} onClick={handleRequestPermission}>
 					Надати дозвіл

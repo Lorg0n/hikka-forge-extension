@@ -182,6 +182,15 @@ function attachStickerPreview(wrapper: HTMLElement, item: StickerItem): void {
 	wrapper.addEventListener("mouseleave", hideStickerPreview);
 }
 
+function hasKnownStickerToken(value: string, items: Map<string, StickerItem>): boolean {
+	TOKEN.lastIndex = 0;
+	let match: RegExpExecArray | null;
+	while ((match = TOKEN.exec(value))) {
+		if (items.has(match[1])) return true;
+	}
+	return false;
+}
+
 function renderTokens(root: HTMLElement, items: Map<string, StickerItem>) {
 	const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
 	const nodes: Text[] = [];
@@ -189,8 +198,7 @@ function renderTokens(root: HTMLElement, items: Map<string, StickerItem>) {
 	while ((node = walker.nextNode())) {
 		const text = node as Text;
 		if (text.parentElement?.closest(`${IMAGE}, [contenteditable="true"]`)) continue;
-		TOKEN.lastIndex = 0;
-		if (TOKEN.test(text.data)) nodes.push(text);
+		if (hasKnownStickerToken(text.data, items)) nodes.push(text);
 	}
 	for (const text of nodes) {
 		TOKEN.lastIndex = 0;

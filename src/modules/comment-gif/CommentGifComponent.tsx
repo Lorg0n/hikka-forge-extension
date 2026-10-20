@@ -16,6 +16,8 @@ const stickerPackTitles = new Map<string, string>();
 let stickerCatalog: Promise<StickerItem[]> | null = null;
 let stickerPreviewTimer: number | null = null;
 let stickerPreviewOverlay: HTMLElement | null = null;
+const loadedStickerUrls = new Set<string>();
+let pickerCatalog: { categories: StickerCategory[]; items: StickerItem[] } | null = null;
 
 const stickerWidthUnits = (item: StickerItem): number => {
 	const value = Number(item.widthUnits);
@@ -26,9 +28,9 @@ type PickerAnchor = {
 	element: HTMLElement;
 };
 
-function loadStickerCatalog(): Promise<StickerItem[]> {
-	if (!stickerCatalog) {
-		stickerCatalog = StickerService.listAllPacks()
+function loadStickerCatalog(refresh = false): Promise<StickerItem[]> {
+	if (!stickerCatalog || refresh) {
+		const request = StickerService.listAllPacks()
 			.then(async (packs) => {
 				packs.forEach((pack) => stickerPackTitles.set(pack.slug, pack.title));
 				return StickerService.listAllItems(packs);
@@ -38,9 +40,10 @@ function loadStickerCatalog(): Promise<StickerItem[]> {
 				return items;
 			})
 			.catch((error) => {
-				stickerCatalog = null;
+				if (stickerCatalog === request) stickerCatalog = null;
 				throw error;
 			});
+		stickerCatalog = request;
 	}
 	return stickerCatalog;
 }
@@ -286,9 +289,10 @@ function pickerPosition(anchor: HTMLElement, panelHeight: number) {
 }
 
 function StickerPreview({ item }: { item: StickerItem }) {
-	const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
+	const [status, setStatus] = useState<"loading" | "loaded" | "error">(() =>
+		loadedStickerUrls.has(item.url) ? "loaded" : "loading");
 	const [attempt, setAttempt] = useState(0);
-	useEffect(() => { setStatus("loading"); setAttempt(0); }, [item.url]);
+	useEffect(() => { setStatus(loadedStickerUrls.has(item.url) ? "loaded" : "loading"); setAttempt(0); }, [item.url]);
 	const fill: React.CSSProperties = {
 		position: "absolute",
 		top: 0,
@@ -301,7 +305,7 @@ function StickerPreview({ item }: { item: StickerItem }) {
 	return <span className={`overflow-hidden rounded-md ${status === "loaded" ? "bg-transparent" : "bg-muted/40"}`} style={{ position: "absolute", display: "block", top: 4, right: 4, bottom: 4, left: 4 }}>
 		{status === "loading" && <span className="flex items-center justify-center" style={fill}><span className="animate-spin rounded-full border-2 border-muted-foreground/25 border-t-muted-foreground" style={{ display: "block", width: 16, height: 16 }} /></span>}
 		{status === "error" && <span role="button" tabIndex={0} className="flex items-center justify-center text-xs text-muted-foreground hover:text-foreground" style={fill} title="Повторити завантаження" onClick={(event) => { event.stopPropagation(); setStatus("loading"); setAttempt((value) => value + 1); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.stopPropagation(); setStatus("loading"); setAttempt((value) => value + 1); } }}>↻</span>}
-		<img key={attempt} src={item.url} alt={item.alt ?? item.title} onLoad={() => setStatus("loaded")} onError={() => setStatus("error")} ref={(image) => { if (image?.complete && image.naturalWidth > 0) setStatus("loaded"); }} className="m-auto object-contain transition-opacity" style={{ ...fill, display: "block", opacity: status === "loaded" ? 1 : 0 }} />
+		<img key={attempt} src={item.url} alt={item.alt ?? item.title} onLoad={() => { loadedStickerUrls.add(item.url); setStatus("loaded"); }} onError={() => setStatus("error")} ref={(image) => { if (image?.complete && image.naturalWidth > 0) { loadedStickerUrls.add(item.url); setStatus("loaded"); } }} className="m-auto object-contain transition-opacity" style={{ ...fill, display: "block", opacity: status === "loaded" ? 1 : 0 }} />
 	</span>;
 }
 
@@ -316,11 +320,11 @@ async function findEditor(toolbar: HTMLElement): Promise<string | null> {
 }
 
 function Picker({ anchor, onClose }: { anchor: PickerAnchor; onClose: () => void }) {
-	const [items, setItems] = useState<StickerItem[]>([]);
-	const [categories, setCategories] = useState<StickerCategory[]>([]);
+	const [items, setItems] = useState<StickerItem[]>(() => pickerCatalog?.items ?? []);
+	const [categories, setCategories] = useState<StickerCategory[]>(() => pickerCatalog?.categories ?? []);
 	const [query, setQuery] = useState("");
 	const [category, setCategory] = useState<string | null>(null);
-	const [loading, setLoading] = useState(true);
+	const [loading, setLoading] = useState(() => pickerCatalog === null);
 	const [error, setError] = useState<string | null>(null);
 	const [insertionError, setInsertionError] = useState<string | null>(null);
 	const [reloadKey, setReloadKey] = useState(0);
@@ -330,10 +334,17 @@ function Picker({ anchor, onClose }: { anchor: PickerAnchor; onClose: () => void
 
 	useEffect(() => {
 		let active = true;
-		setLoading(true);
+		const hasCachedCatalog = pickerCatalog !== null;
+		if (hasCachedCatalog && reloadKey === 0) {
+			setCategories(pickerCatalog.categories);
+			setItems(pickerCatalog.items);
+			setLoading(false);
+		} else {
+			setLoading(true);
+		}
 		setError(null);
-		void Promise.all([StickerService.listCategories(), loadStickerCatalog()])
-			.then(([nextCategories, nextItems]) => { if (active) { setCategories(nextCategories); setItems(nextItems); nextItems.forEach((item) => stickerItems.set(item.slug, item)); } })
+		void Promise.all([StickerService.listCategories(), loadStickerCatalog(hasCachedCatalog)])
+			.then(([nextCategories, nextItems]) => { pickerCatalog = { categories: nextCategories, items: nextItems }; if (active) { setCategories(nextCategories); setItems(nextItems); nextItems.forEach((item) => stickerItems.set(item.slug, item)); } })
 			.catch((value) => active && setError(value instanceof Error ? value.message : String(value)))
 			.finally(() => active && setLoading(false));
 		void findEditor(toolbarForAnchor(anchor.element)).then(setEditorId);
@@ -423,7 +434,7 @@ function Picker({ anchor, onClose }: { anchor: PickerAnchor; onClose: () => void
 		</div>
 		{error && <div className="mx-2 flex items-center justify-between gap-3 rounded-md bg-destructive/10 p-3 text-sm text-destructive"><span>Не вдалося завантажити стікери.</span><button type="button" className="rounded-md border border-destructive/30 px-2 py-1 text-xs hover:bg-destructive/10" onClick={() => setReloadKey((value) => value + 1)}>Повторити</button></div>}
 		{insertionError && <p className="mx-2 pb-2 text-xs text-destructive">{insertionError}</p>}
-			{loading && <div className="mx-2 max-h-64 overflow-hidden" style={{ maxHeight: "16rem" }}>{[3, 2].map((tileCount, groupIndex, groups) => <section key={groupIndex} className="pb-3" style={groupIndex === groups.length - 1 ? { paddingBottom: "1rem" } : undefined}><div className="mb-1.5 flex items-center gap-2 py-1"><span className="animate-pulse rounded bg-muted" style={{ display: "block", width: groupIndex === 0 ? "5.5rem" : "7rem", height: "0.75rem" }} /><span className="h-px flex-1 bg-border" /><span className="animate-pulse rounded bg-muted" style={{ display: "block", width: "0.75rem", height: "0.65rem" }} /></div><div className="flex flex-wrap gap-2">{Array.from({ length: tileCount }, (_, index) => <span key={index} className="shrink-0 animate-pulse rounded-md bg-muted" style={{ display: "block", width: "3.25rem", height: "3.25rem" }} />)}</div></section>)}</div>}
+		{loading && <div className="edge-scrollbar max-h-64 overflow-y-auto px-3 pr-3" style={{ maxHeight: "16rem" }}>{[4, 3].map((tileCount, groupIndex, groups) => <section key={groupIndex} className="pb-3" style={groupIndex === groups.length - 1 ? { paddingBottom: "1rem" } : undefined}><div className="sticky top-0 z-10 mb-1.5 flex items-center gap-2 bg-popover py-1"><span className="animate-pulse rounded bg-muted" style={{ display: "block", width: groupIndex === 0 ? "5.5rem" : "7rem", height: "0.75rem" }} /><span className="h-px flex-1 bg-border" /><span className="animate-pulse rounded bg-muted" style={{ display: "block", width: "0.75rem", height: "0.65rem" }} /></div><div className="flex flex-wrap content-start items-start gap-2">{Array.from({ length: tileCount }, (_, index) => <span key={index} className="shrink-0 animate-pulse rounded-md bg-muted" style={{ display: "block", width: "3.25rem", height: "3.25rem" }} />)}</div></section>)}</div>}
 			{!loading && !error && <div className="edge-scrollbar max-h-64 overflow-y-auto px-3 pr-3" style={{ maxHeight: "16rem" }}>{groupedItems.map((pack, index) => <section key={pack.slug} className="pb-3" style={index === groupedItems.length - 1 ? { paddingBottom: "1rem" } : undefined}><div className="sticky top-0 z-10 mb-1.5 flex items-center gap-2 bg-popover py-1"><span className="truncate text-xs font-semibold text-foreground">{pack.title}</span><span className="h-px flex-1 bg-border" /><span className="text-[11px] tabular-nums text-muted-foreground">{pack.items.length}</span></div><div className="flex flex-wrap content-start items-start gap-2">{pack.items.map((item) => { const widthUnits = stickerWidthUnits(item); return <button type="button" key={item.slug} title={item.title} style={{ width: `min(${widthUnits * 3.25}rem, 100%)`, height: "3.25rem", contain: "layout size paint" }} onClick={(event) => { event.stopPropagation(); void selectSticker(item).catch(console.warn); }} className="relative block min-h-0 min-w-0 shrink-0 overflow-hidden rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"><StickerPreview item={item} /></button>; })}</div></section>)}</div>}
 		{!loading && !error && visible.length === 0 && <p className="mx-2 p-4 text-center text-sm text-muted-foreground">Нічого не знайдено</p>}
 	</div>, pickerPortalTarget(anchor.element));

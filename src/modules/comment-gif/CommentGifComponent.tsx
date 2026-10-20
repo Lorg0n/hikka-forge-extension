@@ -94,6 +94,23 @@ function toolbarForAnchor(anchor: HTMLElement): HTMLElement {
 		anchor;
 }
 
+function sheetCommentReference(toolbar: HTMLElement): string | null {
+	const sheet = toolbar.closest<HTMLElement>('[data-slot="page-sheet-content"]');
+	if (!sheet?.id) return null;
+
+	const trigger = document.querySelector<HTMLElement>(
+		`[aria-controls="${CSS.escape(sheet.id)}"]`,
+	);
+	return trigger?.closest<HTMLElement>(".comment-thread[id]")?.id ?? null;
+}
+
+function pickerPortalTarget(anchor: HTMLElement): HTMLElement {
+	// A page sheet dismisses itself for interactions outside its DOM subtree. Keep
+	// the picker in that subtree on mobile; otherwise selecting a sticker closes
+	// the sheet and unmounts the editor before the insertion request can finish.
+	return anchor.closest<HTMLElement>('[data-slot="page-sheet-content"]') ?? document.body;
+}
+
 function hideStickerPreview(): void {
 	if (stickerPreviewTimer !== null) {
 		window.clearTimeout(stickerPreviewTimer);
@@ -243,12 +260,16 @@ function renderTokens(root: HTMLElement, items: Map<string, StickerItem>) {
 
 function editorCandidates(toolbar: HTMLElement): string[] {
 	const commentThread = toolbar.closest<HTMLElement>(".comment-thread[id]")?.id;
+	const sheetReference = sheetCommentReference(toolbar);
 	const reference = toolbar.closest("[data-reference], [data-comment-reference]")?.getAttribute("data-reference") ??
 		toolbar.closest("[data-comment-reference]")?.getAttribute("data-comment-reference");
 	const threadCandidates = commentThread ? [editorIds.reply(commentThread), editorIds.edit(commentThread)] : [];
+	const sheetCandidates = sheetReference ? [editorIds.reply(sheetReference), editorIds.edit(sheetReference)] : [];
 	const referenceCandidates = reference ? [editorIds.reply(reference), editorIds.edit(reference)] : [];
 	const root = contentEditorId();
-	const result = root ? [...threadCandidates, ...referenceCandidates, root] : [...threadCandidates, ...referenceCandidates];
+	const result = root
+		? [...sheetCandidates, ...threadCandidates, ...referenceCandidates, root]
+		: [...sheetCandidates, ...threadCandidates, ...referenceCandidates];
 	return [...new Set(result)];
 }
 
@@ -405,7 +426,7 @@ function Picker({ anchor, onClose }: { anchor: PickerAnchor; onClose: () => void
 			{loading && <div className="mx-2 max-h-64 overflow-hidden" style={{ maxHeight: "16rem" }}>{[3, 2].map((tileCount, groupIndex, groups) => <section key={groupIndex} className="pb-3" style={groupIndex === groups.length - 1 ? { paddingBottom: "1rem" } : undefined}><div className="mb-1.5 flex items-center gap-2 py-1"><span className="animate-pulse rounded bg-muted" style={{ display: "block", width: groupIndex === 0 ? "5.5rem" : "7rem", height: "0.75rem" }} /><span className="h-px flex-1 bg-border" /><span className="animate-pulse rounded bg-muted" style={{ display: "block", width: "0.75rem", height: "0.65rem" }} /></div><div className="flex flex-wrap gap-2">{Array.from({ length: tileCount }, (_, index) => <span key={index} className="shrink-0 animate-pulse rounded-md bg-muted" style={{ display: "block", width: "3.25rem", height: "3.25rem" }} />)}</div></section>)}</div>}
 			{!loading && !error && <div className="edge-scrollbar max-h-64 overflow-y-auto px-3 pr-3" style={{ maxHeight: "16rem" }}>{groupedItems.map((pack, index) => <section key={pack.slug} className="pb-3" style={index === groupedItems.length - 1 ? { paddingBottom: "1rem" } : undefined}><div className="sticky top-0 z-10 mb-1.5 flex items-center gap-2 bg-popover py-1"><span className="truncate text-xs font-semibold text-foreground">{pack.title}</span><span className="h-px flex-1 bg-border" /><span className="text-[11px] tabular-nums text-muted-foreground">{pack.items.length}</span></div><div className="flex flex-wrap content-start items-start gap-2">{pack.items.map((item) => { const widthUnits = stickerWidthUnits(item); return <button type="button" key={item.slug} title={item.title} style={{ width: `min(${widthUnits * 3.25}rem, 100%)`, height: "3.25rem", contain: "layout size paint" }} onClick={(event) => { event.stopPropagation(); void selectSticker(item).catch(console.warn); }} className="relative block min-h-0 min-w-0 shrink-0 overflow-hidden rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"><StickerPreview item={item} /></button>; })}</div></section>)}</div>}
 		{!loading && !error && visible.length === 0 && <p className="mx-2 p-4 text-center text-sm text-muted-foreground">Нічого не знайдено</p>}
-	</div>, document.body);
+	</div>, pickerPortalTarget(anchor.element));
 }
 
 export default function CommentGifComponent() {

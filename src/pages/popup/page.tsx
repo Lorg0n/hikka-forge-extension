@@ -25,6 +25,8 @@ const REQUIRED_ORIGINS = [
 	"https://hikka-forge.lorgon.dev/*",
 ] as const;
 
+const PERMISSION_REQUEST_PENDING_KEY = "permission_request_pending";
+
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }
@@ -40,6 +42,8 @@ function App() {
 		new Set()
 	);
 	const [hasPermission, setHasPermission] = useState(true);
+	const [permissionDenied, setPermissionDenied] = useState(false);
+	const [isRequestingPermission, setIsRequestingPermission] = useState(false);
 	const [consoleLoggingEnabled, setConsoleLoggingEnabledState] = useState(false);
 
 	const [version, setVersion] = useState('');
@@ -79,13 +83,19 @@ function App() {
 	}, []);
 
 	const checkPermissions = useCallback(async () => {
-		const has = await browser.permissions.contains({
-			origins: [...REQUIRED_ORIGINS],
-		});
+		const [has, stored] = await Promise.all([
+			browser.permissions.contains({ origins: [...REQUIRED_ORIGINS] }),
+			browser.storage.local.get(PERMISSION_REQUEST_PENDING_KEY),
+		]);
 		setHasPermission(has);
 		if (has) {
+			setPermissionDenied(false);
+			await browser.storage.local.remove(PERMISSION_REQUEST_PENDING_KEY);
 			loadModules();
 		} else {
+			// A popup can be closed while the browser displays its native permission
+			// prompt. If it is opened again without the permission, that request was denied.
+			setPermissionDenied(Boolean(stored[PERMISSION_REQUEST_PENDING_KEY]));
 			setIsLoading(false);
 		}
 	}, [loadModules]);
@@ -116,14 +126,41 @@ function App() {
 	}, []);
 
 	const handleRequestPermission = useCallback(async () => {
-		const granted = await browser.permissions.request({
-			origins: [...REQUIRED_ORIGINS],
+		setIsRequestingPermission(true);
+		setPermissionDenied(false);
+		// Do not await before request(): browsers require this call to remain in the
+		// button's user-gesture handler. The marker also survives if the popup closes
+		// while the native browser dialog is displayed.
+		const markPermissionRequest = browser.storage.local.set({
+			[PERMISSION_REQUEST_PENDING_KEY]: true,
+		}).catch((err: unknown) => {
+			logger.error("Popup: Could not persist permission request state -", err);
 		});
-		if (granted) {
-			setHasPermission(true);
-			window.location.reload();
+
+		try {
+			const permissionRequest = browser.permissions.request({
+				origins: [...REQUIRED_ORIGINS],
+			});
+			// Leave only the browser-owned permission dialog visible. The pending marker
+			// lets the next popup render the denied state if this popup is destroyed.
+			window.close();
+			const granted = await permissionRequest;
+			if (granted) {
+				await markPermissionRequest;
+				await browser.storage.local.remove(PERMISSION_REQUEST_PENDING_KEY);
+				setHasPermission(true);
+				loadModules();
+				return;
+			}
+
+			setPermissionDenied(true);
+		} catch (err: unknown) {
+			logger.error("Popup: Permission request failed -", err);
+			setPermissionDenied(true);
+		} finally {
+			setIsRequestingPermission(false);
 		}
-	}, []);
+	}, [loadModules]);
 
 	const handleToggleChange = useCallback(
 		async (moduleId: string, enabled: boolean) => {
@@ -343,14 +380,24 @@ function App() {
 		}
 	}, []);
 
-	if (!hasPermission && !isLoading) {
+	if (!hasPermission && !isLoading && !permissionDenied) {
 		return (
-			<div className="flex w-full flex-col gap-4 bg-background p-4 text-foreground">
-				<h1 className="font-bold text-xl">Потрібен дозвіл</h1>
-				<p className="text-sm text-muted-foreground">
-					Hikka Forge потрібен доступ до Hikka, dev Hikka та Hikka Forge для модулів і авторизації.
-				</p>
-				<Button variant={"default"} onClick={handleRequestPermission}>
+			<div className="flex min-w-0 w-full flex-col gap-4 overflow-hidden bg-background p-3 text-foreground min-[400px]:p-4">
+				<div className="flex min-w-0 items-center gap-3">
+					<img src={logo} alt="Hikka Forge" className="size-8 shrink-0" />
+					<h1 className="truncate font-bold text-xl">Потрібен дозвіл</h1>
+				</div>
+				{isRequestingPermission ? (
+					<div className="flex items-center gap-3 rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+						<div className="size-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent" />
+						<span>Очікуємо відповідь браузера…</span>
+					</div>
+				) : (
+					<p className="text-sm leading-5 text-muted-foreground">
+						Hikka Forge потрібен доступ до hikka.io, dev.hikka.io та hikka-forge.lorgon.dev для модулів і авторизації.
+					</p>
+				)}
+				<Button className="w-full" variant="default" disabled={isRequestingPermission} onClick={handleRequestPermission}>
 					Надати дозвіл
 				</Button>
 			</div>
@@ -416,6 +463,20 @@ function App() {
 					<UserMenu />
 				</div>
 			</div>
+
+			{permissionDenied && (
+				<div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+					<div className="min-w-0 flex-1">
+						<p className="font-medium text-sm text-foreground">Розширення працює в обмеженому режимі</p>
+						<p className="mt-1 text-sm leading-5 text-muted-foreground">
+							Доступ до hikka.io, dev.hikka.io та hikka-forge.lorgon.dev не надано. Без нього модулі, авторизація та пов’язані функції можуть не працювати.
+						</p>
+					</div>
+					<Button className="w-full shrink-0 min-[400px]:w-auto" variant="default" onClick={handleRequestPermission}>
+						Надати дозвіл
+					</Button>
+				</div>
+			)}
 
 			{error && (
 				<div className="break-words rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">

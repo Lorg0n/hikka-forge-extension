@@ -358,14 +358,14 @@ function App() {
 	}
 
 	return (
-		<div className="relative flex w-full flex-col gap-6 overflow-hidden bg-background p-4 text-foreground">
-			<div className="flex justify-between items-center flex-grow-0 flex-shrink-0 relative gap-4">
-				<div className="flex items-center gap-3">
+		<div className="relative flex min-w-0 w-full flex-col gap-6 overflow-hidden bg-background p-3 text-foreground min-[400px]:p-4">
+			<div className="relative flex flex-wrap items-center justify-between gap-3">
+				<div className="flex min-w-0 items-center gap-3">
 					<img src={logo} alt="Logo" className="size-7" />
-					<h1 className="font-bold text-xl">Hikka Forge</h1>
+					<h1 className="truncate font-bold text-xl">Hikka Forge</h1>
 				</div>
 
-				<div className="flex items-center gap-2">
+				<div className="flex shrink-0 items-center gap-1.5">
 					<Button
 						variant={consoleLoggingEnabled ? "default" : "outline"}
 						size="icon-sm"
@@ -418,7 +418,7 @@ function App() {
 			</div>
 
 			{error && (
-				<div className="p-3 bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-md">
+				<div className="break-words rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
 					Помилка: {error}
 				</div>
 			)}
@@ -439,11 +439,11 @@ function App() {
 				/>
 			</div>
 
-			<footer className="mt-2 pt-4 px-2 border-t border-border/50 flex justify-between items-center text-xs text-muted-foreground">
+			<footer className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border/50 px-2 pt-4 text-xs text-muted-foreground">
 				<a href={`${GITHUB_REPO}/releases`} target="_blank" rel="noopener noreferrer" title="GitHub" className="hover:text-foreground transition-colors">
 					v{version}
 				</a>
-				<div className="flex items-center gap-4">
+				<div className="flex flex-wrap items-center gap-x-4 gap-y-1">
 					<a href={POLICY_PAGE} target="_blank" rel="noopener noreferrer" title="GitHub" className="hover:text-foreground transition-colors">
 						Policy
 					</a>

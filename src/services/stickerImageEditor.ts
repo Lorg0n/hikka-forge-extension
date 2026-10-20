@@ -31,6 +31,7 @@ const MAX_MP4_DURATION_SECONDS = 6;
 const MP4_FRAME_RATE = 12;
 const MAX_VIDEO_SIDE = 480;
 const MAX_ENCODED_GIF_SIZE = 10 * 1024 * 1024;
+const MAX_GIF_PALETTE_PIXELS = 4_000_000;
 
 const isMp4 = (file: File) => file.type === "video/mp4" || /\.mp4$/i.test(file.name);
 
@@ -64,14 +65,18 @@ async function convertSmallMp4ToGif(file: File): Promise<File> {
 		if (!context) throw new Error("Canvas недоступний у цьому браузері.");
 		const frameCount = Math.max(1, Math.min(MAX_GIF_FRAMES, Math.ceil(video.duration * MP4_FRAME_RATE)));
 		const delay = 1000 / MP4_FRAME_RATE;
-		const encoder = GIFEncoder();
+		const frames: ImageData[] = [];
 		for (let index = 0; index < frameCount; index++) {
 			const time = Math.min(video.duration - 0.001, index / MP4_FRAME_RATE);
 			if (Math.abs(video.currentTime - time) > 0.001) { video.currentTime = time; await waitForMediaEvent(video, "seeked"); }
 			context.drawImage(video, 0, 0, width, height);
-			const pixels = context.getImageData(0, 0, width, height).data;
-			const palette = quantize(pixels, 256);
-			encoder.writeFrame(applyPalette(pixels, palette), width, height, { palette, delay, repeat: 0 });
+			frames.push(context.getImageData(0, 0, width, height));
+		}
+		const encoder = GIFEncoder();
+		const palette = paletteForFrames(frames);
+		for (let index = 0; index < frames.length; index++) {
+			const indexed = applyPalette(frames[index].data, palette, "rgba4444");
+			encoder.writeFrame(indexed, width, height, { ...(index === 0 ? { palette, repeat: 0 } : {}), delay });
 		}
 		encoder.finish();
 		const bytes = encoder.bytes();
@@ -206,6 +211,25 @@ function renderOutput(source: StickerSource, edits: StickerImageEdits, width: nu
 
 function blobFromCanvas(canvas: HTMLCanvasElement): Promise<Blob> { return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Не вдалося підготувати зображення.")), "image/png")); }
 
+function paletteForFrames(frames: ImageData[]): ReturnType<typeof quantize> {
+	const totalPixels = frames.reduce((sum, frame) => sum + frame.width * frame.height, 0);
+	const stride = Math.max(1, Math.ceil(totalPixels / MAX_GIF_PALETTE_PIXELS));
+	const samples = new Uint8ClampedArray(Math.ceil(totalPixels / stride) * 4);
+	let destination = 0;
+	for (const frame of frames) {
+		const pixels = frame.data;
+		for (let offset = 0; offset < pixels.length; offset += 4 * stride) {
+			samples[destination++] = pixels[offset]; samples[destination++] = pixels[offset + 1]; samples[destination++] = pixels[offset + 2]; samples[destination++] = pixels[offset + 3];
+		}
+	}
+	return quantize(samples.subarray(0, destination), 256, { format: "rgba4444", oneBitAlpha: true });
+}
+
+function gifPalette(source: StickerSource, edits: StickerImageEdits, width: number, height: number): ReturnType<typeof quantize> {
+	const frames = source.frames.map((_, index) => renderOutput(source, edits, width, height, index));
+	return paletteForFrames(frames);
+}
+
 export async function renderStickerImage(file: File, source: StickerSource, edits: StickerImageEdits, widthUnits: number): Promise<File> {
 	const size = outputDimensions(widthUnits, source.animated);
 	if (!source.animated) {
@@ -213,12 +237,12 @@ export async function renderStickerImage(file: File, source: StickerSource, edit
 		return new File([await blobFromCanvas(canvas)], file.name.replace(/\.[^.]+$/, "") + ".png", { type: "image/png" });
 	}
 	const encoder = GIFEncoder();
+	const palette = gifPalette(source, edits, size.width, size.height);
+	const transparentIndex = palette.findIndex((color) => color[3] === 0);
 	for (let index = 0; index < source.frames.length; index++) {
 		const pixels = renderOutput(source, edits, size.width, size.height, index).data;
-		const palette = quantize(pixels, 256, { format: "rgba4444", oneBitAlpha: true });
 		const indexed = applyPalette(pixels, palette, "rgba4444");
-		const transparentIndex = palette.findIndex((color) => color[3] === 0);
-		encoder.writeFrame(indexed, size.width, size.height, { palette, delay: source.delays[index], repeat: 0, transparent: transparentIndex >= 0, transparentIndex: Math.max(0, transparentIndex), dispose: 2 });
+		encoder.writeFrame(indexed, size.width, size.height, { ...(index === 0 ? { palette, repeat: 0 } : {}), delay: source.delays[index], transparent: transparentIndex >= 0, transparentIndex: Math.max(0, transparentIndex), dispose: 2 });
 	}
 	encoder.finish();
 	return new File([encoder.bytes()], file.name.replace(/\.[^.]+$/, "") + ".gif", { type: "image/gif" });

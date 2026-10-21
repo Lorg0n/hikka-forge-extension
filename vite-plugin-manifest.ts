@@ -50,6 +50,18 @@ export function manifestAndAssetPlugin(options: ManifestPluginOptions): Plugin {
       const srcAssets = path.resolve(rootDir, "public/assets");
       const destAssets = path.resolve(finalOutDir, "assets");
 
+      const contentLoader = path.resolve(rootDir, "src/utils/content-loader.js");
+      const destContentLoader = path.resolve(finalOutDir, "src/content_loader.js");
+
+      try {
+        fs.mkdirSync(path.dirname(destContentLoader), { recursive: true });
+        fs.copyFileSync(contentLoader, destContentLoader);
+        console.log(`📄 Copied classic content loader -> ${path.relative(rootDir, destContentLoader)}`);
+      } catch (error) {
+        console.error(`❌ Error copying content loader from ${contentLoader}:`, error);
+        process.exit(1);
+      }
+
       if (fs.existsSync(srcAssets)) {
         try {
           fs.mkdirSync(destAssets, { recursive: true });

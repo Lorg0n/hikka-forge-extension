@@ -2,17 +2,18 @@ import path from "path"
 import react from "@vitejs/plugin-react"
 import tailwindcss from "@tailwindcss/vite"
 import { defineConfig } from "vite"
-import { manifestAndAssetPlugin } from './vite-plugin-manifest'
+import { manifestAndAssetPlugin } from './vite-plugin-manifest.js'
 
 const browser = (process.env.BROWSER || "chrome") as 'chrome' | 'firefox';
-const outDir = path.resolve(__dirname, `dist/${browser}`)
+const projectDir = process.cwd()
+const outDir = path.resolve(projectDir, `dist/${browser}`)
 
 export default defineConfig({
   base: './',
   plugins: [react(), tailwindcss(), manifestAndAssetPlugin({ browser })],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      "@": path.resolve(projectDir, "./src"),
     },
   },
   publicDir: false,
@@ -20,11 +21,10 @@ export default defineConfig({
     outDir,
     rollupOptions: {
       input: {
-        popup: path.resolve(__dirname, "src/pages/popup/popup.html"),
-        stickers_admin: path.resolve(__dirname, "src/pages/stickers-admin/stickers-admin.html"),
-        background: path.resolve(__dirname, "src/background.ts"),
-        content_loader: path.resolve(__dirname, "src/utils/content-loader.js"), 
-        content: path.resolve(__dirname, "src/content.tsx"), 
+        popup: path.resolve(projectDir, "src/pages/popup/popup.html"),
+        stickers_admin: path.resolve(projectDir, "src/pages/stickers-admin/stickers-admin.html"),
+        background: path.resolve(projectDir, "src/background.ts"),
+        content: path.resolve(projectDir, "src/content.tsx"),
       },
       output: {
         entryFileNames: `src/[name].js`,

@@ -2,7 +2,7 @@ import { logger } from "@/utils/logger";
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { useUserRecommendations } from '@/hooks/useUserRecommendations';
 import { useAuth } from '@/contexts/ModuleAuthContext';
-import { Header, HeaderContainer, HeaderTitle, HeaderNavButton } from '@/components/ui/header';
+import { SectionHeader } from '@/components/ui/section-header';
 import NotFound from '@/components/ui/not-found';
 import { ConnectedRecommendationCard } from '@/components/ui/anime/connected-recommendation-card';
 import { SegmentedControl } from '@/components/ui/segmented-control';
@@ -98,14 +98,10 @@ export const UserRecommendationsView: React.FC = () => {
             className="relative isolate flex flex-col gap-4 rounded-lg border border-border p-4 will-change-transform surface"
         >
             <section className="flex min-w-0 flex-col gap-5">
-                <Header href="#recommendations">
-                    <HeaderContainer>
-                        <HeaderTitle variant="h4">
-                            Персональні рекомендації
-                        </HeaderTitle>
-                    </HeaderContainer>
-                    <HeaderNavButton />
-                </Header>
+                <SectionHeader
+                    title="Персональні рекомендації"
+                    href="#recommendations"
+                />
 
                 <SegmentedControl
                     options={CONTENT_TYPE_OPTIONS}

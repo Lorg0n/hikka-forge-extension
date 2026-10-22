@@ -1,5 +1,6 @@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
+import { SectionHeader } from '@/components/ui/section-header';
 import logo from '@/assets/logo.svg';
 import Link from '@/components/typography/link';
 import { getHikkaBaseForUrl } from '@/constants';
@@ -8,15 +9,10 @@ export const SimilarContentHeader = () => {
     const hikkaBase = getHikkaBaseForUrl(window.location.href);
 
     return (
-    <div className="flex items-center justify-between gap-2">
-        <div className="flex flex-1 items-center gap-4">
-            <div className="flex items-center gap-4">
-                <a className="hover:underline text-left text-foreground" href="#similar">
-                    <h2 className="scroll-m-20 font-display text-lg font-bold tracking-normal">
-                        Може бути схожим
-                    </h2>
-                </a>
-
+        <SectionHeader
+            title="Може бути схожим"
+            href="#similar"
+            action={
                 <TooltipProvider delayDuration={200}>
                     <Tooltip>
                         <TooltipTrigger asChild>
@@ -51,16 +47,7 @@ export const SimilarContentHeader = () => {
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
-            </div>
-        </div>
-
-        <Button variant="outline" size="icon-sm" className="text-muted-foreground" asChild>
-            <a href="#similar" aria-label="Переглянути весь схожий контент">
-                <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" className="text-lg">
-                    <path fill="currentColor" d="M16.15 13H5q-.425 0-.712-.288T4 12t.288-.712T5 11h11.15L13.3 8.15q-.3-.3-.288-.7t.288-.7q.3-.3.713-.312t.712.287L19.3 11.3q.15.15.213.325t.062.375t-.062.375l-4.575 4.575q-.3.3-.712.288t-.713-.313q-.275-.3-.288-.7t.288-.7z" />
-                </svg>
-            </a>
-        </Button>
-    </div>
+            }
+        />
     );
 };

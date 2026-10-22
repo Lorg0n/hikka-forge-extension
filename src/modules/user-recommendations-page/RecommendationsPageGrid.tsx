@@ -1,6 +1,7 @@
 import React from 'react';
 import { ConnectedRecommendationCard } from '@/components/ui/anime/connected-recommendation-card';
 import { SegmentedControl } from '@/components/ui/segmented-control';
+import { SectionHeader } from '@/components/ui/section-header';
 import { RecommendationItem, RecommendationContentType } from '@/types';
 
 interface RecommendationsPageGridProps {
@@ -25,14 +26,15 @@ export const RecommendationsPageGrid: React.FC<RecommendationsPageGridProps> = (
 }) => {
     return (
         <section className="flex flex-col gap-8">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                <h3 className="font-bold text-lg">Рекомендації ({totalElements})</h3>
-                <SegmentedControl
+            <SectionHeader
+                title={`Рекомендації (${totalElements})`}
+                className="flex-wrap"
+                action={<SegmentedControl
                     options={CONTENT_TYPE_OPTIONS}
                     value={contentType}
                     onValueChange={onContentTypeChange}
-                />
-            </div>
+                />}
+            />
 
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
                 {items.map((anime) => (

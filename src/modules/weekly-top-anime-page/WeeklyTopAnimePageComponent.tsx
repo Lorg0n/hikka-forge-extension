@@ -4,7 +4,7 @@ import { useWeeklyTopAnime } from '@/hooks/useWeeklyTopAnime';
 import { WeeklyTopAnimeList } from './WeeklyTopAnimeList';
 import { WeeklyTopAnimeSkeleton } from './WeeklyTopAnimeSkeleton';
 import NotFound from '@/components/ui/not-found';
-import { ModulePageTransition } from '@/components/ui/module-page-transition';
+import { ModulePage } from '@/components/ui/module-page';
 
 const WeeklyTopAnimePageComponent: React.FC = () => {
     const { startDate, endDate } = useMemo(() => {
@@ -42,15 +42,15 @@ const WeeklyTopAnimePageComponent: React.FC = () => {
 
     if (loading && !data) {
         return (
-            <ModulePageTransition stateKey="loading"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
+            <ModulePage stateKey="loading">
                 <WeeklyTopAnimeSkeleton />
-            </main></ModulePageTransition>
+            </ModulePage>
         );
     }
 
     if (error) {
         return (
-            <ModulePageTransition stateKey="error"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
+            <ModulePage stateKey="error">
                 <div className="flex flex-col gap-12">
                     <WeeklyTopPageHeader startDate={startDate} endDate={endDate} />
                     <NotFound
@@ -58,12 +58,12 @@ const WeeklyTopAnimePageComponent: React.FC = () => {
                         description={error}
                     />
                 </div>
-            </main></ModulePageTransition>
+            </ModulePage>
         );
     }
 
     return (
-        <ModulePageTransition stateKey="content"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
+        <ModulePage stateKey="content">
             <div className="flex flex-col gap-12">
                 <div id="top-header">
                     <WeeklyTopPageHeader startDate={startDate} endDate={endDate} />
@@ -74,7 +74,7 @@ const WeeklyTopAnimePageComponent: React.FC = () => {
                     totalElements={data?.totalElements || 0}
                 />
             </div>
-        </main></ModulePageTransition>
+        </ModulePage>
     );
 };
 

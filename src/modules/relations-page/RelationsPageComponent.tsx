@@ -5,7 +5,7 @@ import { RelationsGraph } from './RelationsGraph';
 import { RelationsPageHeader } from './RelationsPageHeader';
 import { RelationsPageSkeleton } from './RelationsPageSkeleton';
 import { FranchiseContentType, GraphNode } from '@/types';
-import { ModulePageTransition } from '@/components/ui/module-page-transition';
+import { ModulePage } from '@/components/ui/module-page';
 
 const parseContentPath = (pathname: string): { contentType: FranchiseContentType; slug: string } | null => {
     const segments = pathname.split('/').filter(Boolean);
@@ -34,23 +34,23 @@ const RelationsPageComponent: React.FC = () => {
 
     if (!parsed) {
         return (
-            <ModulePageTransition stateKey="invalid"><main className="mx-auto mt-8 mb-8 w-full max-w-[87.5rem] px-4 lg:mt-16">
+            <ModulePage stateKey="invalid" width="wide" className="mb-8">
                 <NotFound title="Помилка" description="Не вдалося визначити тайтл." />
-            </main></ModulePageTransition>
+            </ModulePage>
         );
     }
 
     if (loading) {
         return (
-            <ModulePageTransition stateKey="loading"><main className="mx-auto mt-8 mb-8 w-full max-w-[87.5rem] px-4 lg:mt-16">
+            <ModulePage stateKey="loading" width="wide" className="mb-8">
                 <RelationsPageSkeleton />
-            </main></ModulePageTransition>
+            </ModulePage>
         );
     }
 
     if (error) {
         return (
-            <ModulePageTransition stateKey="error"><main className="mx-auto mt-8 mb-8 w-full max-w-[87.5rem] px-4 lg:mt-16">
+            <ModulePage stateKey="error" width="wide" className="mb-8">
                 <div className="flex flex-col gap-8 lg:gap-10">
                     <RelationsPageHeader
                         currentNode={currentNode}
@@ -59,12 +59,12 @@ const RelationsPageComponent: React.FC = () => {
                     />
                     <NotFound title="Помилка завантаження" description={error} />
                 </div>
-            </main></ModulePageTransition>
+            </ModulePage>
         );
     }
 
     return (
-        <ModulePageTransition stateKey="content"><main className="mx-auto mt-8 mb-8 w-full max-w-[87.5rem] px-4 lg:mt-16">
+        <ModulePage stateKey="content" width="wide" className="mb-8">
             <div className="flex flex-col gap-8 lg:gap-10">
                 <RelationsPageHeader
                     currentNode={currentNode}
@@ -74,7 +74,7 @@ const RelationsPageComponent: React.FC = () => {
 
                 <RelationsGraph nodes={nodes} edges={edges} currentNodeId={currentNodeId} />
             </div>
-        </main></ModulePageTransition>
+        </ModulePage>
     );
 };
 

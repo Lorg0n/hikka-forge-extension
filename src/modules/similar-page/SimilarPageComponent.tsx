@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 import NotFound from '@/components/ui/not-found';
 import { useSimilarContent } from '@/hooks/useSimilarContent';
-import { Pagination } from '@/components/ui/pagination';
-import { ModulePageTransition } from '@/components/ui/module-page-transition';
+import { ModulePage } from '@/components/ui/module-page';
+import { ModulePagination } from '@/components/ui/module-pagination';
 import { SimilarContentType } from '@/types';
 import { SimilarPageHeader } from './SimilarPageHeader';
 import { SimilarPageGrid } from './SimilarPageGrid';
@@ -50,11 +50,9 @@ const SimilarPageComponent: React.FC = () => {
 
     if (!route) {
         return (
-            <ModulePageTransition stateKey="invalid">
-                <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
-                    <NotFound title="Помилка" description="Не вдалося визначити тип контенту." />
-                </main>
-            </ModulePageTransition>
+            <ModulePage stateKey="invalid">
+                <NotFound title="Помилка" description="Не вдалося визначити тип контенту." />
+            </ModulePage>
         );
     }
 
@@ -62,33 +60,28 @@ const SimilarPageComponent: React.FC = () => {
 
     if (loading && (!data || !details)) {
         return (
-            <ModulePageTransition stateKey="loading">
-                <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
-                    <SimilarPageSkeleton />
-                </main>
-            </ModulePageTransition>
+            <ModulePage stateKey="loading">
+                <SimilarPageSkeleton />
+            </ModulePage>
         );
     }
 
     if (error || !data || !details) {
         return (
-            <ModulePageTransition stateKey="error">
-                <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
-                    <div className="flex flex-col gap-12 mt-12">
-                        <NotFound
-                            title={`Не вдалося завантажити ${contentLabel}`}
-                            description={error || 'Спробуйте оновити сторінку'}
-                        />
-                    </div>
-                </main>
-            </ModulePageTransition>
+            <ModulePage stateKey="error">
+                <div className="mt-12 flex flex-col gap-12">
+                    <NotFound
+                        title={`Не вдалося завантажити ${contentLabel}`}
+                        description={error || 'Спробуйте оновити сторінку'}
+                    />
+                </div>
+            </ModulePage>
         );
     }
 
     return (
-        <ModulePageTransition stateKey="content">
-            <main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
-                <div className="flex flex-col gap-12">
+        <ModulePage stateKey="content">
+            <div className="flex flex-col gap-12">
                     <SimilarPageHeader
                         details={details}
                         slug={slug}
@@ -103,18 +96,13 @@ const SimilarPageComponent: React.FC = () => {
                         contentType={contentType}
                     />
 
-                    {Math.min(data.totalPages, MAX_SIMILAR_PAGES) > 1 && (
-                        <div className="mt-4">
-                            <Pagination
-                                currentPage={currentPage + 1}
-                                totalPages={Math.min(data.totalPages, MAX_SIMILAR_PAGES)}
-                                onPageChange={(page) => setPage(page - 1)}
-                            />
-                        </div>
-                    )}
-                </div>
-            </main>
-        </ModulePageTransition>
+                    <ModulePagination
+                        page={currentPage}
+                        totalPages={Math.min(data.totalPages, MAX_SIMILAR_PAGES)}
+                        onPageChange={setPage}
+                    />
+            </div>
+        </ModulePage>
     );
 };
 

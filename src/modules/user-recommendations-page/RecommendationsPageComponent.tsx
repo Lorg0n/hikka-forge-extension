@@ -5,10 +5,10 @@ import { useAuth } from '@/contexts/ModuleAuthContext';
 import { RecommendationsPageHeader } from './RecommendationsPageHeader';
 import { RecommendationsPageGrid } from './RecommendationsPageGrid';
 import { RecommendationsPageSkeleton } from './RecommendationsPageSkeleton';
-import { Pagination } from '@/components/ui/pagination';
 import { Button } from '@/components/ui/button';
 import { HIKKA_BASE } from '@/constants';
-import { ModulePageTransition } from '@/components/ui/module-page-transition';
+import { ModulePage } from '@/components/ui/module-page';
+import { ModulePagination } from '@/components/ui/module-pagination';
 
 const RecommendationsPageComponent: React.FC = () => {
     const { isAuthenticated, isLoading: authLoading, user } = useAuth();
@@ -32,7 +32,7 @@ const RecommendationsPageComponent: React.FC = () => {
     // Not authenticated — prompt login
     if (!authLoading && !isAuthenticated) {
         return (
-            <ModulePageTransition stateKey="unauthenticated"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
+            <ModulePage stateKey="unauthenticated">
                 <div className="flex flex-col gap-12">
                     <RecommendationsPageHeader />
                     <NotFound
@@ -51,21 +51,21 @@ const RecommendationsPageComponent: React.FC = () => {
                         </Button>
                     </NotFound>
                 </div>
-            </main></ModulePageTransition>
+            </ModulePage>
         );
     }
 
     if (isLoading && !data) {
         return (
-            <ModulePageTransition stateKey="loading"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
+            <ModulePage stateKey="loading">
                 <RecommendationsPageSkeleton />
-            </main></ModulePageTransition>
+            </ModulePage>
         );
     }
 
     if (error || (!data && !isLoading)) {
         return (
-            <ModulePageTransition stateKey="error"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl">
+            <ModulePage stateKey="error">
                 <div className="flex flex-col gap-12">
                     <RecommendationsPageHeader
                         avatarUrl={user?.avatar}
@@ -83,12 +83,12 @@ const RecommendationsPageComponent: React.FC = () => {
                         </Button>
                     </NotFound>
                 </div>
-            </main></ModulePageTransition>
+            </ModulePage>
         );
     }
 
     return (
-        <ModulePageTransition stateKey="content"><main className="container mx-auto mt-8 px-4 lg:mt-16 max-w-3xl mb-16">
+        <ModulePage stateKey="content">
             <div className="flex flex-col gap-12">
                 <RecommendationsPageHeader
                     avatarUrl={user?.avatar}
@@ -103,17 +103,15 @@ const RecommendationsPageComponent: React.FC = () => {
                     onFeedbackSuccess={refresh}
                 />
 
-                {data && data.totalPages > 1 && (
-                    <div className="mt-4">
-                        <Pagination
-                            currentPage={currentPage + 1}
-                            totalPages={data.totalPages}
-                            onPageChange={(page) => setPage(page - 1)}
-                        />
-                    </div>
+                {data && (
+                    <ModulePagination
+                        page={currentPage}
+                        totalPages={data.totalPages}
+                        onPageChange={setPage}
+                    />
                 )}
             </div>
-        </main></ModulePageTransition>
+        </ModulePage>
     );
 };
 

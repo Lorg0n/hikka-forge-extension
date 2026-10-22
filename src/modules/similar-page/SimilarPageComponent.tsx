@@ -39,7 +39,6 @@ const SimilarPageComponent: React.FC = () => {
         loading,
         error,
         currentPage,
-        pageSize,
         setPage,
     } = useSimilarContent({
         contentType,
@@ -89,10 +88,6 @@ const SimilarPageComponent: React.FC = () => {
                     />
                     <SimilarPageGrid
                         items={data.content}
-                        totalElements={Math.min(
-                            data.totalElements,
-                            MAX_SIMILAR_PAGES * pageSize,
-                        )}
                         contentType={contentType}
                     />
 

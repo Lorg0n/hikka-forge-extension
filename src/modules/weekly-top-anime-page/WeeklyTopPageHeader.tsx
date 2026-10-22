@@ -9,12 +9,18 @@ interface WeeklyTopPageHeaderProps {
 
 const formatDateRange = (start: string, end: string): string => {
     const fmt = (d: string) =>
-        new Date(d).toLocaleDateString('uk-UA', { day: 'numeric', month: 'short' });
+        new Date(d).toLocaleDateString('uk-UA', {
+            day: 'numeric',
+            month: 'short',
+        });
     const year = new Date(end).getFullYear();
     return `${fmt(start)} — ${fmt(end)} ${year}`;
 };
 
-export const WeeklyTopPageHeader: React.FC<WeeklyTopPageHeaderProps> = ({ startDate, endDate }) => {
+export const WeeklyTopPageHeader: React.FC<WeeklyTopPageHeaderProps> = ({
+    startDate,
+    endDate,
+}) => {
     const now = new Date();
     const year = now.getFullYear();
 

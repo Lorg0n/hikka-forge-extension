@@ -52,7 +52,10 @@ const WeeklyTopAnimePageComponent: React.FC = () => {
         return (
             <ModulePage stateKey="error">
                 <div className="flex flex-col gap-12">
-                    <WeeklyTopPageHeader startDate={startDate} endDate={endDate} />
+                    <WeeklyTopPageHeader
+                        startDate={startDate}
+                        endDate={endDate}
+                    />
                     <NotFound
                         title="Помилка завантаження"
                         description={error}
@@ -66,13 +69,13 @@ const WeeklyTopAnimePageComponent: React.FC = () => {
         <ModulePage stateKey="content">
             <div className="flex flex-col gap-12">
                 <div id="top-header">
-                    <WeeklyTopPageHeader startDate={startDate} endDate={endDate} />
+                    <WeeklyTopPageHeader
+                        startDate={startDate}
+                        endDate={endDate}
+                    />
                 </div>
 
-                <WeeklyTopAnimeList
-                    items={data?.content || []}
-                    totalElements={data?.totalElements || 0}
-                />
+                <WeeklyTopAnimeList items={data?.content || []} />
             </div>
         </ModulePage>
     );

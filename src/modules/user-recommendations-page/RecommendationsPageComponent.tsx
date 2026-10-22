@@ -70,6 +70,8 @@ const RecommendationsPageComponent: React.FC = () => {
                     <RecommendationsPageHeader
                         avatarUrl={user?.avatar}
                         username={user?.username}
+                        contentType={contentType}
+                        onContentTypeChange={setContentType}
                     />
                     <NotFound
                         title="Не вдалося завантажити рекомендації"
@@ -93,13 +95,13 @@ const RecommendationsPageComponent: React.FC = () => {
                 <RecommendationsPageHeader
                     avatarUrl={user?.avatar}
                     username={user?.username}
+                    contentType={contentType}
+                    onContentTypeChange={setContentType}
                 />
 
                 <RecommendationsPageGrid
                     items={data!.content}
-                    totalElements={data!.totalElements}
                     contentType={contentType}
-                    onContentTypeChange={setContentType}
                     onFeedbackSuccess={refresh}
                 />
 

@@ -8,6 +8,7 @@ import { ConnectedRecommendationCard } from '@/components/ui/anime/connected-rec
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { RecommendationContentType } from '@/types';
 import { ModuleTransition } from '@/components/ui/module-transition';
+import logo from '@/assets/logo.svg';
 
 const CONTENT_TYPE_OPTIONS: { value: RecommendationContentType; label: string }[] = [
     { value: 'anime', label: 'Аніме' },
@@ -93,16 +94,23 @@ export const UserRecommendationsView: React.FC = () => {
             stateKey={isLoading ? "loading" : error ? "error" : list.length ? "content" : "empty"}
             animateStateChanges={false}
         >
-        <div
-            id="recommendations"
-            className="relative isolate flex flex-col gap-4 rounded-lg border border-border p-4 will-change-transform surface"
-        >
-            <section className="flex min-w-0 flex-col gap-5">
-                <SectionHeader
-                    title="Персональні рекомендації"
-                    href="#recommendations"
-                />
+        <section id="recommendations" className="flex min-w-0 flex-col gap-3">
+            <SectionHeader
+                title="Персональні рекомендації"
+                href="#recommendations"
+                action={
+                    <img
+                        src={logo}
+                        alt="Hikka Forge"
+                        className="size-5 shrink-0"
+                    />
+                }
+            />
 
+            <div
+                data-slot="block-surface"
+                className="relative isolate flex min-w-0 flex-1 flex-col gap-6 overflow-clip rounded-lg border border-border p-4 will-change-transform surface"
+            >
                 <SegmentedControl
                     options={CONTENT_TYPE_OPTIONS}
                     value={contentType}
@@ -139,8 +147,8 @@ export const UserRecommendationsView: React.FC = () => {
                         description={error || "Спробуйте оцінити більше тайтлів, щоб ми могли підібрати щось для вас"}
                     />
                 )}
-            </section>
-        </div>
+            </div>
+        </section>
         </ModuleTransition>
     );
 };

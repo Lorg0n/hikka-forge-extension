@@ -175,14 +175,40 @@ const ThematicLogoModule: ForgeModuleDef = {
 			const darkLogoUrl = getAssetUrl(foundEvent.darkLogoFull);
 
 			cssToInject = `
+				@keyframes hikka-forge-thematic-logo-reveal {
+					0% {
+						opacity: 0;
+						transform: translateY(-2px) scale(0.92);
+						filter: saturate(0.7) blur(1px);
+					}
+					70% {
+						opacity: 1;
+						transform: translateY(0) scale(1.035);
+						filter: saturate(1.08) blur(0);
+					}
+					100% {
+						opacity: 1;
+						transform: translateY(0) scale(1);
+						filter: none;
+					}
+				}
+
                 .logo,
                 .logo-full {
                     background-image: url("${lightLogoUrl}") !important;
+					animation: hikka-forge-thematic-logo-reveal 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+					transform-origin: center;
                 }
                 .dark .logo,
                 .dark .logo-full {
                     background-image: url("${darkLogoUrl}") !important;
                 }
+				@media (prefers-reduced-motion: reduce) {
+					.logo,
+					.logo-full {
+						animation: none;
+					}
+				}
             `;
 		} else {
 			logger.log(

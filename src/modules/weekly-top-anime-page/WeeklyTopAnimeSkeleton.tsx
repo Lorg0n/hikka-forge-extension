@@ -2,19 +2,12 @@ import React from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { PageHeaderSkeleton } from '@/components/ui/page-header-skeleton';
 
 export const WeeklyTopAnimeSkeleton: React.FC = () => {
     return (
         <div className="flex flex-col gap-12">
-            <div className="relative flex flex-col gap-4 rounded-lg border p-4 bg-secondary/20">
-                <div className="flex items-center justify-between gap-2">
-                    <div className="flex flex-1 flex-col gap-2">
-                        <Skeleton className="h-6 w-48 rounded-md animate-pulse bg-secondary/20" />
-                        <Skeleton className="h-4 w-64 rounded-md animate-pulse bg-secondary/20" />
-                    </div>
-                    <Skeleton className="h-8 w-8 rounded-lg animate-pulse bg-secondary/20" />
-                </div>
-            </div>
+            <PageHeaderSkeleton description action />
 
             <section className="flex flex-col gap-4">
                 {Array.from({ length: 10 }).map((_, i) => (

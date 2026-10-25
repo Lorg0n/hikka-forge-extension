@@ -13,12 +13,13 @@ const commentGifModule: ForgeModuleDef = {
 		"https://dev.hikka.io/*",
 	],
 	enabledByDefault: true,
+	persistent: true,
 	category: "other",
 	elementSelector: {
-		selector: "#comments",
+		selector: "html",
 		position: "append",
-		hostWidth: "0",
-		visibleOnly: true,
+		hostWidth: "auto",
+		visibleOnly: false,
 	},
 	component: CommentGifComponent,
 	icon: {

@@ -7,8 +7,9 @@ import { StickerService, type StickerCategory, type StickerItem } from "@/servic
 
 const COMMENTS = "#comments";
 const COMMENT_TOOLBAR = `${COMMENTS} [role="toolbar"][aria-orientation="horizontal"]`;
+const THREAD_TOOLBAR = `.comment-thread [role="toolbar"][aria-orientation="horizontal"]`;
 const MOBILE_TOOLBAR = `[data-slot="page-sheet-content"] [role="toolbar"][aria-orientation="horizontal"]`;
-const TOOLBAR = `${COMMENT_TOOLBAR}, ${MOBILE_TOOLBAR}`;
+const TOOLBAR = `${COMMENT_TOOLBAR}, ${THREAD_TOOLBAR}, ${MOBILE_TOOLBAR}`;
 const TOKEN = /:emote\[([a-z0-9-]+)\]:/gi;
 const IMAGE = "[data-hikka-forge-sticker]";
 const stickerItems = new Map<string, StickerItem>();
@@ -93,6 +94,7 @@ function contentEditorId(): string | null {
 
 function toolbarForAnchor(anchor: HTMLElement): HTMLElement {
 	return anchor.closest<HTMLElement>(COMMENT_TOOLBAR) ??
+		anchor.closest<HTMLElement>(THREAD_TOOLBAR) ??
 		anchor.closest<HTMLElement>(MOBILE_TOOLBAR) ??
 		anchor;
 }
@@ -211,13 +213,13 @@ function hasKnownStickerToken(value: string, items: Map<string, StickerItem>): b
 	return false;
 }
 
-function renderTokens(root: HTMLElement, items: Map<string, StickerItem>) {
+function renderTokens(root: Node, items: Map<string, StickerItem>) {
 	const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
 	const nodes: Text[] = [];
 	let node: Node | null;
 	while ((node = walker.nextNode())) {
 		const text = node as Text;
-		if (text.parentElement?.closest(`${IMAGE}, [contenteditable="true"]`)) continue;
+		if (text.parentElement?.closest(`${IMAGE}, [contenteditable="true"], script, style, textarea, input`)) continue;
 		if (hasKnownStickerToken(text.data, items)) nodes.push(text);
 	}
 	for (const text of nodes) {
@@ -447,34 +449,26 @@ export default function CommentGifComponent() {
 		update(); const observer = new MutationObserver(update); observer.observe(document.body, { childList: true, subtree: true }); return () => observer.disconnect();
 	}, []);
 	useEffect(() => {
-		let comments: HTMLElement | null = null;
-		let commentsObserver: MutationObserver | null = null;
 		let active = true;
-
-		const scan = () => {
-			if (comments) renderTokens(comments, stickerItems);
-		};
-		const watchComments = () => {
-			const nextComments = document.querySelector<HTMLElement>(COMMENTS);
-			if (nextComments === comments) return;
-
-			commentsObserver?.disconnect();
-			comments = nextComments;
-			if (!comments) return;
-
-			scan();
-			void loadStickerCatalog().then(() => active && scan()).catch(console.warn);
-			commentsObserver = new MutationObserver(scan);
-			commentsObserver.observe(comments, { childList: true, characterData: true, subtree: true });
-		};
-
-		watchComments();
-		const pageObserver = new MutationObserver(watchComments);
-		pageObserver.observe(document.body, { childList: true, subtree: true });
+		const scanDocument = () => renderTokens(document.body, stickerItems);
+		const observer = new MutationObserver((mutations) => {
+			for (const mutation of mutations) {
+				if (mutation.type === "characterData") {
+					if (mutation.target.parentNode) renderTokens(mutation.target.parentNode, stickerItems);
+					continue;
+				}
+				for (const node of mutation.addedNodes) {
+					if (node.nodeType === Node.TEXT_NODE) {
+						if (node.parentNode) renderTokens(node.parentNode, stickerItems);
+					} else renderTokens(node, stickerItems);
+				}
+			}
+		});
+		observer.observe(document.body, { childList: true, characterData: true, subtree: true });
+		void loadStickerCatalog().then(() => active && scanDocument()).catch(console.warn);
 		return () => {
 			active = false;
-			commentsObserver?.disconnect();
-			pageObserver.disconnect();
+			observer.disconnect();
 		};
 	}, []);
 	return anchor ? <Picker anchor={anchor} onClose={() => setAnchor(null)} /> : null;

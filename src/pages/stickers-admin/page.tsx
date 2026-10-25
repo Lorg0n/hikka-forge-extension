@@ -511,14 +511,14 @@ function ItemFormView(props: { title: string; form: ItemForm; file: File | null;
 		<FormShell title={props.title} onCancel={props.onCancel} onSave={props.onSave} busy={props.busy} disabled={!props.form.title.trim()} danger={props.danger}>
 			<Field label="Зображення">
 				<div className="flex flex-wrap items-center gap-2">
-					<input type="file" accept="image/png,image/jpeg,image/webp,image/avif,image/gif,video/mp4,.mp4" onChange={(event) => props.onPick(event.target.files?.[0])} className="max-w-full text-sm" />
+					<input type="file" accept="image/png,image/jpeg,image/webp,image/avif,image/gif,video/mp4,video/webm,.mp4,.webm" onChange={(event) => props.onPick(event.target.files?.[0])} className="max-w-full text-sm" />
 					{props.onEditCurrent && (
 						<Button type="button" size="sm" variant="outline" onClick={props.onEditCurrent}>
 							Редагувати поточне
 						</Button>
 					)}
 					{props.file && <span className="text-xs text-emerald-400">Підготовлено: {props.file.name}</span>}
-					<span className="basis-full text-xs text-muted-foreground">MP4: до 5 МБ; у редакторі можна вибрати фрагмент до 6 секунд для конвертації у GIF.</span>
+					<span className="basis-full text-xs text-muted-foreground">MP4 або WebM: до 5 МБ; у редакторі можна вибрати фрагмент до 6 секунд для конвертації у GIF.</span>
 				</div>
 			</Field>
 			<Field label="Назва">

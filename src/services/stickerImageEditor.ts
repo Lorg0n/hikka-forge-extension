@@ -25,6 +25,7 @@ export interface StickerSource {
 	delays: number[];
 	duration?: number;
 	clip?: TimeRange;
+	videoFormat?: "MP4" | "WebM";
 	staticImage?: ImageBitmap;
 	dispose(): void;
 }
@@ -43,14 +44,18 @@ const createCanvas = (width: number, height: number) => {
 };
 const MAX_GIF_FRAMES = 240;
 const MAX_GIF_COMPOSITED_PIXELS = 24_000_000;
-const MAX_MP4_SIZE = 5 * 1024 * 1024;
+const MAX_VIDEO_SIZE = 5 * 1024 * 1024;
 export const MAX_STICKER_CLIP_SECONDS = 6;
-const MP4_FRAME_RATE = 12;
+const VIDEO_FRAME_RATE = 12;
 const MAX_VIDEO_SIDE = 480;
 const MAX_ENCODED_GIF_SIZE = 10 * 1024 * 1024;
 const MAX_GIF_PALETTE_PIXELS = 4_000_000;
 
-const isMp4 = (file: File) => file.type === "video/mp4" || /\.mp4$/i.test(file.name);
+const videoFormat = (file: File): StickerSource["videoFormat"] => {
+	if (file.type.toLowerCase() === "video/webm" || /\.webm$/i.test(file.name)) return "WebM";
+	if (file.type.toLowerCase() === "video/mp4" || /\.mp4$/i.test(file.name)) return "MP4";
+	return undefined;
+};
 
 function waitForMediaEvent(target: HTMLMediaElement, event: "loadeddata" | "loadedmetadata" | "seeked"): Promise<void> {
 	if (event === "loadedmetadata" && target.readyState >= HTMLMediaElement.HAVE_METADATA) return Promise.resolve();
@@ -62,7 +67,7 @@ function waitForMediaEvent(target: HTMLMediaElement, event: "loadeddata" | "load
 		};
 		const failed = () => {
 			cleanup();
-			reject(new Error("Не вдалося декодувати MP4 у цьому браузері."));
+			reject(new Error("Не вдалося декодувати відео у цьому браузері. Перевірте формат і кодек файлу."));
 		};
 		const cleanup = () => {
 			target.removeEventListener(event, done);
@@ -73,8 +78,10 @@ function waitForMediaEvent(target: HTMLMediaElement, event: "loadeddata" | "load
 	});
 }
 
-async function prepareMp4Source(file: File, requestedClip?: TimeRange): Promise<StickerSource> {
-	if (file.size > MAX_MP4_SIZE) throw new Error("MP4 має бути не більшим за 5 МБ.");
+async function prepareVideoSource(file: File, requestedClip?: TimeRange): Promise<StickerSource> {
+	const format = videoFormat(file);
+	if (!format) throw new Error("Підтримуються відео у форматах MP4 і WebM.");
+	if (file.size > MAX_VIDEO_SIZE) throw new Error("Відео має бути не більшим за 5 МБ.");
 	const url = URL.createObjectURL(file);
 	const video = document.createElement("video");
 	video.muted = true;
@@ -83,7 +90,7 @@ async function prepareMp4Source(file: File, requestedClip?: TimeRange): Promise<
 	try {
 		video.src = url;
 		await waitForMediaEvent(video, "loadedmetadata");
-		if (!Number.isFinite(video.duration) || video.duration <= 0) throw new Error("Не вдалося визначити тривалість MP4.");
+		if (!Number.isFinite(video.duration) || video.duration <= 0) throw new Error("Не вдалося визначити тривалість відео.");
 		await waitForMediaEvent(video, "loadeddata");
 		const minimumClip = Math.min(0.1, video.duration);
 		const start = Math.max(0, Math.min(requestedClip?.start ?? 0, Math.max(0, video.duration - minimumClip)));
@@ -94,11 +101,11 @@ async function prepareMp4Source(file: File, requestedClip?: TimeRange): Promise<
 		const canvas = createCanvas(width, height);
 		const context = canvas.getContext("2d", { willReadFrequently: true });
 		if (!context) throw new Error("Canvas недоступний у цьому браузері.");
-		const frameCount = Math.max(1, Math.min(MAX_GIF_FRAMES, Math.ceil((end - start) * MP4_FRAME_RATE)));
-		const delay = 1000 / MP4_FRAME_RATE;
+		const frameCount = Math.max(1, Math.min(MAX_GIF_FRAMES, Math.ceil((end - start) * VIDEO_FRAME_RATE)));
+		const delay = 1000 / VIDEO_FRAME_RATE;
 		const frames: ImageData[] = [];
 		for (let index = 0; index < frameCount; index++) {
-			const time = Math.min(end - 0.001, start + index / MP4_FRAME_RATE);
+			const time = Math.min(end - 0.001, start + index / VIDEO_FRAME_RATE);
 			if (Math.abs(video.currentTime - time) > 0.001) {
 				video.currentTime = time;
 				await waitForMediaEvent(video, "seeked");
@@ -114,6 +121,7 @@ async function prepareMp4Source(file: File, requestedClip?: TimeRange): Promise<
 			delays: frames.map(() => delay),
 			duration: video.duration,
 			clip: { start, end },
+			videoFormat: format,
 			dispose: () => undefined,
 		};
 	} finally {
@@ -124,7 +132,7 @@ async function prepareMp4Source(file: File, requestedClip?: TimeRange): Promise<
 }
 
 export async function prepareStickerInputFile(file: File): Promise<File> {
-	if (isMp4(file) && file.size > MAX_MP4_SIZE) throw new Error("MP4 має бути не більшим за 5 МБ.");
+	if (videoFormat(file) && file.size > MAX_VIDEO_SIZE) throw new Error("Відео має бути не більшим за 5 МБ.");
 	return file;
 }
 
@@ -176,7 +184,7 @@ function composeGifFrame(context: CanvasRenderingContext2D, frame: ParsedFrame):
 }
 
 export async function prepareStickerSource(file: File, clip?: TimeRange): Promise<StickerSource> {
-	if (isMp4(file)) return prepareMp4Source(file, clip);
+	if (videoFormat(file)) return prepareVideoSource(file, clip);
 	if (!isGif(file)) {
 		const image = await createImageBitmap(file);
 		return {

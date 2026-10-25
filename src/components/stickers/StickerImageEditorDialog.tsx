@@ -287,7 +287,7 @@ export function StickerImageEditorDialog({ open, file, initialWidthUnits = 1, on
 						<DialogTitle>Редактор стікера</DialogTitle>
 						{source && (
 							<span className="rounded-full bg-muted px-2 py-1 text-[11px] text-muted-foreground">
-								{source.duration ? `MP4 · ${source.frames.length} кадрів` : source.animated ? `GIF · ${source.frames.length} кадрів` : "Зображення"} · {source.width}×{source.height}
+								{source.videoFormat ? `${source.videoFormat} · ${source.frames.length} кадрів` : source.animated ? `GIF · ${source.frames.length} кадрів` : "Зображення"} · {source.width}×{source.height}
 							</span>
 						)}
 					</div>
@@ -378,7 +378,7 @@ export function StickerImageEditorDialog({ open, file, initialWidthUnits = 1, on
 					<aside className="min-h-0 space-y-4 rounded-xl border bg-muted/15 p-4 lg:overflow-y-auto">
 						{source?.duration && clipRange && (
 							<section className="space-y-3">
-								<ControlLabel label="Фрагмент MP4" value={`${formatTime(clipRange.start)} — ${formatTime(clipRange.end)}`} />
+								<ControlLabel label={`Фрагмент ${source.videoFormat ?? "відео"}`} value={`${formatTime(clipRange.start)} — ${formatTime(clipRange.end)}`} />
 								<Slider className="py-3" value={[clipRange.start, clipRange.end]} min={0} max={source.duration} step={0.1} minStepsBetweenThumbs={1} disabled={clipPreparing} onValueChange={(values) => setClipRange(normalizeClip(values, clipRange, source.duration ?? 0))} onValueCommit={(values) => void applyClip(normalizeClip(values, clipRange, source.duration ?? 0))} />
 								<div className="grid grid-cols-2 gap-2">
 									<label className="space-y-1 text-xs text-muted-foreground">

@@ -1,4 +1,3 @@
-import { applyPalette, GIFEncoder, quantize } from "gifenc";
 import { decompressFrames, parseGIF, type ParsedFrame } from "gifuct-js";
 
 export interface CropRect {
@@ -35,6 +34,17 @@ export interface TimeRange {
 	end: number;
 }
 
+export interface StickerRenderOptions {
+	compression: number;
+	signal?: AbortSignal;
+}
+
+export interface StickerCompressionSettings {
+	resolutionScale: number;
+	fps: number;
+	colors: number;
+}
+
 const isGif = (file: File) => file.type === "image/gif" || /\.gif$/i.test(file.name);
 const createCanvas = (width: number, height: number) => {
 	const canvas = document.createElement("canvas");
@@ -44,12 +54,10 @@ const createCanvas = (width: number, height: number) => {
 };
 const MAX_GIF_FRAMES = 240;
 const MAX_GIF_COMPOSITED_PIXELS = 24_000_000;
-const MAX_VIDEO_SIZE = 5 * 1024 * 1024;
 export const MAX_STICKER_CLIP_SECONDS = 6;
-const VIDEO_FRAME_RATE = 12;
-const MAX_VIDEO_SIDE = 480;
-const MAX_ENCODED_GIF_SIZE = 10 * 1024 * 1024;
-const MAX_GIF_PALETTE_PIXELS = 4_000_000;
+const VIDEO_FRAME_RATE = 20;
+const MAX_VIDEO_SIDE = 720;
+const MAX_ANIMATED_OUTPUT_WIDTH = 720;
 
 const videoFormat = (file: File): StickerSource["videoFormat"] => {
 	if (file.type.toLowerCase() === "video/webm" || /\.webm$/i.test(file.name)) return "WebM";
@@ -81,7 +89,6 @@ function waitForMediaEvent(target: HTMLMediaElement, event: "loadeddata" | "load
 async function prepareVideoSource(file: File, requestedClip?: TimeRange): Promise<StickerSource> {
 	const format = videoFormat(file);
 	if (!format) throw new Error("Підтримуються відео у форматах MP4 і WebM.");
-	if (file.size > MAX_VIDEO_SIZE) throw new Error("Відео має бути не більшим за 5 МБ.");
 	const url = URL.createObjectURL(file);
 	const video = document.createElement("video");
 	video.muted = true;
@@ -131,11 +138,6 @@ async function prepareVideoSource(file: File, requestedClip?: TimeRange): Promis
 	}
 }
 
-export async function prepareStickerInputFile(file: File): Promise<File> {
-	if (videoFormat(file) && file.size > MAX_VIDEO_SIZE) throw new Error("Відео має бути не більшим за 5 МБ.");
-	return file;
-}
-
 export function cropForRatio(width: number, height: number, widthUnits: number, center?: { x: number; y: number }): CropRect {
 	const ratio = widthUnits;
 	let cropWidth = width;
@@ -165,9 +167,19 @@ export const defaultStickerImageEdits = (width: number, height: number, widthUni
 	background: null,
 });
 
-export function outputDimensions(widthUnits: number, animated: boolean): { width: number; height: number } {
-	const height = Math.min(248, animated ? Math.floor(480 / widthUnits) : 248);
-	return { width: height * widthUnits, height };
+export function compressionSettings(compression: number): StickerCompressionSettings {
+	const ratio = Math.min(100, Math.max(0, compression)) / 100;
+	return {
+		resolutionScale: 1 - ratio * 0.65,
+		fps: Math.max(4, Math.round(20 - ratio * 16)),
+		colors: Math.max(32, Math.round((256 - ratio * 224) / 8) * 8),
+	};
+}
+
+export function outputDimensions(widthUnits: number, animated: boolean, resolutionScale = 1, sourceHeight?: number): { width: number; height: number } {
+	const height = animated ? Math.min(Math.floor(MAX_ANIMATED_OUTPUT_WIDTH / widthUnits), sourceHeight ? Math.max(1, Math.round(sourceHeight)) : Infinity) : 248;
+	const scaledHeight = animated ? Math.max(1, Math.round(height * resolutionScale)) : height;
+	return { width: scaledHeight * widthUnits, height: scaledHeight };
 }
 
 function composeGifFrame(context: CanvasRenderingContext2D, frame: ParsedFrame): ImageData {
@@ -322,55 +334,58 @@ function blobFromCanvas(canvas: HTMLCanvasElement): Promise<Blob> {
 	return new Promise((resolve, reject) => canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("Не вдалося підготувати зображення."))), "image/png"));
 }
 
-function paletteForFrames(frames: ImageData[]): ReturnType<typeof quantize> {
-	const totalPixels = frames.reduce((sum, frame) => sum + frame.width * frame.height, 0);
-	const stride = Math.max(1, Math.ceil(totalPixels / MAX_GIF_PALETTE_PIXELS));
-	const samples = new Uint8ClampedArray(Math.ceil(totalPixels / stride) * 4);
-	let destination = 0;
-	for (const frame of frames) {
-		const pixels = frame.data;
-		for (let offset = 0; offset < pixels.length; offset += 4 * stride) {
-			samples[destination++] = pixels[offset];
-			samples[destination++] = pixels[offset + 1];
-			samples[destination++] = pixels[offset + 2];
-			samples[destination++] = pixels[offset + 3];
+function selectedFrameIndexes(source: StickerSource, compression: number, fps: number): { indexes: number[]; delays: number[] } {
+	if (compression === 0) return { indexes: source.frames.map((_, index) => index), delays: [...source.delays] };
+	const totalDuration = source.delays.reduce((sum, delay) => sum + delay, 0);
+	const interval = 1000 / fps;
+	const indexes: number[] = [];
+	const delays: number[] = [];
+	let frameIndex = 0;
+	let frameEnd = source.delays[0] ?? interval;
+	for (let time = 0; time < totalDuration; time += interval) {
+		while (frameIndex < source.frames.length - 1 && time >= frameEnd) {
+			frameIndex++;
+			frameEnd += source.delays[frameIndex] ?? interval;
 		}
+		indexes.push(frameIndex);
+		delays.push(Math.min(interval, totalDuration - time));
 	}
-	return quantize(samples.subarray(0, destination), 256, {
-		format: "rgba4444",
-		oneBitAlpha: true,
+	return { indexes, delays };
+}
+
+function encodeGif(frames: ImageData[], delays: number[], colors: number, signal?: AbortSignal): Promise<Uint8Array> {
+	return new Promise((resolve, reject) => {
+		if (signal?.aborted) return reject(new DOMException("Кодування скасовано.", "AbortError"));
+		const worker = new Worker(new URL("./stickerGifEncoder.worker.ts", import.meta.url), { type: "module" });
+		const abort = () => { worker.terminate(); reject(new DOMException("Кодування скасовано.", "AbortError")); };
+		signal?.addEventListener("abort", abort, { once: true });
+		worker.onerror = (event) => { signal?.removeEventListener("abort", abort); worker.terminate(); reject(new Error(event.message || "Не вдалося закодувати GIF.")); };
+		worker.onmessage = (event: MessageEvent<{ bytes?: ArrayBuffer; error?: string }>) => {
+			signal?.removeEventListener("abort", abort); worker.terminate();
+			if (event.data.error || !event.data.bytes) reject(new Error(event.data.error || "Не вдалося закодувати GIF."));
+			else resolve(new Uint8Array(event.data.bytes));
+		};
+		const buffers = frames.map((frame) => frame.data.buffer as ArrayBuffer);
+		worker.postMessage({ frames: buffers, delays, width: frames[0].width, height: frames[0].height, colors }, buffers);
 	});
 }
 
-function gifPalette(source: StickerSource, edits: StickerImageEdits, width: number, height: number): ReturnType<typeof quantize> {
-	const frames = source.frames.map((_, index) => renderOutput(source, edits, width, height, index));
-	return paletteForFrames(frames);
-}
-
-export async function renderStickerImage(file: File, source: StickerSource, edits: StickerImageEdits, widthUnits: number): Promise<File> {
-	const size = outputDimensions(widthUnits, source.animated);
+export async function renderStickerImage(file: File, source: StickerSource, edits: StickerImageEdits, widthUnits: number, options: StickerRenderOptions = { compression: 0 }): Promise<File> {
+	const settings = compressionSettings(options.compression);
+	const size = outputDimensions(widthUnits, source.animated, settings.resolutionScale, edits.crop.height);
 	if (!source.animated) {
+		if (options.signal?.aborted) throw new DOMException("Кодування скасовано.", "AbortError");
 		const canvas = createCanvas(size.width, size.height);
 		canvas.getContext("2d")?.putImageData(renderOutput(source, edits, size.width, size.height, 0), 0, 0);
 		return new File([await blobFromCanvas(canvas)], file.name.replace(/\.[^.]+$/, "") + ".png", { type: "image/png" });
 	}
-	const encoder = GIFEncoder();
-	const palette = gifPalette(source, edits, size.width, size.height);
-	const transparentIndex = palette.findIndex((color) => color[3] === 0);
-	for (let index = 0; index < source.frames.length; index++) {
-		const pixels = renderOutput(source, edits, size.width, size.height, index).data;
-		const indexed = applyPalette(pixels, palette, "rgba4444");
-		encoder.writeFrame(indexed, size.width, size.height, {
-			...(index === 0 ? { palette, repeat: 0 } : {}),
-			delay: source.delays[index],
-			transparent: transparentIndex >= 0,
-			transparentIndex: Math.max(0, transparentIndex),
-			dispose: 2,
-		});
+	const selection = selectedFrameIndexes(source, options.compression, settings.fps);
+	const frames: ImageData[] = [];
+	for (const index of selection.indexes) {
+		if (options.signal?.aborted) throw new DOMException("Кодування скасовано.", "AbortError");
+		frames.push(renderOutput(source, edits, size.width, size.height, index));
 	}
-	encoder.finish();
-	const bytes = encoder.bytes();
-	if (bytes.byteLength > MAX_ENCODED_GIF_SIZE) throw new Error("Після обробки GIF перевищує 10 МБ. Скоротіть анімацію або зменште її розмір.");
+	const bytes = await encodeGif(frames, selection.delays, settings.colors, options.signal);
 	return new File([bytes], file.name.replace(/\.[^.]+$/, "") + ".gif", {
 		type: "image/gif",
 	});

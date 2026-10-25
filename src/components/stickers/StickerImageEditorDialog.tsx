@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
-import { cropForRatio, defaultStickerImageEdits, drawStickerPreview, MAX_STICKER_CLIP_SECONDS, outputDimensions, prepareStickerSource, renderStickerImage, type StickerImageEdits, type StickerSource, type TimeRange } from "@/services/stickerImageEditor";
+import { Switch } from "@/components/ui/switch";
+import { compressionSettings, cropForRatio, defaultStickerImageEdits, drawStickerPreview, MAX_STICKER_CLIP_SECONDS, outputDimensions, prepareStickerSource, renderStickerImage, type StickerImageEdits, type StickerSource, type TimeRange } from "@/services/stickerImageEditor";
 
 interface Props {
 	open: boolean;
@@ -30,6 +31,12 @@ const clone = (value: StickerImageEdits): StickerImageEdits => ({
 });
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const formatTime = (value: number) => `${value.toFixed(1)} с`;
+const formatFileSize = (bytes: number) => bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} КБ` : `${(bytes / (1024 * 1024)).toFixed(2)} МБ`;
+
+type RenderPreview =
+	| { status: "idle" | "calculating" }
+	| { status: "ready"; size: number; updatedAt: number }
+	| { status: "error"; message: string };
 
 function normalizeClip(values: number[], current: TimeRange, duration: number): TimeRange {
 	let start = clamp(values[0], 0, Math.max(0, duration - 0.1));
@@ -50,6 +57,9 @@ export function StickerImageEditorDialog({ open, file, initialWidthUnits = 1, on
 	const historyRef = useRef<StickerImageEdits[]>([]);
 	const historyIndexRef = useRef(-1);
 	const clipRequestRef = useRef(0);
+	const previewAbortRef = useRef<AbortController | null>(null);
+	const renderedFileRef = useRef<{ key: string; file: File } | null>(null);
+	const previewObjectUrlRef = useRef<string | null>(null);
 	const [source, setSource] = useState<StickerSource | null>(null);
 	const [edits, setEdits] = useState<StickerImageEdits | null>(null);
 	const [widthUnits, setWidthUnits] = useState(initialWidthUnits);
@@ -60,6 +70,10 @@ export function StickerImageEditorDialog({ open, file, initialWidthUnits = 1, on
 	const [saving, setSaving] = useState(false);
 	const [clipPreparing, setClipPreparing] = useState(false);
 	const [clipRange, setClipRange] = useState<TimeRange | null>(null);
+	const [compression, setCompression] = useState(0);
+	const [renderPreview, setRenderPreview] = useState<RenderPreview>({ status: "idle" });
+	const [showCompressedPreview, setShowCompressedPreview] = useState(false);
+	const [compressedPreviewUrl, setCompressedPreviewUrl] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [, forceHistory] = useState(0);
 
@@ -102,6 +116,8 @@ export function StickerImageEditorDialog({ open, file, initialWidthUnits = 1, on
 		setError(null);
 		setFrameIndex(0);
 		setPlaying(true);
+		setCompression(0);
+		setShowCompressedPreview(false);
 		void prepareStickerSource(file)
 			.then((value) => {
 				loaded = value;
@@ -122,6 +138,13 @@ export function StickerImageEditorDialog({ open, file, initialWidthUnits = 1, on
 			setSource(null);
 			setClipRange(null);
 			setClipPreparing(false);
+			previewAbortRef.current?.abort();
+			previewAbortRef.current = null;
+			renderedFileRef.current = null;
+			setRenderPreview({ status: "idle" });
+			if (previewObjectUrlRef.current) URL.revokeObjectURL(previewObjectUrlRef.current);
+			previewObjectUrlRef.current = null;
+			setCompressedPreviewUrl(null);
 		};
 	}, [file, initialWidthUnits, open, replaceHistory]);
 
@@ -136,6 +159,45 @@ export function StickerImageEditorDialog({ open, file, initialWidthUnits = 1, on
 		const context = canvas.getContext("2d");
 		if (context) metricsRef.current = drawStickerPreview(context, source, edits, frameIndex);
 	}, [source, edits, frameIndex]);
+
+	const renderKey = file && source && edits ? JSON.stringify({ file: [file.name, file.size, file.lastModified], source: [source.width, source.height, source.frames.length, source.clip], edits, widthUnits, compression }) : "";
+
+	useEffect(() => {
+		previewAbortRef.current?.abort();
+		previewAbortRef.current = null;
+		renderedFileRef.current = null;
+		if (previewObjectUrlRef.current) URL.revokeObjectURL(previewObjectUrlRef.current);
+		previewObjectUrlRef.current = null;
+		setCompressedPreviewUrl(null);
+		if (!open || !file || !source || !edits || clipPreparing || !renderKey) {
+			setRenderPreview({ status: "idle" });
+			return;
+		}
+		const controller = new AbortController();
+		previewAbortRef.current = controller;
+		setRenderPreview({ status: "calculating" });
+		const timer = window.setTimeout(() => {
+			void renderStickerImage(file, source, edits, widthUnits, { compression, signal: controller.signal })
+				.then((result) => {
+					if (controller.signal.aborted) return;
+					renderedFileRef.current = { key: renderKey, file: result };
+					if (source.animated) {
+						const url = URL.createObjectURL(result);
+						previewObjectUrlRef.current = url;
+						setCompressedPreviewUrl(url);
+					}
+					setRenderPreview({ status: "ready", size: result.size, updatedAt: Date.now() });
+				})
+				.catch((reason) => {
+					if (controller.signal.aborted || (reason instanceof DOMException && reason.name === "AbortError")) return;
+					setRenderPreview({ status: "error", message: reason instanceof Error ? reason.message : String(reason) });
+				});
+		}, 600);
+		return () => {
+			window.clearTimeout(timer);
+			controller.abort();
+		};
+	}, [clipPreparing, compression, edits, file, open, renderKey, source, widthUnits]);
 
 	const canvasPoint = (event: React.PointerEvent<HTMLCanvasElement>) => {
 		const canvas = event.currentTarget;
@@ -269,7 +331,10 @@ export function StickerImageEditorDialog({ open, file, initialWidthUnits = 1, on
 		setSaving(true);
 		setError(null);
 		try {
-			await onSave(await renderStickerImage(file, source, edits, widthUnits), widthUnits);
+			previewAbortRef.current?.abort();
+			const cached = renderedFileRef.current;
+			const result = cached?.key === renderKey ? cached.file : await renderStickerImage(file, source, edits, widthUnits, { compression });
+			await onSave(result, widthUnits);
 			onOpenChange(false);
 		} catch (reason) {
 			setError(reason instanceof Error ? reason.message : String(reason));
@@ -277,7 +342,8 @@ export function StickerImageEditorDialog({ open, file, initialWidthUnits = 1, on
 			setSaving(false);
 		}
 	};
-	const dimensions = outputDimensions(widthUnits, source?.animated ?? false);
+	const compressionDetails = compressionSettings(compression);
+	const dimensions = outputDimensions(widthUnits, source?.animated ?? false, compressionDetails.resolutionScale, edits?.crop.height);
 
 	return (
 		<Dialog open={open} onOpenChange={(value) => !saving && onOpenChange(value)}>
@@ -341,10 +407,15 @@ export function StickerImageEditorDialog({ open, file, initialWidthUnits = 1, on
 										scale: clamp(editsRef.current.scale - event.deltaY * 0.001, 0.25, 4),
 									});
 								}}
-								className="block h-full min-h-0 w-full touch-none object-contain"
+								className={`block h-full min-h-0 w-full touch-none object-contain ${showCompressedPreview ? "invisible" : ""}`}
 							/>
+							{showCompressedPreview && (
+								<div className="absolute inset-2 z-10 flex items-center justify-center overflow-hidden">
+									{compressedPreviewUrl ? <img src={compressedPreviewUrl} alt="Превʼю стисненого стікера" className="h-full w-full object-contain [image-rendering:auto]" /> : <span className="flex items-center gap-2 rounded-lg bg-black/70 px-3 py-2 text-sm text-white"><Icon icon="svg-spinners:90-ring-with-bg" />Готуємо стиснене превʼю…</span>}
+								</div>
+							)}
 						</div>
-						{source?.animated && (
+						{source?.animated && !showCompressedPreview && (
 							<div className="flex items-center gap-3 border-t border-white/10 bg-black/20 px-3 py-2">
 								<Button type="button" size="icon-sm" variant="ghost" onClick={() => setPlaying((value) => !value)}>
 									<Icon icon={playing ? "material-symbols:pause" : "material-symbols:play-arrow"} />
@@ -395,6 +466,30 @@ export function StickerImageEditorDialog({ open, file, initialWidthUnits = 1, on
 								</p>
 							</section>
 						)}
+						{source?.animated && (
+							<section className="space-y-3 border-t pt-4">
+								<div className="flex items-center justify-between gap-3">
+									<div className="min-w-0 flex-1"><ControlLabel label="Компресія" value={compression === 0 ? "0% · максимальна якість" : `${compression}%`} /></div>
+									<label className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground"><Switch checked={showCompressedPreview} onCheckedChange={setShowCompressedPreview} disabled={renderPreview.status === "error"} />Превʼю</label>
+								</div>
+								<Slider className="py-2" value={[compression]} min={0} max={100} step={1} onValueChange={([value]) => setCompression(value)} />
+								<div className="grid grid-cols-3 gap-2 text-center text-[11px] text-muted-foreground">
+									<span className="rounded-md bg-background px-1 py-1.5">{Math.round(compressionDetails.resolutionScale * 100)}% розміру</span>
+									<span className="rounded-md bg-background px-1 py-1.5">{compressionDetails.fps} FPS</span>
+									<span className="rounded-md bg-background px-1 py-1.5">{compressionDetails.colors} кольорів</span>
+								</div>
+							</section>
+						)}
+						<section className="space-y-2 border-t pt-4">
+							<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Готовий файл</p>
+							<div className="flex min-h-10 items-center justify-between gap-3 rounded-lg border bg-background px-3 py-2 text-sm">
+								{renderPreview.status === "calculating" && <span className="flex items-center gap-2 text-muted-foreground"><Icon icon="svg-spinners:90-ring-with-bg" />Розраховуємо розмір…</span>}
+								{renderPreview.status === "ready" && <><span className="font-semibold tabular-nums">{formatFileSize(renderPreview.size)}</span><span className="text-xs text-muted-foreground">оновлено {new Date(renderPreview.updatedAt).toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span></>}
+								{renderPreview.status === "error" && <span className="text-destructive">{renderPreview.message}</span>}
+								{renderPreview.status === "idle" && <span className="text-muted-foreground">Очікуємо підготовку файлу…</span>}
+							</div>
+							<p className="text-xs text-muted-foreground">Остаточне обмеження розміру перевірить сервер під час завантаження.</p>
+						</section>
 						<section>
 							<p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Розмір у сітці</p>
 							<div className="grid grid-cols-12 gap-1">

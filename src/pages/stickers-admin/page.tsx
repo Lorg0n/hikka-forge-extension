@@ -6,7 +6,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AuthService, isAdminUser, type UserProfile } from "@/services/authService";
-import { prepareStickerInputFile } from "@/services/stickerImageEditor";
 import { StickerService, type StickerCategory, type StickerItem, type StickerPack } from "@/services/stickerService";
 
 type Mode = "overview" | "pack-create" | "pack-edit" | "item-create" | "item-edit" | "categories";
@@ -187,7 +186,7 @@ function App() {
 		setEditorOpen(true);
 	};
 	const selectImageFile = (file?: File) => {
-		if (file) void run(async () => openImageEditor(await prepareStickerInputFile(file)));
+		if (file) openImageEditor(file);
 	};
 
 	if (authLoading)
@@ -518,7 +517,7 @@ function ItemFormView(props: { title: string; form: ItemForm; file: File | null;
 						</Button>
 					)}
 					{props.file && <span className="text-xs text-emerald-400">Підготовлено: {props.file.name}</span>}
-					<span className="basis-full text-xs text-muted-foreground">MP4 або WebM: до 5 МБ; у редакторі можна вибрати фрагмент до 6 секунд для конвертації у GIF.</span>
+					<span className="basis-full text-xs text-muted-foreground">MP4 або WebM: у редакторі можна вибрати фрагмент до 6 секунд і налаштувати компресію перед завантаженням.</span>
 				</div>
 			</Field>
 			<Field label="Назва">

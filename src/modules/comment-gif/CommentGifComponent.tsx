@@ -6,10 +6,11 @@ import { editorApi, editorIds, type EditorNode, type EditorValue } from "@/servi
 import { StickerService, type StickerCategory, type StickerItem } from "@/services/stickerService";
 
 const COMMENTS = "#comments";
+const FEED_COMMENT_CONTENT = "article .prose";
+const TOKEN_ROOTS = `${COMMENTS}, ${FEED_COMMENT_CONTENT}`;
 const COMMENT_TOOLBAR = `${COMMENTS} [role="toolbar"][aria-orientation="horizontal"]`;
-const THREAD_TOOLBAR = `.comment-thread [role="toolbar"][aria-orientation="horizontal"]`;
 const MOBILE_TOOLBAR = `[data-slot="page-sheet-content"] [role="toolbar"][aria-orientation="horizontal"]`;
-const TOOLBAR = `${COMMENT_TOOLBAR}, ${THREAD_TOOLBAR}, ${MOBILE_TOOLBAR}`;
+const TOOLBAR = `${COMMENT_TOOLBAR}, ${MOBILE_TOOLBAR}`;
 const TOKEN = /:emote\[([a-z0-9-]+)\]:/gi;
 const IMAGE = "[data-hikka-forge-sticker]";
 const stickerItems = new Map<string, StickerItem>();
@@ -94,7 +95,6 @@ function contentEditorId(): string | null {
 
 function toolbarForAnchor(anchor: HTMLElement): HTMLElement {
 	return anchor.closest<HTMLElement>(COMMENT_TOOLBAR) ??
-		anchor.closest<HTMLElement>(THREAD_TOOLBAR) ??
 		anchor.closest<HTMLElement>(MOBILE_TOOLBAR) ??
 		anchor;
 }
@@ -260,6 +260,20 @@ function renderTokens(root: Node, items: Map<string, StickerItem>) {
 		}
 		fragment.append(document.createTextNode(text.data.slice(cursor)));
 		text.replaceWith(fragment);
+	}
+}
+
+function renderTokenRoots(node: Node, items: Map<string, StickerItem>): void {
+	const element = node.nodeType === Node.ELEMENT_NODE
+		? node as Element
+		: node.parentElement;
+	if (!element) return;
+	if (element.closest(IMAGE)) return;
+
+	const containingRoot = element.closest(TOKEN_ROOTS);
+	if (containingRoot) renderTokens(containingRoot, items);
+	for (const root of element.querySelectorAll(TOKEN_ROOTS)) {
+		if (root !== containingRoot) renderTokens(root, items);
 	}
 }
 
@@ -450,18 +464,14 @@ export default function CommentGifComponent() {
 	}, []);
 	useEffect(() => {
 		let active = true;
-		const scanDocument = () => renderTokens(document.body, stickerItems);
+		const scanDocument = () => document.querySelectorAll(TOKEN_ROOTS).forEach((root) => renderTokens(root, stickerItems));
 		const observer = new MutationObserver((mutations) => {
 			for (const mutation of mutations) {
 				if (mutation.type === "characterData") {
-					if (mutation.target.parentNode) renderTokens(mutation.target.parentNode, stickerItems);
+					renderTokenRoots(mutation.target, stickerItems);
 					continue;
 				}
-				for (const node of mutation.addedNodes) {
-					if (node.nodeType === Node.TEXT_NODE) {
-						if (node.parentNode) renderTokens(node.parentNode, stickerItems);
-					} else renderTokens(node, stickerItems);
-				}
+				for (const node of mutation.addedNodes) renderTokenRoots(node, stickerItems);
 			}
 		});
 		observer.observe(document.body, { childList: true, characterData: true, subtree: true });

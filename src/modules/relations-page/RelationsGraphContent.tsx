@@ -230,6 +230,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
     const [isSearchFocused, setIsSearchFocused] = useState(false);
     const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>(currentNodeId);
     const [selectedEdgeId, setSelectedEdgeId] = useState<string | undefined>();
+    const [selectedRelationType, setSelectedRelationType] = useState<string | undefined>();
     const [isSelectionDimmed, setIsSelectionDimmed] = useState(Boolean(currentNodeId));
     const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
     const stateRef = useRef({ pan, zoom });
@@ -294,6 +295,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
     useEffect(() => {
         setSelectedNodeId(currentNodeId);
         setSelectedEdgeId(undefined);
+        setSelectedRelationType(undefined);
         setIsSelectionDimmed(Boolean(currentNodeId));
     }, [currentNodeId]);
 
@@ -302,6 +304,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
             if (event.key !== 'Escape') return;
             setSelectedNodeId(undefined);
             setSelectedEdgeId(undefined);
+            setSelectedRelationType(undefined);
             setIsSelectionDimmed(false);
         };
         window.addEventListener('keydown', handleKeyDown);
@@ -375,13 +378,20 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
     }, [layout, searchQuery]);
     const visibleNodes = layout?.nodes || [];
     const visibleEdges = layout?.edges || [];
+    const activeRelationType = selectedRelationType;
     const selectedNodeIds = useMemo(() => {
+        if (activeRelationType) {
+            const connectedNodeIds = visibleEdges
+                .filter(({ edge }) => edge.relationType === activeRelationType)
+                .flatMap(({ edge }) => [edge.source, edge.target]);
+            return new Set(connectedNodeIds);
+        }
         if (selectedEdgeId) {
             const selectedEdge = visibleEdges.find(({ id }) => id === selectedEdgeId)?.edge;
             return new Set(selectedEdge ? [selectedEdge.source, selectedEdge.target] : []);
         }
         return new Set(selectedNodeId ? [selectedNodeId] : []);
-    }, [selectedEdgeId, selectedNodeId, visibleEdges]);
+    }, [activeRelationType, selectedEdgeId, selectedNodeId, visibleEdges]);
 
     const clampZoom = (value: number) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value));
     const zoomAt = useCallback((x: number, y: number, nextZoom: number) => {
@@ -428,6 +438,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
     const selectNode = useCallback((node: LayoutNode, shouldFocus = true) => {
         setSelectedNodeId(node.id);
         setSelectedEdgeId(undefined);
+        setSelectedRelationType(undefined);
         setIsSelectionDimmed(true);
         setSearchQuery('');
         setIsSearchFocused(false);
@@ -437,8 +448,17 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
     const selectEdge = useCallback((edgeId: string) => {
         setSelectedNodeId(undefined);
         setSelectedEdgeId(edgeId);
+        setSelectedRelationType(undefined);
         setIsSelectionDimmed(true);
     }, []);
+
+    const selectRelationType = useCallback((relationType: string) => {
+        const isAlreadySelected = selectedRelationType === relationType;
+        setSelectedNodeId(undefined);
+        setSelectedEdgeId(undefined);
+        setSelectedRelationType(isAlreadySelected ? undefined : relationType);
+        setIsSelectionDimmed(!isAlreadySelected);
+    }, [selectedRelationType]);
 
     useEffect(() => {
         const viewport = viewportRef.current;
@@ -559,6 +579,7 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
             if (isClick) {
                 setSelectedNodeId(undefined);
                 setSelectedEdgeId(undefined);
+                setSelectedRelationType(undefined);
                 setIsSelectionDimmed(false);
             }
         }
@@ -659,17 +680,19 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
                     <defs>{Array.from(new Set(visibleEdges.map(({ edge }) => edge.relationType))).map(type => <marker key={type} id={`relation-arrow-${type}`} markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill={relationTypeColors[type] || relationTypeColors.OTHER} /></marker>)}</defs>
                     {visibleEdges.flatMap(({ edge, id, sections }) => sections.map((section, index) => {
                         const isSelected = id === selectedEdgeId;
+                        const isMatchingRelationType = edge.relationType === activeRelationType;
                         const isConnectedToSelectedNode = Boolean(selectedNodeId && (edge.source === selectedNodeId || edge.target === selectedNodeId));
-                        const isDimmed = isSelectionDimmed && !(isSelected || isConnectedToSelectedNode);
-                        return <path key={`${id}-${index}`} d={edgePath(section)} fill="none" stroke={relationTypeColors[edge.relationType] || relationTypeColors.OTHER} opacity={isDimmed ? 0.22 : 0.76} strokeWidth={isSelected ? 3.2 : 2.2} markerEnd={`url(#relation-arrow-${edge.relationType})`} className="pointer-events-auto cursor-pointer" onPointerDown={event => event.stopPropagation()} onClick={event => { event.stopPropagation(); selectEdge(id); }} />;
+                        const isDimmed = isSelectionDimmed && !(isSelected || isMatchingRelationType || isConnectedToSelectedNode);
+                        return <path key={`${id}-${index}`} d={edgePath(section)} fill="none" stroke={relationTypeColors[edge.relationType] || relationTypeColors.OTHER} opacity={isDimmed ? 0.22 : 0.76} strokeWidth={isSelected || isMatchingRelationType ? 3.2 : 2.2} markerEnd={`url(#relation-arrow-${edge.relationType})`} className="pointer-events-auto cursor-pointer" onPointerDown={event => event.stopPropagation()} onClick={event => { event.stopPropagation(); selectEdge(id); }} />;
                     }))}
                 </svg>
                 {visibleNodes.map(node => <RelationCard key={node.id} node={node} isSelected={selectedNodeIds.has(node.id)} isDimmed={Boolean(isSelectionDimmed && selectedNodeIds.size > 0 && !selectedNodeIds.has(node.id))} onSelect={() => selectNode(node, false)} />)}
                 <svg className="pointer-events-none absolute inset-0 z-10 size-full overflow-visible" aria-hidden="true">
                     {visibleEdges.map(({ edge, id, sections }) => {
                         const isSelected = id === selectedEdgeId;
+                        const isMatchingRelationType = edge.relationType === activeRelationType;
                         const isConnectedToSelectedNode = Boolean(selectedNodeId && (edge.source === selectedNodeId || edge.target === selectedNodeId));
-                        if (!isSelected && !isConnectedToSelectedNode) return null;
+                        if (!isSelected && !isMatchingRelationType && !isConnectedToSelectedNode) return null;
                         const point = edgeLabelPoint(sections);
                         if (!point) return null;
                         const label = relationTypeLabels[edge.relationType] || edge.relationType;
@@ -692,13 +715,26 @@ export const RelationsGraphContent: React.FC<RelationsGraphContentProps> = ({ no
                 {relationTypes.length > 0 && (
                     <div className="flex min-h-8 max-h-[8rem] max-w-full shrink-0 flex-wrap items-center gap-x-4 gap-y-1 overflow-y-auto rounded-lg border border-border bg-background/80 px-2.5 py-1 text-xs text-muted-foreground shadow-xs backdrop-blur-sm dark:border-input dark:bg-input/60 sm:max-h-none sm:max-w-[calc(100%-13rem)] sm:overflow-visible">
                         {relationTypes.map(type => (
-                            <span key={type} className="flex items-center gap-1.5 whitespace-nowrap">
+                            <Button
+                                key={type}
+                                type="button"
+                                variant="ghost"
+                                size="xs"
+                                aria-pressed={selectedRelationType === type}
+                                onClick={() => selectRelationType(type)}
+                                className={cn(
+                                    'h-6 -mx-1.5 flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-normal',
+                                    selectedRelationType === type
+                                        ? 'bg-accent text-accent-foreground'
+                                        : '',
+                                )}
+                            >
                                 <span
                                     className="inline-block size-2 shrink-0 rounded-full shadow-sm"
                                     style={{ backgroundColor: relationTypeColors[type] || '#6b7280' }}
                                 />
                                 {relationTypeLabels[type] || type}
-                            </span>
+                            </Button>
                         ))}
                     </div>
                 )}

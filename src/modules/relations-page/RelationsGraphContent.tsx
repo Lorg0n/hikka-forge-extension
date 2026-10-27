@@ -70,7 +70,7 @@ const getElk = () => {
 const relationTypeColors: Record<string, string> = {
     SEQUEL: '#4ade80', PREQUEL: '#60a5fa', ALTERNATIVE: '#c084fc', SPIN_OFF: '#fbbf24',
     PARENT: '#f87171', CHARACTER: '#22d3ee', SIDE_STORY: '#2dd4bf', SOURCE: '#a3e635',
-    SUMMARY: '#facc15', OTHER: '#9ca3af', ADAPTATION: '#f472b6',
+    SUMMARY: '#f97316', OTHER: '#9ca3af', ADAPTATION: '#f472b6',
 };
 
 const relationTypeLabels: Record<string, string> = {

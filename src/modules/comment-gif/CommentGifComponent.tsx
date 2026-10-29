@@ -13,6 +13,7 @@ const MOBILE_TOOLBAR = `[data-slot="page-sheet-content"] [role="toolbar"][aria-o
 const TOOLBAR = `${COMMENT_TOOLBAR}, ${MOBILE_TOOLBAR}`;
 const TOKEN = /:emote\[([a-z0-9-]+)\]:/gi;
 const IMAGE = "[data-hikka-forge-sticker]";
+const STICKER_TOKEN = "[data-hikka-forge-sticker-token]";
 const stickerItems = new Map<string, StickerItem>();
 const stickerPackTitles = new Map<string, string>();
 let stickerCatalog: Promise<StickerItem[]> | null = null;
@@ -77,7 +78,7 @@ async function insertSticker(editorId: string, slug: string) {
 	const token = `:emote[${slug}]:`;
 
 	if (hasEditorContent(value)) {
-		if (!appendToLastTextNode(value, ` ${token}`)) {
+		if (!appendToLastTextNode(value, token)) {
 			throw new Error("The editor document has no text node to append the sticker to.");
 		}
 		await editor.set(value);
@@ -216,6 +217,23 @@ function hasKnownStickerToken(value: string, items: Map<string, StickerItem>): b
 	return false;
 }
 
+function copyStickerTokens(event: ClipboardEvent): void {
+	const selection = document.getSelection();
+	if (!selection || selection.isCollapsed || selection.rangeCount === 0 || !event.clipboardData) return;
+
+	const fragment = selection.getRangeAt(0).cloneContents();
+	const stickers = fragment.querySelectorAll<HTMLElement>(STICKER_TOKEN);
+	if (stickers.length === 0) return;
+
+	for (const sticker of stickers) {
+		const token = sticker.dataset.hikkaForgeStickerToken;
+		if (token) sticker.replaceWith(document.createTextNode(token));
+	}
+
+	event.clipboardData.setData("text/plain", fragment.textContent ?? "");
+	event.preventDefault();
+}
+
 function renderTokens(root: Node, items: Map<string, StickerItem>) {
 	const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
 	const nodes: Text[] = [];
@@ -240,6 +258,8 @@ function renderTokens(root: Node, items: Map<string, StickerItem>) {
 				const wrapper = document.createElement("span");
 				const image = document.createElement("img");
 				wrapper.dataset.hikkaForgeSticker = slug;
+				wrapper.dataset.hikkaForgeStickerToken = match[0];
+				image.dataset.hikkaForgeStickerToken = match[0];
 				wrapper.title = match[0];
 				wrapper.style.display = "inline-flex";
 				wrapper.style.verticalAlign = "middle";
@@ -478,10 +498,12 @@ export default function CommentGifComponent() {
 			}
 		});
 		observer.observe(document.body, { childList: true, characterData: true, subtree: true });
+		document.addEventListener("copy", copyStickerTokens);
 		void loadStickerCatalog().then(() => active && scanDocument()).catch(console.warn);
 		return () => {
 			active = false;
 			observer.disconnect();
+			document.removeEventListener("copy", copyStickerTokens);
 		};
 	}, []);
 	return anchor ? <Picker anchor={anchor} onClose={() => setAnchor(null)} /> : null;

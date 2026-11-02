@@ -75,13 +75,15 @@ const SimilarContentComponent: React.FC = () => {
     }
 
     if (error || items.length === 0) {
-        const contentLabel = contentType === 'anime' ? 'аніме' : 'манґи';
+        const emptyTitle = contentType === 'anime'
+            ? 'Схожого аніме не знайдено'
+            : 'Схожої манґи не знайдено';
         return (
             <ModuleTransition stateKey={error ? 'error' : 'empty'} animateStateChanges={false}>
                 <div className="flex flex-col gap-8">
                     <SimilarContentHeader />
                     <NotFound
-                        title={`Схожого ${contentLabel} не знайдено`}
+                        title={emptyTitle}
                         description={error
                             ? 'Не вдалося завантажити схожий контент.'
                             : 'На жаль, ми не змогли підібрати схожі тайтли.'}

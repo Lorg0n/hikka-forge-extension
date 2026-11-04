@@ -113,19 +113,35 @@ const AuthPageComponent: React.FC = () => {
 
             setStatus('Створення сесії...');
             void (async () => {
+                const previousToken = await AuthService.getToken();
+
+                // Reading extension storage is asynchronous, so Telegram may
+                // take ownership while the previous token is being retrieved.
+                if (isTelegramAuthFlowActive()) {
+                    return;
+                }
+
+                const restorePreviousToken = async (): Promise<void> => {
+                    if (previousToken) {
+                        await AuthService.setToken(previousToken);
+                    } else {
+                        await AuthService.removeToken();
+                    }
+                };
+
                 await AuthService.setToken(data.secret);
 
                 // Telegram may take ownership while extension storage is being
-                // updated. Do not leave this attempt's token behind in that case.
+                // updated. Restore the prior extension session in that case.
                 if (isTelegramAuthFlowActive()) {
-                    await AuthService.removeToken();
+                    await restorePreviousToken();
                     return;
                 }
 
                 const user = await AuthService.getCurrentUser();
 
                 if (isTelegramAuthFlowActive()) {
-                    await AuthService.removeToken();
+                    await restorePreviousToken();
                     return;
                 }
 
@@ -134,7 +150,7 @@ const AuthPageComponent: React.FC = () => {
                     setTimeout(() => {
                         void (async () => {
                             if (isTelegramAuthFlowActive()) {
-                                await AuthService.removeToken();
+                                await restorePreviousToken();
                                 return;
                             }
 

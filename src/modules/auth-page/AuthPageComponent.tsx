@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import { useHikkaCallback } from '@/hooks/useHikkaCallback';
 import { AuthService } from '@/services/authService';
 import { HIKKA_BASE } from '@/constants';
+import { isTelegramAuthFlowActive } from './telegramAuthFlow';
 
 type ButtonVariant = 'primary' | 'secondary';
 
@@ -76,6 +77,10 @@ const AuthPageComponent: React.FC = () => {
     }, [redirect]);
 
     useEffect(() => {
+        if (isTelegramAuthFlowActive()) {
+            return;
+        }
+
         if (reference) {
             setStatus('Перевірка авторизації...');
             void executeCallback(reference);
@@ -83,6 +88,10 @@ const AuthPageComponent: React.FC = () => {
     }, [reference, executeCallback, setStatus]);
 
     useEffect(() => {
+        if (isTelegramAuthFlowActive()) {
+            return;
+        }
+
         if (loading) {
             setStatus('Перевірка авторизації...');
             return;
@@ -96,13 +105,42 @@ const AuthPageComponent: React.FC = () => {
             return;
         }
         if (data?.secret) {
+            // Re-check after the callback completes so Telegram can take over
+            // without the extension persisting its own Forge token.
+            if (isTelegramAuthFlowActive()) {
+                return;
+            }
+
             setStatus('Створення сесії...');
             void (async () => {
                 await AuthService.setToken(data.secret);
+
+                // Telegram may take ownership while extension storage is being
+                // updated. Do not leave this attempt's token behind in that case.
+                if (isTelegramAuthFlowActive()) {
+                    await AuthService.removeToken();
+                    return;
+                }
+
                 const user = await AuthService.getCurrentUser();
+
+                if (isTelegramAuthFlowActive()) {
+                    await AuthService.removeToken();
+                    return;
+                }
+
                 if (user) {
                     setStatus('Вхід виконано. Перенаправлення...');
-                    setTimeout(() => goHome(), 800);
+                    setTimeout(() => {
+                        void (async () => {
+                            if (isTelegramAuthFlowActive()) {
+                                await AuthService.removeToken();
+                                return;
+                            }
+
+                            goHome();
+                        })();
+                    }, 800);
                 } else {
                     await AuthService.removeToken();
                     setStatus('Не вдалося отримати профіль');

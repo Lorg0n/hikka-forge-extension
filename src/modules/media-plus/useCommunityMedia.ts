@@ -4,10 +4,11 @@ import { fetchMangaCommunityMedia } from '@/services/mangaService';
 import type { CommunityMediaItem } from '@/types';
 import type { MediaPlusRoute } from './mediaPlusRoute';
 
-const MEDIA_LIMIT = 3;
+interface CommunityMediaOptions { page?: number; size?: number; }
 
-export function useCommunityMedia(route: MediaPlusRoute | null) {
+export function useCommunityMedia(route: MediaPlusRoute | null, { page = 0, size = 3 }: CommunityMediaOptions = {}) {
     const [items, setItems] = useState<CommunityMediaItem[]>([]);
+    const [totalPages, setTotalPages] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -21,17 +22,20 @@ export function useCommunityMedia(route: MediaPlusRoute | null) {
         setLoading(true);
         setError(null);
         const request = route.contentType === 'anime'
-            ? fetchAnimeCommunityMedia({ slug: route.slug, page: 0, size: MEDIA_LIMIT })
-            : fetchMangaCommunityMedia({ slug: route.slug, page: 0, size: MEDIA_LIMIT });
+            ? fetchAnimeCommunityMedia({ slug: route.slug, page, size })
+            : fetchMangaCommunityMedia({ slug: route.slug, page, size });
         void request.then((response) => {
-            if (!cancelled) setItems(response.content.slice(0, MEDIA_LIMIT));
+            if (!cancelled) {
+                setItems(response.content);
+                setTotalPages(response.totalPages);
+            }
         }).catch((cause: unknown) => {
             if (!cancelled) setError(cause instanceof Error ? cause.message : 'Не вдалося завантажити медіа.');
         }).finally(() => {
             if (!cancelled) setLoading(false);
         });
         return () => { cancelled = true; };
-    }, [route]);
+    }, [page, route, size]);
 
-    return { items, loading, error };
+    return { items, loading, error, totalPages };
 }

@@ -89,6 +89,19 @@ function describeNode(node: Node): string {
 	return node.nodeName;
 }
 
+/**
+ * Hashes select in-page views (for example Media+'s `#fan`) and must not
+ * recreate unrelated widgets. Their URL-pattern matching still runs during
+ * reconciliation, so hash-specific modules remain supported.
+ */
+function hasDocumentRouteChanged(previousUrl: string, nextUrl: string): boolean {
+	const previous = new URL(previousUrl);
+	const next = new URL(nextUrl);
+	return previous.origin !== next.origin ||
+		previous.pathname !== next.pathname ||
+		previous.search !== next.search;
+}
+
 interface ModuleRuntimeProps {
 	component: React.FC<ModuleComponentProps>;
 	settings: ModuleSettings;
@@ -788,13 +801,16 @@ class ModuleManager {
 			// waiting for the fallback URL poll.
 			const nextUrl = window.location.href;
 			if (nextUrl !== this.currentUrl) {
+				const routeChanged = hasDocumentRouteChanged(this.currentUrl, nextUrl);
 				this.currentUrl = nextUrl;
-				for (const [id, instance] of this.activeModuleRoots) {
-					const moduleDef = this.moduleDefinitions.get(id);
-					if (!instance.exiting && !moduleDef?.persistent) reloadIds.add(id);
-				}
-				for (const moduleDef of this.moduleDefinitions.values()) {
-					if (typeof moduleDef.styles === "function") reloadIds.add(moduleDef.id);
+				if (routeChanged) {
+					for (const [id, instance] of this.activeModuleRoots) {
+						const moduleDef = this.moduleDefinitions.get(id);
+						if (!instance.exiting && !moduleDef?.persistent) reloadIds.add(id);
+					}
+					for (const moduleDef of this.moduleDefinitions.values()) {
+						if (typeof moduleDef.styles === "function") reloadIds.add(moduleDef.id);
+					}
 				}
 			}
 			this.evaluateModulesForCurrentUrl(reloadIds);
@@ -807,14 +823,17 @@ class ModuleManager {
 			const nextUrl = window.location.href;
 			lastObservedUrl = nextUrl;
 			if (nextUrl === this.currentUrl) return;
+			const routeChanged = hasDocumentRouteChanged(this.currentUrl, nextUrl);
 			this.currentUrl = nextUrl;
 			const reloadIds = new Set<string>();
-			for (const [id, instance] of this.activeModuleRoots) {
-				const moduleDef = this.moduleDefinitions.get(id);
-				if (!instance.exiting && !moduleDef?.persistent) reloadIds.add(id);
-			}
-			for (const moduleDef of this.moduleDefinitions.values()) {
-				if (typeof moduleDef.styles === "function") reloadIds.add(moduleDef.id);
+			if (routeChanged) {
+				for (const [id, instance] of this.activeModuleRoots) {
+					const moduleDef = this.moduleDefinitions.get(id);
+					if (!instance.exiting && !moduleDef?.persistent) reloadIds.add(id);
+				}
+				for (const moduleDef of this.moduleDefinitions.values()) {
+					if (typeof moduleDef.styles === "function") reloadIds.add(moduleDef.id);
+				}
 			}
 			this.scheduleReconciliation(reloadIds);
 		};

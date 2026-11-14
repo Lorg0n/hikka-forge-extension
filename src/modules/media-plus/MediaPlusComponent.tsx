@@ -125,7 +125,30 @@ const MediaPlusComponent: React.FC = () => {
         let originalHeaderHref: string | null = null;
         let contentState: ContentState | null = null;
         let syncFrame: number | null = null;
+        let releaseHeightTimer: ReturnType<typeof setTimeout> | null = null;
+        let originalSectionMinHeight: string | null = null;
         const nativeTabStates = new Map<HTMLElement, ElementState>();
+
+        const holdSectionHeight = () => {
+            if (!section) return;
+
+            const height = Math.ceil(section.getBoundingClientRect().height);
+            if (height > 0) {
+                if (originalSectionMinHeight === null) {
+                    originalSectionMinHeight = section.style.minHeight;
+                }
+                section.style.minHeight = `${height}px`;
+            }
+
+            if (releaseHeightTimer !== null) clearTimeout(releaseHeightTimer);
+            releaseHeightTimer = setTimeout(() => {
+                if (section && originalSectionMinHeight !== null) {
+                    section.style.minHeight = originalSectionMinHeight;
+                }
+                originalSectionMinHeight = null;
+                releaseHeightTimer = null;
+            }, 300);
+        };
 
         const nativeTabs = (): HTMLElement[] => tabList
             ? Array.from(tabList.querySelectorAll<HTMLElement>(`:scope > button:not([${TAB_MARKER}])`))
@@ -272,11 +295,13 @@ const MediaPlusComponent: React.FC = () => {
             if (tab.hasAttribute(TAB_MARKER)) {
                 event.preventDefault();
                 event.stopPropagation();
+                holdSectionHeight();
                 window.history.pushState(null, '', fanHref());
                 setFanView(true);
                 return;
             }
 
+            holdSectionHeight();
             clearFanHash();
             setFanView(false);
         };
@@ -291,6 +316,10 @@ const MediaPlusComponent: React.FC = () => {
         return () => {
             observer.disconnect();
             if (syncFrame !== null) cancelAnimationFrame(syncFrame);
+            if (releaseHeightTimer !== null) clearTimeout(releaseHeightTimer);
+            if (section && originalSectionMinHeight !== null) {
+                section.style.minHeight = originalSectionMinHeight;
+            }
             document.removeEventListener('click', handleClick, true);
             window.removeEventListener('popstate', scheduleSync);
             window.removeEventListener('hashchange', scheduleSync);
@@ -307,7 +336,7 @@ const MediaPlusComponent: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+            <div className="animate-in fade-in-0 slide-in-from-bottom-2 grid grid-cols-2 gap-4 duration-200 motion-reduce:animate-none md:grid-cols-3">
                 {Array.from({ length: MAX_MEDIA_ITEMS }).map((_, index) => (
                     <div key={index} className="flex flex-col gap-2">
                         <AspectRatio ratio={1.7} className="animate-pulse rounded-md bg-secondary/20" />
@@ -320,46 +349,48 @@ const MediaPlusComponent: React.FC = () => {
 
     if (error || items.length === 0) {
         return (
-            <p className="py-4 text-sm text-muted-foreground">
+            <p className="animate-in fade-in-0 slide-in-from-bottom-2 py-4 text-sm text-muted-foreground duration-200 motion-reduce:animate-none">
                 {error ? 'Не вдалося завантажити фанатські медіа.' : 'Фанатських медіа для цього тайтлу поки немає.'}
             </p>
         );
     }
 
     return (
-        <ResponsiveContentRail>
-            {({ scrollRef }) => (
-                <div ref={scrollRef} className={`${cardGridClassName} px-4 md:px-0`}>
-                    {items.map((item) => (
-                        <article key={item.id} className="group flex min-w-0 flex-col gap-2">
-                            <AspectRatio ratio={1.7} className="overflow-hidden rounded-md bg-muted ring-1 ring-border">
-                                <a
-                                    href={item.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="absolute inset-0 flex items-center justify-center bg-secondary/20"
-                                >
-                                    {item.thumbnailUrl ? (
-                                        <img
-                                            src={item.thumbnailUrl}
-                                            alt={item.title}
-                                            loading="lazy"
-                                            className="size-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
-                                        />
-                                    ) : (
-                                        <span className="text-sm text-muted-foreground">Відео</span>
-                                    )}
+        <div className="animate-in fade-in-0 slide-in-from-bottom-2 duration-200 motion-reduce:animate-none">
+            <ResponsiveContentRail>
+                {({ scrollRef }) => (
+                    <div ref={scrollRef} className={`${cardGridClassName} px-4 md:px-0`}>
+                        {items.map((item) => (
+                            <article key={item.id} className="group flex min-w-0 flex-col gap-2">
+                                <AspectRatio ratio={1.7} className="overflow-hidden rounded-md bg-muted ring-1 ring-border">
+                                    <a
+                                        href={item.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="absolute inset-0 flex items-center justify-center bg-secondary/20"
+                                    >
+                                        {item.thumbnailUrl ? (
+                                            <img
+                                                src={item.thumbnailUrl}
+                                                alt={item.title}
+                                                loading="lazy"
+                                                className="size-full object-cover"
+                                            />
+                                        ) : (
+                                            <span className="text-sm text-muted-foreground">Відео</span>
+                                        )}
+                                    </a>
+                                </AspectRatio>
+                                <a href={item.url} target="_blank" rel="noopener noreferrer" className="min-w-0">
+                                    <p className="mb-1 truncate text-xs text-muted-foreground">{item.provider}</p>
+                                    <span className="line-clamp-2 text-sm leading-5 font-medium">{item.title}</span>
                                 </a>
-                            </AspectRatio>
-                            <a href={item.url} target="_blank" rel="noopener noreferrer" className="min-w-0">
-                                <p className="mb-1 truncate text-xs text-muted-foreground">{item.provider}</p>
-                                <span className="line-clamp-2 text-sm leading-5 font-medium">{item.title}</span>
-                            </a>
-                        </article>
-                    ))}
-                </div>
-            )}
-        </ResponsiveContentRail>
+                            </article>
+                        ))}
+                    </div>
+                )}
+            </ResponsiveContentRail>
+        </div>
     );
 };
 

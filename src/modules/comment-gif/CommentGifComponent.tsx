@@ -12,6 +12,8 @@ const COMMENT_TOOLBAR = `${COMMENTS} [role="toolbar"][aria-orientation="horizont
 const MOBILE_TOOLBAR = `[data-slot="page-sheet-content"] [role="toolbar"][aria-orientation="horizontal"]`;
 const TOOLBAR = `${COMMENT_TOOLBAR}, ${MOBILE_TOOLBAR}`;
 const TOKEN = /:emote\[([a-z0-9-]+)\]:/gi;
+// Reserve support for a future public sticker URL: users without Hikka Forge can
+// open its preview/install page, while the legacy token keeps older extensions compatible.
 const LINKED_TOKEN = /^:emote\[([a-z0-9-]+)\]:$/i;
 const IMAGE = "[data-hikka-forge-sticker]";
 const STICKER_TOKEN = "[data-hikka-forge-sticker-token]";

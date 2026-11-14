@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-import logo from '@/assets/logo.svg';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { ResponsiveContentRail } from '@/components/ui/responsive-content-rail';
 import { useContentUI } from '@/contexts/ContentUIContext';
@@ -203,12 +202,6 @@ const MediaPlusComponent: React.FC = () => {
             tab.setAttribute(TAB_MARKER, 'true');
             tab.setAttribute('aria-label', 'Фанатське медіа Hikka Forge');
             tab.append(document.createTextNode('Фанатське'));
-
-            const image = document.createElement('img');
-            image.src = logo;
-            image.alt = '';
-            image.className = 'size-3.5 shrink-0';
-            tab.append(image);
             return tab;
         };
 

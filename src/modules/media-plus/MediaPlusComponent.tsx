@@ -1,76 +1,27 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 import { AspectRatio } from '@/components/ui/aspect-ratio';
+import NotFound from '@/components/ui/not-found';
 import { ResponsiveContentRail } from '@/components/ui/responsive-content-rail';
 import { useContentUI } from '@/contexts/ContentUIContext';
-import { fetchAnimeCommunityMedia } from '@/services/animeService';
-import { fetchMangaCommunityMedia } from '@/services/mangaService';
-import type { CommunityMediaItem, SimilarContentType } from '@/types';
+import { captureNativeTabState, lockElementHeight, restoreNativeTabState, setNativeTabActive, type NativeTabState } from '@/lib/native-tabs';
+import { FAN_HASH, clearFanMediaHash, fanMediaHref, isFanMediaLocation, parseMediaPlusRoute, type MediaPlusRoute } from './mediaPlusRoute';
+import { useCommunityMedia } from './useCommunityMedia';
 
-const FAN_HASH = '#fan';
 const TAB_MARKER = 'data-hikka-forge-media-plus-tab';
 const MAX_MEDIA_ITEMS = 3;
 const cardGridClassName = 'no-scrollbar grid w-full min-w-0 grid-flow-col auto-cols-[minmax(11rem,calc((100%_-_1rem)/2))] gap-4 overflow-x-auto overscroll-x-contain pb-2 md:grid-flow-row md:auto-cols-auto md:grid-cols-3 md:overflow-visible md:pb-0';
-
-interface ContentRoute {
-    contentType: SimilarContentType;
-    slug: string;
-    key: string;
-}
-
-interface ElementState {
-    className: string;
-    ariaSelected: string | null;
-    tabIndex: string | null;
-    dataActive: string | null;
-}
 
 interface ContentState {
     display: string;
     hidden: boolean;
 }
 
-function parseRoute(): ContentRoute | null {
-    const segments = window.location.pathname.split('/').filter(Boolean);
-    const contentType = segments[0];
-    if ((contentType !== 'anime' && contentType !== 'manga') || segments.length < 2) return null;
-
-    const slugParts = segments.slice(1);
-    if (slugParts.at(-1) === 'media') slugParts.pop();
-    const slug = slugParts.join('/');
-    return slug ? { contentType, slug, key: `${contentType}:${slug}` } : null;
-}
-
-function isFanHash(): boolean {
-    return window.location.hash === FAN_HASH;
-}
-
-function fanHref(): string {
-    const url = new URL(window.location.href);
-    url.hash = FAN_HASH;
-    return `${url.pathname}${url.search}${url.hash}`;
-}
-
-function clearFanHash(): void {
-    if (!isFanHash()) return;
-    const url = new URL(window.location.href);
-    url.hash = '';
-    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}`);
-}
-
-function setTabState(tab: HTMLElement, active: boolean): void {
-    tab.setAttribute('aria-selected', String(active));
-    tab.tabIndex = active ? 0 : -1;
-    if (active) tab.setAttribute('data-active', '');
-    else tab.removeAttribute('data-active');
-}
-
 const MediaPlusComponent: React.FC = () => {
     const ui = useContentUI();
-    const [route, setRoute] = useState<ContentRoute | null>(() => parseRoute());
-    const [items, setItems] = useState<CommunityMediaItem[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [route, setRoute] = useState<MediaPlusRoute | null>(() => parseMediaPlusRoute());
+    const { items, loading, error } = useCommunityMedia(route);
+    const fanTabEnabled = loading || error !== null || items.length > 0;
     const [fanActive, setFanActive] = useState(true);
     const routeKeyRef = useRef(route?.key);
     const fanActiveRef = useRef(true);
@@ -80,42 +31,17 @@ const MediaPlusComponent: React.FC = () => {
     }, [fanActive]);
 
     useEffect(() => {
-        if (!route) {
-            setItems([]);
-            setLoading(false);
-            return;
-        }
-
-        let cancelled = false;
-        setLoading(true);
-        setError(null);
-
-        const request = route.contentType === 'anime'
-            ? fetchAnimeCommunityMedia({ slug: route.slug, page: 0, size: MAX_MEDIA_ITEMS })
-            : fetchMangaCommunityMedia({ slug: route.slug, page: 0, size: MAX_MEDIA_ITEMS });
-
-        void request
-            .then((response) => {
-                if (!cancelled) setItems(response.content.slice(0, MAX_MEDIA_ITEMS));
-            })
-            .catch((requestError: unknown) => {
-                if (!cancelled) {
-                    setItems([]);
-                    setError(requestError instanceof Error ? requestError.message : 'Не вдалося завантажити медіа.');
-                }
-            })
-            .finally(() => {
-                if (!cancelled) setLoading(false);
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [route]);
-
-    useEffect(() => {
         const host = ui?.host;
         if (!host) return;
+
+        if (!fanTabEnabled) {
+            host.hidden = true;
+            host.style.display = 'none';
+            return () => {
+                host.hidden = false;
+                host.style.display = 'block';
+            };
+        }
 
         let section: HTMLElement | null = null;
         let tabList: HTMLElement | null = null;
@@ -125,29 +51,14 @@ const MediaPlusComponent: React.FC = () => {
         let originalHeaderHref: string | null = null;
         let contentState: ContentState | null = null;
         let syncFrame: number | null = null;
-        let releaseHeightTimer: ReturnType<typeof setTimeout> | null = null;
-        let originalSectionMinHeight: string | null = null;
-        const nativeTabStates = new Map<HTMLElement, ElementState>();
+        let releaseHeightLock: (() => void) | null = null;
+        const nativeTabStates = new Map<HTMLElement, NativeTabState>();
 
         const holdSectionHeight = () => {
             if (!section) return;
 
-            const height = Math.ceil(section.getBoundingClientRect().height);
-            if (height > 0) {
-                if (originalSectionMinHeight === null) {
-                    originalSectionMinHeight = section.style.minHeight;
-                }
-                section.style.minHeight = `${height}px`;
-            }
-
-            if (releaseHeightTimer !== null) clearTimeout(releaseHeightTimer);
-            releaseHeightTimer = setTimeout(() => {
-                if (section && originalSectionMinHeight !== null) {
-                    section.style.minHeight = originalSectionMinHeight;
-                }
-                originalSectionMinHeight = null;
-                releaseHeightTimer = null;
-            }, 300);
+            releaseHeightLock?.();
+            releaseHeightLock = lockElementHeight(section);
         };
 
         const nativeTabs = (): HTMLElement[] => tabList
@@ -157,27 +68,14 @@ const MediaPlusComponent: React.FC = () => {
         const saveNativeTabs = () => {
             for (const tab of nativeTabs()) {
                 if (nativeTabStates.has(tab)) continue;
-                nativeTabStates.set(tab, {
-                    className: tab.className,
-                    ariaSelected: tab.getAttribute('aria-selected'),
-                    tabIndex: tab.getAttribute('tabindex'),
-                    dataActive: tab.getAttribute('data-active'),
-                });
+                nativeTabStates.set(tab, captureNativeTabState(tab));
             }
         };
 
         const restoreNativeTabs = () => {
             for (const [tab, state] of nativeTabStates) {
                 if (!tab.isConnected) continue;
-                tab.className = state.className;
-                for (const [attribute, value] of Object.entries({
-                    'aria-selected': state.ariaSelected,
-                    tabindex: state.tabIndex,
-                    'data-active': state.dataActive,
-                })) {
-                    if (value === null) tab.removeAttribute(attribute);
-                    else tab.setAttribute(attribute, value);
-                }
+                restoreNativeTabState(tab, state);
             }
             nativeTabStates.clear();
         };
@@ -202,7 +100,7 @@ const MediaPlusComponent: React.FC = () => {
 
             if (active) {
                 saveNativeTabs();
-                for (const tab of nativeTabs()) setTabState(tab, false);
+                for (const tab of nativeTabs()) setNativeTabActive(tab, false);
                 if (nativeContent && !contentState) {
                     contentState = { display: nativeContent.style.display, hidden: nativeContent.hidden };
                 }
@@ -215,7 +113,7 @@ const MediaPlusComponent: React.FC = () => {
                 restoreNativeContent();
             }
 
-            if (fanTab) setTabState(fanTab, active);
+            if (fanTab) setNativeTabActive(fanTab, active);
         };
 
         const createFanTab = (): HTMLButtonElement => {
@@ -229,13 +127,13 @@ const MediaPlusComponent: React.FC = () => {
         };
 
         const sync = () => {
-            const nextRoute = parseRoute();
+            const nextRoute = parseMediaPlusRoute();
             if (nextRoute?.key !== routeKeyRef.current) {
                 routeKeyRef.current = nextRoute?.key;
                 setRoute(nextRoute);
                 setFanView(true);
             }
-            if (isFanHash() && !fanActiveRef.current) setFanView(true);
+            if (isFanMediaLocation() && !fanActiveRef.current) setFanView(true);
 
             const nextSection = host.parentElement;
             if (!(nextSection instanceof HTMLElement) || nextSection.id !== 'content-media') return;
@@ -275,7 +173,7 @@ const MediaPlusComponent: React.FC = () => {
             if (headerLink && originalHeaderHref) headerLink.href = `${originalHeaderHref.split('#')[0]}${FAN_HASH}`;
 
             if (fanTab && fanTab.parentElement !== tabList) tabList.prepend(fanTab);
-            setFanView(fanActiveRef.current || isFanHash());
+            setFanView(fanActiveRef.current || isFanMediaLocation());
         };
 
         const scheduleSync = () => {
@@ -296,13 +194,13 @@ const MediaPlusComponent: React.FC = () => {
                 event.preventDefault();
                 event.stopPropagation();
                 holdSectionHeight();
-                window.history.pushState(null, '', fanHref());
+                window.history.pushState(null, '', fanMediaHref());
                 setFanView(true);
                 return;
             }
 
             holdSectionHeight();
-            clearFanHash();
+            clearFanMediaHash();
             setFanView(false);
         };
 
@@ -316,10 +214,7 @@ const MediaPlusComponent: React.FC = () => {
         return () => {
             observer.disconnect();
             if (syncFrame !== null) cancelAnimationFrame(syncFrame);
-            if (releaseHeightTimer !== null) clearTimeout(releaseHeightTimer);
-            if (section && originalSectionMinHeight !== null) {
-                section.style.minHeight = originalSectionMinHeight;
-            }
+            releaseHeightLock?.();
             document.removeEventListener('click', handleClick, true);
             window.removeEventListener('popstate', scheduleSync);
             window.removeEventListener('hashchange', scheduleSync);
@@ -330,7 +225,7 @@ const MediaPlusComponent: React.FC = () => {
             host.hidden = false;
             host.style.display = 'block';
         };
-    }, [ui]);
+    }, [fanTabEnabled, ui]);
 
     if (!fanActive || !route) return null;
 
@@ -349,9 +244,14 @@ const MediaPlusComponent: React.FC = () => {
 
     if (error || items.length === 0) {
         return (
-            <p className="animate-in fade-in-0 slide-in-from-bottom-2 py-4 text-sm text-muted-foreground duration-200 motion-reduce:animate-none">
-                {error ? 'Не вдалося завантажити фанатські медіа.' : 'Фанатських медіа для цього тайтлу поки немає.'}
-            </p>
+            <div className="animate-in fade-in-0 slide-in-from-bottom-2 duration-200 motion-reduce:animate-none">
+                <NotFound
+                    title={error ? 'Не вдалося завантажити фанатські медіа' : 'Фанатські медіа не знайдено'}
+                    description={error
+                        ? 'Спробуйте оновити сторінку трохи пізніше.'
+                        : 'Для цього тайтлу спільнота ще не додала відео чи інші матеріали.'}
+                />
+            </div>
         );
     }
 

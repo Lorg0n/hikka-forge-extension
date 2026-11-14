@@ -1,5 +1,5 @@
 import { logger } from "@/utils/logger";
-import { Children, isValidElement, useEffect, useRef, type PropsWithChildren, type ReactNode } from "react";
+import { Children, forwardRef, isValidElement, useEffect, useRef, type PropsWithChildren, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
 	getModuleAnimationTransition,
@@ -63,11 +63,11 @@ interface ModuleListTransitionProps extends PropsWithChildren {
 	children: ReactNode;
 }
 
-export function ModuleListTransition({
+export const ModuleListTransition = forwardRef<HTMLDivElement, ModuleListTransitionProps>(({
 	className,
 	animateOnMount = true,
 	children,
-}: ModuleListTransitionProps) {
+}, ref) => {
 	const reducedMotion = useReducedMotion();
 	const childCount = Children.count(children);
 	const childCountRef = useRef(childCount);
@@ -93,6 +93,7 @@ export function ModuleListTransition({
 
 	return (
 		<motion.div
+			ref={ref}
 			initial={animateOnMount ? "hidden" : false}
 			animate="visible"
 			variants={{
@@ -119,4 +120,6 @@ export function ModuleListTransition({
 			))}
 		</motion.div>
 	);
-}
+});
+
+ModuleListTransition.displayName = "ModuleListTransition";

@@ -4,7 +4,7 @@ import MediaPlusComponent from './MediaPlusComponent';
 const mediaPlusModule: ForgeModuleDef = {
     id: 'media-plus',
     name: 'Медіа+',
-    description: 'Доповнює вкладку медіа добіркою фанатських матеріалів від Hikka Forge.',
+    description: 'Доповнює вкладку медіа добіркою нових матеріалів',
     urlPatterns: [
         'https://hikka.io/anime/*=',
         'https://hikka.io/manga/*=',

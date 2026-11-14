@@ -13,6 +13,8 @@ interface SimilarContentRoute {
     slug: string;
 }
 
+const contentGridClassName = 'no-scrollbar grid w-full min-w-0 grid-flow-col auto-cols-[max(6rem,calc((100%_-_4rem)/5))] gap-4 overflow-x-auto overscroll-x-contain pb-2 md:grid-flow-row md:auto-cols-auto md:grid-cols-5 md:overflow-visible md:pb-0';
+
 const parseRoute = (): SimilarContentRoute | null => {
     if (typeof window === 'undefined') return null;
 
@@ -54,9 +56,9 @@ const SimilarContentComponent: React.FC = () => {
     if (loading) {
         return (
             <ModuleTransition stateKey="loading" animateStateChanges={false}>
-                <div className="flex flex-col gap-8">
+                <div className="flex min-w-0 flex-col gap-8">
                     <SimilarContentHeader />
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 w-full gap-4">
+                    <div className={contentGridClassName}>
                         {Array.from({ length: 5 }).map((_, index) => (
                             <div key={index} className="flex flex-col gap-2">
                                 <AspectRatio ratio={2 / 3}>
@@ -95,10 +97,10 @@ const SimilarContentComponent: React.FC = () => {
 
     return (
         <ModuleTransition stateKey="content" animateStateChanges={false}>
-            <div className="flex flex-col gap-8">
+            <div className="flex min-w-0 flex-col gap-8">
                 <SimilarContentHeader />
                 <ModuleListTransition
-                    className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 w-full gap-4"
+                    className={contentGridClassName}
                     animateOnMount={false}
                 >
                     {items.map((item) => (

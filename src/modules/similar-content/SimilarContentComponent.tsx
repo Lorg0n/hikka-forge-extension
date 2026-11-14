@@ -115,8 +115,8 @@ const SimilarContentComponent: React.FC = () => {
             <ModuleTransition stateKey="loading" animateStateChanges={false}>
                 <div className="flex min-w-0 flex-col gap-8">
                     <SimilarContentHeader />
-                    <div className="relative min-w-0">
-                        <div ref={gridRef} className={contentGridClassName}>
+                    <div className="relative -mx-4 min-w-0 md:mx-0">
+                        <div ref={gridRef} className={`${contentGridClassName} px-4 md:px-0`}>
                             {Array.from({ length: 5 }).map((_, index) => (
                                 <div key={index} className="flex flex-col gap-2">
                                     <AspectRatio ratio={2 / 3}>
@@ -159,10 +159,10 @@ const SimilarContentComponent: React.FC = () => {
         <ModuleTransition stateKey="content" animateStateChanges={false}>
             <div className="flex min-w-0 flex-col gap-8">
                 <SimilarContentHeader />
-                <div className="relative min-w-0">
+                <div className="relative -mx-4 min-w-0 md:mx-0">
                     <ModuleListTransition
                         ref={gridRef}
-                        className={contentGridClassName}
+                        className={`${contentGridClassName} px-4 md:px-0`}
                         animateOnMount={false}
                     >
                         {items.map((item) => (

@@ -7,13 +7,15 @@ import { StickerService, type StickerCategory, type StickerItem } from "@/servic
 
 const COMMENTS = "#comments";
 const FEED_COMMENT_CONTENT = "article .prose";
-const TOKEN_ROOTS = `${COMMENTS}, ${FEED_COMMENT_CONTENT}`;
+const TOKEN_ROOTS = `${COMMENTS}, ${FEED_COMMENT_CONTENT}, .comment-thread`;
 const COMMENT_TOOLBAR = `${COMMENTS} [role="toolbar"][aria-orientation="horizontal"]`;
 const MOBILE_TOOLBAR = `[data-slot="page-sheet-content"] [role="toolbar"][aria-orientation="horizontal"]`;
 const TOOLBAR = `${COMMENT_TOOLBAR}, ${MOBILE_TOOLBAR}`;
 const TOKEN = /:emote\[([a-z0-9-]+)\]:/gi;
+const LINKED_TOKEN = /^:emote\[([a-z0-9-]+)\]:$/i;
 const IMAGE = "[data-hikka-forge-sticker]";
 const STICKER_TOKEN = "[data-hikka-forge-sticker-token]";
+const LINK_TRIGGER = 'a[href], [role="button"][data-base-ui-click-trigger]';
 const stickerItems = new Map<string, StickerItem>();
 const stickerPackTitles = new Map<string, string>();
 let stickerCatalog: Promise<StickerItem[]> | null = null;
@@ -234,7 +236,52 @@ function copyStickerTokens(event: ClipboardEvent): void {
 	event.preventDefault();
 }
 
+function createStickerWrapper(item: StickerItem, slug: string, token: string): HTMLSpanElement {
+	const wrapper = document.createElement("span");
+	const image = document.createElement("img");
+	wrapper.dataset.hikkaForgeSticker = slug;
+	wrapper.dataset.hikkaForgeStickerToken = token;
+	image.dataset.hikkaForgeStickerToken = token;
+	wrapper.title = token;
+	wrapper.style.display = "inline-flex";
+	wrapper.style.verticalAlign = "middle";
+	wrapper.style.margin = "0 0.12em";
+	wrapper.style.width = `${stickerWidthUnits(item) * 3}em`;
+	wrapper.style.maxWidth = "100%";
+	wrapper.style.height = "3em";
+	image.src = item.url;
+	image.alt = item.alt ?? item.title;
+	image.loading = "lazy";
+	image.decoding = "async";
+	image.style.width = "100%";
+	image.style.height = "100%";
+	image.style.objectFit = "contain";
+	image.style.objectPosition = "left center";
+	wrapper.append(image);
+	attachStickerPreview(wrapper, item);
+	return wrapper;
+}
+
+function renderLinkedTokens(root: Node, items: Map<string, StickerItem>) {
+	const links = root instanceof Element
+		? [root, ...root.querySelectorAll(LINK_TRIGGER)]
+		: root.parentElement
+			? [root.parentElement, ...root.parentElement.querySelectorAll(LINK_TRIGGER)]
+			: [];
+
+	for (const link of links) {
+		if (!link.matches(LINK_TRIGGER) || link.closest(IMAGE)) continue;
+		const match = LINKED_TOKEN.exec(link.textContent?.trim() ?? "");
+		const slug = match?.[1];
+		const item = slug ? items.get(slug) : undefined;
+		if (!item) continue;
+
+		link.replaceChildren(createStickerWrapper(item, slug, match[0]));
+	}
+}
+
 function renderTokens(root: Node, items: Map<string, StickerItem>) {
+	renderLinkedTokens(root, items);
 	const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
 	const nodes: Text[] = [];
 	let node: Node | null;
@@ -255,29 +302,7 @@ function renderTokens(root: Node, items: Map<string, StickerItem>) {
 			if (!item) {
 				fragment.append(document.createTextNode(match[0]));
 			} else {
-				const wrapper = document.createElement("span");
-				const image = document.createElement("img");
-				wrapper.dataset.hikkaForgeSticker = slug;
-				wrapper.dataset.hikkaForgeStickerToken = match[0];
-				image.dataset.hikkaForgeStickerToken = match[0];
-				wrapper.title = match[0];
-				wrapper.style.display = "inline-flex";
-				wrapper.style.verticalAlign = "middle";
-				wrapper.style.margin = "0 0.12em";
-					wrapper.style.width = `${stickerWidthUnits(item) * 3}em`;
-					wrapper.style.maxWidth = "100%";
-					wrapper.style.height = "3em";
-				image.src = item.url;
-				image.alt = item.alt ?? item.title;
-				image.loading = "lazy";
-				image.decoding = "async";
-					image.style.width = "100%";
-					image.style.height = "100%";
-				image.style.objectFit = "contain";
-					image.style.objectPosition = "left center";
-				wrapper.append(image);
-				attachStickerPreview(wrapper, item);
-				fragment.append(wrapper);
+				fragment.append(createStickerWrapper(item, slug, match[0]));
 			}
 			cursor = match.index + match[0].length;
 		}

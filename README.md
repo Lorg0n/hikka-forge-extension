@@ -10,11 +10,12 @@ Hikka Forge is a modular browser extension designed to inject custom features an
 
 ## Features
 
-- Recommendations using the custom [anime2vec](https://huggingface.co/Lorg0n/hikka-forge-anime2vec) model.
-- Weekly top lists for ongoing anime
-- Native Hikka weighted scores instead of MAL ratings.
-- Full, searchable users comment history.
-- Seasonal thematic logos.
+- **AI** recommendations include similar anime and manga via [anime2vec](https://huggingface.co/Lorg0n/hikka-forge-anime2vec), personal recommendations, and Vector Alchemy.
+- **Graph** for related titles in a franchise.
+- **Stickers** in comments, with packs, search, previews, and custom widths.
+- Weekly top of ongoing anime.
+- Seasonal logos and visual effects.
+- Advanced colours, custom Google Fonts, and profile-link copying.
 
 ## Getting Started (for Developers)
 

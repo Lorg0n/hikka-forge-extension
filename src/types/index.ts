@@ -74,6 +74,31 @@ export type SimilarContentApiResponse =
     | SimilarMangaApiResponse;
 export type ForgeContentDetails = ForgeAnimeDetails | ForgeMangaDetails;
 
+export type CommunityMediaKind = 'VIDEO' | string;
+export type CommunityMediaPlatform = 'YOUTUBE' | string;
+
+export interface CommunityMediaItem {
+    id: number;
+    kind: CommunityMediaKind;
+    platform: CommunityMediaPlatform;
+    title: string;
+    author: string | null;
+    thumbnailUrl: string | null;
+    url: string;
+    provider: string;
+    sourceUrl: string | null;
+    publishedAt: string | null;
+    discoveredAt: string;
+}
+
+export interface CommunityMediaApiResponse {
+    content: CommunityMediaItem[];
+    currentPage: number;
+    last: boolean;
+    totalElements: number;
+    totalPages: number;
+}
+
 export interface SortInfo {
     empty: boolean;
     sorted: boolean;

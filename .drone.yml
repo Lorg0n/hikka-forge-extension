@@ -70,14 +70,16 @@ steps:
   #       "
 
   - name: publish-to-firefox-store
-    image: node:20-slim
+    image: node:22-slim
     environment:
       AMO_JWT_ISSUER:
         from_secret: AMO_JWT_ISSUER
       AMO_JWT_SECRET:
         from_secret: AMO_JWT_SECRET
     commands:
-      - npm install -g web-ext
+      - npm install -g web-ext@10.8.0
+      - web-ext --version
+      - date -u
       - >
         web-ext sign
         --source-dir=dist/firefox

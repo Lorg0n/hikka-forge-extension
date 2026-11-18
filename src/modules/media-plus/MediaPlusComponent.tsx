@@ -5,7 +5,7 @@ import { ResponsiveContentRail } from '@/components/ui/responsive-content-rail';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useContentUI } from '@/contexts/ContentUIContext';
 import { captureNativeTabState, lockElementHeight, restoreNativeTabState, setNativeTabActive, type NativeTabState } from '@/lib/native-tabs';
-import { FAN_HASH, clearFanMediaHash, fanMediaHref, isFanMediaLocation, parseMediaPlusRoute, type MediaPlusRoute } from './mediaPlusRoute';
+import { FAN_HASH, clearFanMediaHash, isFanMediaLocation, parseMediaPlusRoute, type MediaPlusRoute } from './mediaPlusRoute';
 import { useCommunityMedia } from './useCommunityMedia';
 import { CommunityMediaThumbnail } from './CommunityMediaThumbnail';
 
@@ -195,7 +195,6 @@ const MediaPlusComponent: React.FC = () => {
                 event.preventDefault();
                 event.stopPropagation();
                 holdSectionHeight();
-                window.history.pushState(null, '', fanMediaHref());
                 setFanView(true);
                 return;
             }

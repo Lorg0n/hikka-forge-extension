@@ -65,9 +65,9 @@ export const CommunityMediaThumbnail: React.FC<CommunityMediaThumbnailProps> = (
             </Button>
             <dialog ref={dialogRef} onClose={() => setOpen(false)} onClick={(event) => {
                 if (event.target === event.currentTarget) setOpen(false);
-            }} aria-label={alt} className="m-auto w-[calc(100%-2rem)] max-w-3xl rounded-lg border bg-background p-6 text-foreground shadow-lg backdrop:bg-black/60 backdrop:backdrop-blur-sm">
-                <div className="mb-4 flex items-start justify-between gap-4">
-                    <h2 className="text-lg font-semibold">{alt}</h2>
+            }} aria-label={alt} className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-3xl overflow-y-auto rounded-lg border bg-background p-3 text-foreground shadow-lg sm:p-6 backdrop:bg-black/60 backdrop:backdrop-blur-sm">
+                <div className="mb-3 flex items-start justify-between gap-2 sm:mb-4 sm:gap-4">
+                    <h2 className="min-w-0 break-words text-sm leading-5 font-semibold sm:text-lg sm:leading-7">{alt}</h2>
                     <Button type="button" variant="ghost" size="icon-sm" onClick={() => setOpen(false)} aria-label="Закрити">
                         <Icon icon="lucide:x" className="size-5" aria-hidden="true" />
                     </Button>

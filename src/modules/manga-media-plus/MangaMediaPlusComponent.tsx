@@ -4,6 +4,9 @@ import React, { useMemo } from 'react';
 import { CommunityMediaThumbnail } from '@/modules/media-plus/CommunityMediaThumbnail';
 import { ResponsiveContentRail } from '@/components/ui/responsive-content-rail';
 import { SectionHeader } from '@/components/ui/section-header';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import logo from '@/assets/logo.svg';
 import { parseMediaPlusRoute } from '@/modules/media-plus/mediaPlusRoute';
 import { useCommunityMedia } from '@/modules/media-plus/useCommunityMedia';
 
@@ -57,6 +60,16 @@ const MangaMediaPlusComponent: React.FC<MangaMediaPlusComponentProps> = ({ page 
                         Фанатське
                     </button>
                 </div>
+                <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button type="button" variant="ghost" size="icon-xs" className="ml-auto text-muted-foreground" aria-label="Інформація про медіа Hikka Forge">
+                                <img src={logo} alt="" className="size-5" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">Медіа додано Hikka Forge</TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
             </div>
 
             <div className="animate-in fade-in-0 slide-in-from-bottom-2 duration-200 motion-reduce:animate-none">

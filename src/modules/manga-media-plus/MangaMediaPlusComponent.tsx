@@ -1,7 +1,7 @@
 import { Icon } from "@iconify/react";
 import React, { useMemo } from 'react';
 
-import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { CommunityMediaThumbnail } from '@/modules/media-plus/CommunityMediaThumbnail';
 import { ResponsiveContentRail } from '@/components/ui/responsive-content-rail';
 import { SectionHeader } from '@/components/ui/section-header';
 import { parseMediaPlusRoute } from '@/modules/media-plus/mediaPlusRoute';
@@ -26,18 +26,7 @@ const MangaMediaPlusComponent: React.FC<MangaMediaPlusComponentProps> = ({ page 
 
     const cards = items.slice(0, 3).map((item) => (
         <article key={item.id} className="flex min-w-0 flex-col gap-2">
-            <AspectRatio ratio={1.7} className="overflow-hidden rounded-md bg-muted ring-1 ring-border">
-                <a
-                    href={item.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="absolute inset-0 flex items-center justify-center bg-secondary/20"
-                >
-                    {item.thumbnailUrl ? (
-                        <img src={item.thumbnailUrl} alt={item.title} loading="lazy" className="size-full object-cover" />
-                    ) : <span className="text-sm text-muted-foreground">Відео</span>}
-                </a>
-            </AspectRatio>
+            <CommunityMediaThumbnail src={item.thumbnailUrl} alt={item.title} url={item.url} platform={item.platform} />
             <a href={item.url} target="_blank" rel="noopener noreferrer" className="min-w-0">
                 <p className="mb-1 flex min-w-0 items-center gap-1 text-xs text-muted-foreground" title="Джерело"><Icon icon="lucide:graph-ring" className="size-3 shrink-0" aria-hidden="true" /><span className="sr-only">Джерело: </span><span className="truncate">{item.provider}</span></p>
                 <span className="line-clamp-2 text-sm leading-5 font-medium">{item.title}</span>

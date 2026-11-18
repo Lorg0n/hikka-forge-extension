@@ -60,7 +60,7 @@ export const CommunityMediaThumbnail: React.FC<CommunityMediaThumbnailProps> = (
         </AspectRatio>
         </a>
         {videoId && <>
-            <Button type="button" variant="secondary" size="icon-sm" onClick={() => setOpen(true)} aria-label={`Переглянути ${alt}`} className="absolute right-2 top-2 opacity-60 hover:bg-primary hover:opacity-90 focus-visible:opacity-100">
+            <Button type="button" variant="secondary" size="icon-sm" onClick={() => setOpen(true)} aria-label={`Переглянути ${alt}`} className="absolute right-2 top-2 bg-secondary/60 backdrop-blur-md hover:bg-primary/90 focus-visible:bg-secondary/90">
                 <Icon icon="lucide:circle-fading-play" className="text-white" aria-hidden="true" />
             </Button>
             <dialog ref={dialogRef} onClose={() => setOpen(false)} onClick={(event) => {

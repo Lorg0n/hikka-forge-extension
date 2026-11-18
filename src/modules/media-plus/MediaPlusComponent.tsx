@@ -1,3 +1,4 @@
+import { Icon } from "@iconify/react";
 import React, { useEffect, useRef, useState } from 'react';
 
 import NotFound from '@/components/ui/not-found';
@@ -270,7 +271,7 @@ const MediaPlusComponent: React.FC = () => {
                                     <CommunityMediaThumbnail src={item.thumbnailUrl} alt={item.title} />
                                 </a>
                                 <a href={item.url} target="_blank" rel="noopener noreferrer" className="min-w-0">
-                                    <p className="mb-1 truncate text-xs text-muted-foreground">{item.provider}</p>
+                                    <p className="mb-1 flex min-w-0 items-center gap-1 text-xs text-muted-foreground" title="Джерело"><Icon icon="lucide:graph-ring" className="size-3 shrink-0" aria-hidden="true" /><span className="sr-only">Джерело: </span><span className="truncate">{item.provider}</span></p>
                                     <span className="line-clamp-2 text-sm leading-5 font-medium">{item.title}</span>
                                 </a>
                             </article>

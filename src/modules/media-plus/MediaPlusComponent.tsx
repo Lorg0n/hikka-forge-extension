@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-import { AspectRatio } from '@/components/ui/aspect-ratio';
 import NotFound from '@/components/ui/not-found';
 import { ResponsiveContentRail } from '@/components/ui/responsive-content-rail';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useContentUI } from '@/contexts/ContentUIContext';
 import { captureNativeTabState, lockElementHeight, restoreNativeTabState, setNativeTabActive, type NativeTabState } from '@/lib/native-tabs';
 import { FAN_HASH, clearFanMediaHash, fanMediaHref, isFanMediaLocation, parseMediaPlusRoute, type MediaPlusRoute } from './mediaPlusRoute';
 import { useCommunityMedia } from './useCommunityMedia';
+import { CommunityMediaThumbnail } from './CommunityMediaThumbnail';
 
 const TAB_MARKER = 'data-hikka-forge-media-plus-tab';
 const MAX_MEDIA_ITEMS = 3;
@@ -234,8 +235,12 @@ const MediaPlusComponent: React.FC = () => {
             <div className="animate-in fade-in-0 slide-in-from-bottom-2 grid grid-cols-2 gap-4 duration-200 motion-reduce:animate-none md:grid-cols-3">
                 {Array.from({ length: MAX_MEDIA_ITEMS }).map((_, index) => (
                     <div key={index} className="flex flex-col gap-2">
-                        <AspectRatio ratio={1.7} className="animate-pulse rounded-md bg-secondary/20" />
-                        <div className="h-4 w-4/5 animate-pulse rounded bg-secondary/20" />
+                        <Skeleton className="aspect-[1.7] w-full" />
+                        <Skeleton className="h-3 w-2/5" />
+                        <div className="flex flex-col gap-1">
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-3/4" />
+                        </div>
                     </div>
                 ))}
             </div>
@@ -262,25 +267,9 @@ const MediaPlusComponent: React.FC = () => {
                     <div ref={scrollRef} className={`${cardGridClassName} px-4 md:px-0`}>
                         {items.map((item) => (
                             <article key={item.id} className="group flex min-w-0 flex-col gap-2">
-                                <AspectRatio ratio={1.7} className="overflow-hidden rounded-md bg-muted ring-1 ring-border">
-                                    <a
-                                        href={item.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="absolute inset-0 flex items-center justify-center bg-secondary/20"
-                                    >
-                                        {item.thumbnailUrl ? (
-                                            <img
-                                                src={item.thumbnailUrl}
-                                                alt={item.title}
-                                                loading="lazy"
-                                                className="size-full object-cover"
-                                            />
-                                        ) : (
-                                            <span className="text-sm text-muted-foreground">Відео</span>
-                                        )}
-                                    </a>
-                                </AspectRatio>
+                                <a href={item.url} target="_blank" rel="noopener noreferrer" className="block">
+                                    <CommunityMediaThumbnail src={item.thumbnailUrl} alt={item.title} />
+                                </a>
                                 <a href={item.url} target="_blank" rel="noopener noreferrer" className="min-w-0">
                                     <p className="mb-1 truncate text-xs text-muted-foreground">{item.provider}</p>
                                     <span className="line-clamp-2 text-sm leading-5 font-medium">{item.title}</span>

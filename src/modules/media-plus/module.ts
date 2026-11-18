@@ -5,6 +5,7 @@ const mediaPlusModule: ForgeModuleDef = {
     id: 'media-plus',
     name: 'Медіа+',
     description: 'Доповнює вкладку медіа добіркою нових матеріалів',
+    beta: true,
     urlPatterns: [
         'https://hikka.io/anime/*=',
         'https://hikka.io/manga/*=',

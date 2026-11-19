@@ -23,6 +23,7 @@ interface ContentState {
 const MediaPlusComponent: React.FC = () => {
     const ui = useContentUI();
     const [route, setRoute] = useState<MediaPlusRoute | null>(() => parseMediaPlusRoute());
+    const [isMediaPage, setIsMediaPage] = useState(() => window.location.pathname.replace(/\/$/, '').endsWith('/media'));
     const { items, loading, error } = useCommunityMedia(route);
     const fanTabEnabled = loading || error !== null || items.length > 0;
     const [fanActive, setFanActive] = useState(true);
@@ -130,6 +131,7 @@ const MediaPlusComponent: React.FC = () => {
         };
 
         const sync = () => {
+            setIsMediaPage(window.location.pathname.replace(/\/$/, '').endsWith('/media'));
             const nextRoute = parseMediaPlusRoute();
             if (nextRoute?.key !== routeKeyRef.current) {
                 routeKeyRef.current = nextRoute?.key;
@@ -211,6 +213,10 @@ const MediaPlusComponent: React.FC = () => {
         document.addEventListener('click', handleClick, true);
         window.addEventListener('popstate', scheduleSync);
         window.addEventListener('hashchange', scheduleSync);
+        window.addEventListener('historystatechanged', scheduleSync);
+        const locationPoll = window.setInterval(() => {
+            setIsMediaPage(window.location.pathname.replace(/\/$/, '').endsWith('/media'));
+        }, 250);
         sync();
 
         return () => {
@@ -220,6 +226,8 @@ const MediaPlusComponent: React.FC = () => {
             document.removeEventListener('click', handleClick, true);
             window.removeEventListener('popstate', scheduleSync);
             window.removeEventListener('hashchange', scheduleSync);
+            window.removeEventListener('historystatechanged', scheduleSync);
+            window.clearInterval(locationPoll);
             restoreNativeTabs();
             restoreNativeContent();
             if (headerLink && originalHeaderHref !== null) headerLink.href = originalHeaderHref;
@@ -231,7 +239,7 @@ const MediaPlusComponent: React.FC = () => {
 
     if (!fanActive || !route) return null;
 
-    if (window.location.pathname.replace(/\/$/, '').endsWith('/media')) {
+    if (isMediaPage) {
         return <CommunityMediaGrid route={route} />;
     }
 
@@ -270,7 +278,7 @@ const MediaPlusComponent: React.FC = () => {
             <ResponsiveContentRail>
                 {({ scrollRef }) => (
                     <div ref={scrollRef} className={`${cardGridClassName} px-4 md:px-0`}>
-                        {items.map((item) => (
+                        {items.slice(0, MAX_MEDIA_ITEMS).map((item) => (
                             <article key={item.id} className="group flex min-w-0 flex-col gap-2">
                                 <CommunityMediaThumbnail src={item.thumbnailUrl} alt={item.title} url={item.url} platform={item.platform} />
                                 <a href={item.url} target="_blank" rel="noopener noreferrer" className="min-w-0">

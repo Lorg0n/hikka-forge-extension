@@ -31,7 +31,7 @@ import { convertNotification, type NotificationItem, type NotificationResponse }
 type Result = { pagination: { page: number; pages: number }; list: NotificationResponse[] };
 type CachedPage = { data: Result; savedAt: number };
 type NotificationsCache = { head: string; pages: Record<string, CachedPage> };
-const CACHE_TTL = 60 * 60 * 1000;
+const CACHE_TTL = 30 * 24 * 60 * 60 * 1000;
 const CACHE_PREFIX = 'notifications_cache_v1_';
 function NotificationsSkeleton() {
     return <div role="status" aria-label="Завантаження сповіщень">{Array.from({ length: 4 }, (_, index) => <div key={index} className="flex gap-3 border-t border-border px-3 py-3"><Skeleton className="size-10 shrink-0" /><div className="flex flex-1 flex-col gap-2"><Skeleton className="h-3 w-32" /><Skeleton className="h-3 w-2/3" /><Skeleton className="h-2 w-16" /></div></div>)}</div>;
@@ -108,6 +108,11 @@ export default function NotificationsView() {
     const [groupNotifications, setGroupNotifications] = useState(false);
     const [searchPages, setSearchPages] = useState(10);
     const [query, setQuery] = useState('');
+    const [debouncedQuery, setDebouncedQuery] = useState('');
+    useEffect(() => {
+        const timer = window.setTimeout(() => setDebouncedQuery(query.trim()), 400);
+        return () => window.clearTimeout(timer);
+    }, [query]);
     const [statusFilter, setStatusFilter] = useState('all');
     const [category, setCategory] = useState('all');
     const [showAllCategories, setShowAllCategories] = useState(false);
@@ -180,7 +185,7 @@ export default function NotificationsView() {
         setLoading(true); setError('');
         try {
             const data = await fetchPage(next);
-            setItems(previous => next === 1 ? data.list : [...previous, ...data.list.filter(item => !previous.some(old => old.reference === item.reference))]);
+            setItems(previous => { if (next === 1) return data.list; const known = new Set(previous.map(item => item.reference)); return [...previous, ...data.list.filter(item => !known.has(item.reference))]; });
             setPage(data.pagination.page); setPages(data.pagination.pages);
         } catch (e) { setError(e instanceof Error ? e.message : 'Не вдалося завантажити сповіщення.'); } finally { loadingRef.current = false; setLoading(false); }
     }, [fetchPage]);
@@ -194,7 +199,7 @@ export default function NotificationsView() {
         observer.observe(target);
         return () => observer.disconnect();
     }, [page, pages, loading, error, load, query]);
-    const searchActive = query.trim().length > 0;
+    const searchActive = debouncedQuery.length > 0;
     useEffect(() => {
         if (!searchActive) { setSearchItems([]); setSearching(false); setSearchError(''); setSearchProgress(0); return; }
         const controller = new AbortController();
@@ -204,7 +209,7 @@ export default function NotificationsView() {
                 for (let current = 1; current <= searchPages; current++) {
                     const data = await fetchPage(current, controller.signal);
                     if (controller.signal.aborted) return;
-                    setSearchItems(previous => [...previous, ...data.list.filter(item => !previous.some(old => old.reference === item.reference))]);
+                    setSearchItems(previous => { const known = new Set(previous.map(item => item.reference)); return [...previous, ...data.list.filter(item => !known.has(item.reference))]; });
                     setSearchProgress(current);
                     if (current >= data.pagination.pages || !data.list.length) break;
                 }
@@ -223,9 +228,10 @@ export default function NotificationsView() {
     }, []);
     const markAll = async () => { setMarking(true); const results = await Promise.allSettled(items.filter(item => !item.seen).map(item => markSeen(item.reference))); await loadCount(); if (results.some(r => r.status === 'rejected')) setError('Не вдалося позначити всі сповіщення прочитаними.'); setMarking(false); };
     const normalized = useMemo(() => items.map(item => convertNotification(item)).filter((item): item is NotificationItem => item !== null), [items]);
+    const normalizedSearch = useMemo(() => searchItems.map(item => convertNotification(item)).filter((item): item is NotificationItem => item !== null), [searchItems]);
     const displayed = useMemo(() => {
-        const source = searchActive ? searchItems.map(item => convertNotification(item)).filter((item): item is NotificationItem => item !== null) : normalized;
-        const needle = query.trim().toLocaleLowerCase('uk');
+        const source = searchActive ? normalizedSearch : normalized;
+        const needle = debouncedQuery.toLocaleLowerCase('uk');
         return source.filter(item => {
             const matchesQuery = !needle || [item.title, item.description, item.preview, item.actor?.username].some(value => value?.toLocaleLowerCase('uk').includes(needle));
             const matchesStatus = statusFilter === 'all' || (statusFilter === 'unread' ? !item.seen : item.seen);
@@ -233,7 +239,7 @@ export default function NotificationsView() {
             const matchesCategory = !selectedCategory || (selectedCategory.types as readonly string[]).includes(item.type);
             return matchesQuery && matchesStatus && matchesCategory;
         });
-    }, [normalized, searchItems, searchActive, query, statusFilter, category]);
+    }, [normalized, normalizedSearch, searchActive, debouncedQuery, statusFilter, category]);
     return <ModulePage stateKey="notifications"><div className="flex flex-col gap-8 md:gap-12">
         <PageHeader
             title="Сповіщення"

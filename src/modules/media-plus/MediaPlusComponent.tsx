@@ -9,6 +9,7 @@ import { captureNativeTabState, lockElementHeight, restoreNativeTabState, setNat
 import { FAN_HASH, clearFanMediaHash, isFanMediaLocation, parseMediaPlusRoute, type MediaPlusRoute } from './mediaPlusRoute';
 import { useCommunityMedia } from './useCommunityMedia';
 import { CommunityMediaThumbnail } from './CommunityMediaThumbnail';
+import { CommunityMediaGrid } from './CommunityMediaPage';
 
 const TAB_MARKER = 'data-hikka-forge-media-plus-tab';
 const MAX_MEDIA_ITEMS = 3;
@@ -229,6 +230,10 @@ const MediaPlusComponent: React.FC = () => {
     }, [fanTabEnabled, ui]);
 
     if (!fanActive || !route) return null;
+
+    if (window.location.pathname.replace(/\/$/, '').endsWith('/media')) {
+        return <CommunityMediaGrid route={route} />;
+    }
 
     if (loading) {
         return (

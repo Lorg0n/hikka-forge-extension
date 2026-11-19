@@ -24,7 +24,8 @@ import logo from '@/assets/logo.svg';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { ChevronDown, LoaderCircle, Search, X } from 'lucide-react';
+import { CheckCheck, ChevronDown, LoaderCircle, Search, X } from 'lucide-react';
+import { Icon } from '@iconify/react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { convertNotification, type NotificationItem, type NotificationResponse } from './notifications';
 
@@ -63,16 +64,19 @@ function dayKey(timestamp: number): 'today' | 'yesterday' | 'earlier' {
     const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
     return date >= today ? 'today' : date >= yesterday ? 'yesterday' : 'earlier';
 }
-function NotificationRow({ item, markSeen }: { item: NotificationItem; markSeen: (id: string) => void }) {
+function NotificationRow({ item, markSeen, selecting, selected, toggle }: { item: NotificationItem; markSeen: (id: string) => void; selecting: boolean; selected: boolean; toggle: (id: string) => void }) {
+    const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    useEffect(() => () => { if (clickTimer.current) clearTimeout(clickTimer.current); }, []);
     const NotificationIcon = item.scoreSign ? (item.scoreSign > 0 ? MaterialSymbolsHeartPlusRounded : MaterialSymbolsHeartMinusRounded) : icons[item.type] || MaterialSymbolsNotificationsRounded;
     const image = item.actor?.avatar || item.contentImage;
-    return <div className={`group/item flex gap-3 border-t border-l-4 border-border px-3 py-2.5 transition-colors hover:bg-muted ${item.seen ? 'border-l-transparent' : 'border-l-primary-foreground/60 bg-primary-foreground/10'}`}>
+    return <div onDoubleClick={event => { event.preventDefault(); event.stopPropagation(); if (clickTimer.current) clearTimeout(clickTimer.current); if (!selecting) toggle(item.reference); }} onClick={event => { if (selecting || event.ctrlKey || event.metaKey) { event.preventDefault(); if (event.detail < 2) toggle(item.reference); } }} className={`group/item flex gap-3 border-t border-l-4 border-border px-3 py-2.5 transition-colors hover:bg-muted ${item.seen ? 'border-l-transparent' : 'border-l-primary-foreground/60 bg-primary-foreground/10'}`}>
+        {selecting && <input type="checkbox" aria-label="Вибрати сповіщення" checked={selected} onChange={() => toggle(item.reference)} onClick={event => event.stopPropagation()} className="my-auto mx-2 size-4 shrink-0 accent-primary" />}
         <div className="relative size-10 shrink-0">
             {image ? <img src={image} alt={item.actor?.username || ''} className="size-10 rounded-md object-cover" /> : <div className="flex size-10 items-center justify-center rounded-md border border-border bg-secondary/40"><NotificationIcon className="size-5" /></div>}
             {image && <span className={`absolute -right-0.5 -bottom-0.5 flex size-4 items-center justify-center rounded-sm border ${accents[item.accent]}`}><NotificationIcon className="size-2.5" /></span>}
         </div>
         <div className="relative flex min-w-0 flex-1 flex-col gap-1">
-            {item.href !== '#' && <a href={item.href} className="absolute inset-0 z-10" aria-label={item.title} onClick={() => { if (!item.seen) markSeen(item.reference); }} />}
+            {item.href !== '#' && <a href={item.href} className="absolute inset-0 z-10" aria-label={item.title} onClick={event => { if (selecting || event.ctrlKey || event.metaKey) return; event.preventDefault(); if (clickTimer.current) clearTimeout(clickTimer.current); if (event.detail > 1) return; clickTimer.current = setTimeout(() => { if (!item.seen) markSeen(item.reference); window.location.assign(item.href); }, event.detail === 0 ? 0 : 300); }} />}
             <div className="flex items-center justify-between gap-2"><span className="truncate text-sm font-medium leading-tight">{item.title}</span>{item.scoreSign && <span className={`rounded-sm border px-1 text-xs font-bold ${accents[item.accent]}`}>{item.scoreSign > 0 ? '+1' : '-1'}</span>}</div>
             <div className="line-clamp-2 text-xs text-muted-foreground"><ReactMarkdown allowedElements={['p', 'strong', 'em', 'del', 'code']} unwrapDisallowed>{item.description || ''}</ReactMarkdown></div>
             {item.preview && <blockquote className="mt-0.5 line-clamp-1 border-l-2 border-muted-foreground/20 pl-2 text-xs text-muted-foreground"><ReactMarkdown allowedElements={['p', 'strong', 'em', 'del', 'code']} unwrapDisallowed>{item.preview}</ReactMarkdown></blockquote>}
@@ -80,7 +84,7 @@ function NotificationRow({ item, markSeen }: { item: NotificationItem; markSeen:
         </div>
     </div>;
 }
-function NotificationGroup({ items, markSeen }: { items: NotificationItem[]; markSeen: (id: string) => void }) {
+function NotificationGroup({ items, markSeen, selecting, selectedIds, toggle, toggleGroup }: { items: NotificationItem[]; markSeen: (id: string) => void; selecting: boolean; selectedIds: Set<string>; toggle: (id: string) => void; toggleGroup: (ids: string[]) => void }) {
     const [latest] = items;
     const actors = getNotificationGroupActors(items);
     const unseen = items.filter(item => !item.seen);
@@ -88,8 +92,9 @@ function NotificationGroup({ items, markSeen }: { items: NotificationItem[]; mar
     const GroupIcon = latest.scoreSign ? (latest.scoreSign > 0 ? MaterialSymbolsHeartPlusRounded : MaterialSymbolsHeartMinusRounded) : icons[latest.type] || MaterialSymbolsNotificationsRounded;
     const image = latest.actor?.avatar || latest.contentImage;
     const avatar = (actor: typeof actors[number], className: string) => <div className={`absolute flex size-7 items-center justify-center overflow-hidden rounded-md bg-secondary text-xs font-medium uppercase ${className}`}>{actor.avatar ? <img src={actor.avatar} alt={actor.username || ''} className="size-full object-cover" /> : actor.username?.[0]}</div>;
-    return <Collapsible className="border-t border-border first:border-t-0" onOpenChange={open => { if (open) unseen.forEach(item => markSeen(item.reference)); }}>
-        <CollapsibleTrigger className={`group/item flex w-full cursor-pointer gap-3 border-l-4 px-3 py-2.5 text-left outline-none transition-colors hover:bg-muted focus-visible:bg-muted ${unseen.length ? 'border-l-primary-foreground/60 bg-primary-foreground/10' : 'border-l-transparent'}`}>
+    return <Collapsible className="border-t border-border first:border-t-0" onOpenChange={open => { if (open && !selecting) unseen.forEach(item => markSeen(item.reference)); }}>
+        <CollapsibleTrigger onDoubleClick={event => { event.preventDefault(); event.stopPropagation(); if (!selecting) { toggle(items[0].reference); toggleGroup(items.slice(1).map(item => item.reference)); } }} className={`group/item flex w-full cursor-pointer gap-3 border-l-4 px-3 py-2.5 text-left outline-none transition-colors hover:bg-muted focus-visible:bg-muted ${unseen.length ? 'border-l-primary-foreground/60 bg-primary-foreground/10' : 'border-l-transparent'}`}>
+            {selecting && <input type="checkbox" aria-label="Вибрати групу" checked={items.every(item => selectedIds.has(item.reference))} ref={node => { if (node) node.indeterminate = items.some(item => selectedIds.has(item.reference)) && !items.every(item => selectedIds.has(item.reference)); }} onClick={event => event.stopPropagation()} onChange={() => toggleGroup(items.map(item => item.reference))} className="my-auto mx-2 size-4 shrink-0 accent-primary" />}
             <div className="relative size-10 shrink-0">
                 {actors[1] ? <>{avatar(actors[1], 'top-0 left-0')}{avatar(actors[0], 'right-0 bottom-0 ring-2 ring-popover')}</> : image ? <img src={image} alt={latest.actor?.username || ''} className="size-10 rounded-md object-cover" /> : <div className="flex size-10 items-center justify-center rounded-md border border-border bg-secondary/40"><GroupIcon className="size-5" /></div>}
                 {(actors[1] || image) && <div className={`absolute -right-0.5 -bottom-0.5 flex size-4 items-center justify-center rounded-sm border ${accents[latest.accent]}`}><GroupIcon className="size-2.5" /></div>}
@@ -100,10 +105,18 @@ function NotificationGroup({ items, markSeen }: { items: NotificationItem[]; mar
                 <div className="flex items-center gap-1.5 text-xs"><time className="opacity-60" dateTime={new Date(latest.created * 1000).toISOString()}>{new Date(latest.created * 1000).toLocaleString('uk-UA')}</time>{unseen.length > 0 && unseen.length < items.length && <span className="font-medium text-primary-foreground">· {unseen.length} {getDeclensionWord(unseen.length, ['нове', 'нові', 'нових'])}</span>}</div>
             </div>
         </CollapsibleTrigger>
-        <CollapsibleContent className="overflow-hidden border-t border-border">{items.map(item => <div key={item.reference} className="pl-5"><NotificationRow item={item} markSeen={markSeen} /></div>)}</CollapsibleContent>
+        <CollapsibleContent className="overflow-hidden border-t border-border">{items.map(item => <div key={item.reference} className="pl-5"><NotificationRow item={item} markSeen={markSeen} selecting={selecting} selected={selectedIds.has(item.reference)} toggle={toggle} /></div>)}</CollapsibleContent>
     </Collapsible>;
 }
 export default function NotificationsView() {
+    const [selecting, setSelecting] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [bulkBusy, setBulkBusy] = useState(false);
+    const [bulkProgress, setBulkProgress] = useState(0);
+    const toggle = (id: string) => { setSelecting(true); setSelectedIds(previous => { const next = new Set(previous); if (next.has(id)) next.delete(id); else next.add(id); return next; }); };
+    const toggleGroup = (ids: string[]) => setSelectedIds(previous => { const next = new Set(previous); const remove = ids.every(id => next.has(id)); ids.forEach(id => remove ? next.delete(id) : next.add(id)); return next; });
+    const cancelSelection = () => { if (!bulkBusy) { setSelecting(false); setSelectedIds(new Set()); } };
+    useEffect(() => { const handler = (event: KeyboardEvent) => { if (event.key === 'Escape' && !bulkBusy) { setSelecting(false); setSelectedIds(new Set()); } }; window.addEventListener('keydown', handler); return () => window.removeEventListener('keydown', handler); }, [bulkBusy]);
     const [items, setItems] = useState<NotificationResponse[]>([]); const [page, setPage] = useState(0); const [pages, setPages] = useState(1);
     const [groupNotifications, setGroupNotifications] = useState(false);
     const [query, setQuery] = useState('');
@@ -242,6 +255,20 @@ export default function NotificationsView() {
         for (const entry of Object.values(cacheRef.current.pages)) entry.data.list = entry.data.list.map(item => item.reference === id ? { ...item, seen: true } : item);
         saveCache();
     }, [saveCache]);
+    const markSelected = async () => {
+        const pending = searchItems.filter(item => selectedIds.has(item.reference) && !item.seen);
+        setBulkBusy(true); setBulkProgress(0);
+        const failed = new Set<string>();
+        for (let i = 0; i < pending.length; i += 4) {
+            const batch = pending.slice(i, i + 4);
+            const results = await Promise.allSettled(batch.map(item => markSeen(item.reference)));
+            results.forEach((result, index) => { if (result.status === 'rejected') failed.add(batch[index].reference); });
+            setBulkProgress(Math.min(i + 4, pending.length));
+        }
+        await loadCount(); setBulkBusy(false); setSelectedIds(failed);
+        if (failed.size) setError('Не вдалося позначити деякі сповіщення. Спробуйте ще раз.');
+        else setSelecting(false);
+    };
     const normalized = useMemo(() => items.map(item => convertNotification(item)).filter((item): item is NotificationItem => item !== null), [items]);
     const normalizedSearch = useMemo(() => searchItems.map(item => convertNotification(item)).filter((item): item is NotificationItem => item !== null), [searchItems]);
     const displayed = useMemo(() => {
@@ -270,7 +297,7 @@ export default function NotificationsView() {
         return () => observer.disconnect();
     }, [visibleEntries, totalEntries]);
     let remainingEntries = visibleEntries;
-    return <ModulePage stateKey="notifications"><div className="flex flex-col gap-8 md:gap-12">
+    return <ModulePage stateKey="notifications"><div className="flex min-h-[70vh] flex-col gap-8 md:gap-12" onDoubleClick={event => { if (event.target === event.currentTarget) cancelSelection(); }}>
         <PageHeader
             title="Сповіщення"
             description="Ваші оновлення та активність спільноти"
@@ -278,7 +305,7 @@ export default function NotificationsView() {
             titleSuffix={count > 0 ? <Badge variant="warning">{count}</Badge> : undefined}
             action={<img src={logo} alt="Hikka Forge" className="size-5 shrink-0 opacity-60" />}
         />
-        <div className="flex min-w-0 flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-4" onDoubleClick={event => { if (event.target === event.currentTarget) cancelSelection(); }}>
             <div className="relative w-full">
                 <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input value={query} onChange={event => setQuery(event.target.value)} placeholder="Пошук сповіщень..." aria-label="Пошук сповіщень" className="h-11 w-full pl-10 pr-20" />
@@ -297,12 +324,13 @@ export default function NotificationsView() {
                 </div>
             </div>
         </div>
+        {selecting && <div className="mt-3 flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-3 py-1">{ <><span className="text-sm text-muted-foreground">Вибрано: {selectedIds.size}{bulkBusy && ` · ${bulkProgress}`}</span><div className="flex gap-1"><Button size="icon-sm" variant="ghost" aria-label="Вибрати всі" title="Вибрати всі" disabled={searching || !!searchError || bulkBusy} onClick={() => { const needle = debouncedQuery.toLocaleLowerCase('uk'); const selectedCategory = categories.find(option => option.id === category); setSelectedIds(new Set(normalizedSearch.filter(item => (!needle || [item.title, item.description, item.preview, item.actor?.username].some(value => value?.toLocaleLowerCase('uk').includes(needle))) && (statusFilter === 'all' || (statusFilter === 'unread' ? !item.seen : item.seen)) && (!selectedCategory || (selectedCategory.types as readonly string[]).includes(item.type))).map(item => item.reference))); }}><Icon icon="boxicons:select-all" /></Button><Button size="icon-sm" variant="ghost" aria-label="Прочитати вибрані" title="Прочитати вибрані" disabled={!selectedIds.size || bulkBusy} onClick={() => void markSelected()}>{bulkBusy ? <LoaderCircle className="animate-spin" /> : <CheckCheck />}</Button><Button size="icon-sm" variant="ghost" aria-label="Скасувати" title="Скасувати" disabled={bulkBusy} onClick={cancelSelection}><X /></Button></div></>}</div>}
         <div className="mt-3 overflow-hidden rounded-md border border-border">
         {sections.map(({ day, entries }) => {
             const visible = entries.slice(0, remainingEntries);
             remainingEntries = Math.max(0, remainingEntries - visible.length);
             if (!visible.length) return null;
-            return <section key={day}><div className="border-y border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">{day === 'today' ? 'Сьогодні' : day === 'yesterday' ? 'Вчора' : 'Раніше'}</div>{visible.map(entry => { const mark = (id: string) => { void markSeen(id).then(loadCount).catch(() => setError('Не вдалося позначити сповіщення прочитаним.')); }; return entry.kind === 'group' ? <NotificationGroup key={entry.key} items={entry.items} markSeen={mark} /> : <NotificationRow key={entry.item.reference} item={entry.item} markSeen={mark} />; })}</section>;
+            return <section key={day}><div className="border-y border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">{day === 'today' ? 'Сьогодні' : day === 'yesterday' ? 'Вчора' : 'Раніше'}</div>{visible.map(entry => { const mark = (id: string) => { void markSeen(id).then(loadCount).catch(() => setError('Не вдалося позначити сповіщення прочитаним.')); }; return entry.kind === 'group' ? <NotificationGroup key={entry.key} items={entry.items} markSeen={mark} selecting={selecting} selectedIds={selectedIds} toggle={toggle} toggleGroup={toggleGroup} /> : <NotificationRow key={entry.item.reference} item={entry.item} markSeen={mark} selecting={selecting} selected={selectedIds.has(entry.item.reference)} toggle={toggle} />; })}</section>;
         })}
         {visibleEntries < totalEntries && <div ref={resultsEndRef} aria-hidden="true" className="h-px" />}
         {searching && <span className="sr-only" role="status">Завантажено {searchProgress} із {pages} сторінок</span>}

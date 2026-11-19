@@ -289,7 +289,9 @@ export default function NotificationsView() {
             <div className="flex flex-col gap-4">
                 <div className="flex flex-wrap gap-2">
                     <Button type="button" size="badge" variant={statusFilter === 'all' && category === 'all' ? 'default' : 'outline'} aria-pressed={statusFilter === 'all' && category === 'all'} onClick={() => { setStatusFilter('all'); setCategory('all'); }}>Усі</Button>
+                    <span aria-hidden="true" className="my-1 w-px self-stretch bg-border" />
                     {[{ id: 'unread', label: 'Непрочитані' }, { id: 'read', label: 'Прочитані' }].map(option => <Button key={option.id} type="button" size="badge" variant={statusFilter === option.id ? 'default' : 'outline'} aria-pressed={statusFilter === option.id} onClick={() => setStatusFilter(statusFilter === option.id ? 'all' : option.id)}>{option.label}</Button>)}
+                    <span aria-hidden="true" className="my-1 w-px self-stretch bg-border" />
                     {categories.filter((option, index) => index < 4 || showAllCategories || category === option.id).map(option => <Button key={option.id} type="button" size="badge" variant={category === option.id ? 'default' : 'outline'} aria-pressed={category === option.id} onClick={() => setCategory(category === option.id ? 'all' : option.id)}>{option.label}</Button>)}
                     <Button type="button" size="badge" variant="outline" aria-label={showAllCategories ? 'Приховати категорії' : 'Показати більше категорій'} aria-expanded={showAllCategories} onClick={() => setShowAllCategories(value => !value)}><ChevronDown className={`transition-transform ${showAllCategories ? 'rotate-180' : ''}`} /></Button>
                 </div>

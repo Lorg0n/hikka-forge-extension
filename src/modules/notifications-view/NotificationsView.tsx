@@ -24,7 +24,7 @@ import logo from '@/assets/logo.svg';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import { ChevronDown, X } from 'lucide-react';
 import { convertNotification, type NotificationItem, type NotificationResponse } from './notifications';
 
 type Result = { pagination: { page: number; pages: number }; list: NotificationResponse[] };
@@ -41,6 +41,14 @@ const accents: Record<string, string> = {
     info: 'bg-info text-info-foreground border-info-border', neutral: 'bg-muted text-muted-foreground border-border',
 };
 const api = 'https://api.hikka.io';
+const categories = [
+    { id: 'comments', label: 'Коментарі', types: ['comment_reply', 'comment_tag', 'edit_comment', 'collection_comment', 'article_comment'] },
+    { id: 'votes', label: 'Оцінки', types: ['comment_vote', 'collection_vote', 'article_vote'] },
+    { id: 'edits', label: 'Правки', types: ['edit_accepted', 'edit_denied', 'edit_updated'] },
+    { id: 'follows', label: 'Підписки', types: ['follow'] },
+    { id: 'anime', label: 'Аніме', types: ['schedule_anime'] },
+    { id: 'hikka', label: 'Hikka', types: ['hikka_update', 'thirdparty_login'] },
+] as const;
 function dayKey(timestamp: number): 'today' | 'yesterday' | 'earlier' {
     const date = new Date(timestamp * 1000); const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -92,7 +100,9 @@ export default function NotificationsView() {
     const [groupNotifications, setGroupNotifications] = useState(false);
     const [searchPages, setSearchPages] = useState(10);
     const [query, setQuery] = useState('');
-    const [filter, setFilter] = useState('all');
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [category, setCategory] = useState('all');
+    const [showAllCategories, setShowAllCategories] = useState(false);
     const [searchItems, setSearchItems] = useState<NotificationResponse[]>([]);
     const [searching, setSearching] = useState(false);
     const [searchProgress, setSearchProgress] = useState(0);
@@ -177,10 +187,12 @@ export default function NotificationsView() {
         const needle = query.trim().toLocaleLowerCase('uk');
         return source.filter(item => {
             const matchesQuery = !needle || [item.title, item.description, item.preview, item.actor?.username].some(value => value?.toLocaleLowerCase('uk').includes(needle));
-            const matchesFilter = filter === 'all' || (filter === 'unread' ? !item.seen : filter === 'read' ? item.seen : item.type === filter);
-            return matchesQuery && matchesFilter;
+            const matchesStatus = statusFilter === 'all' || (statusFilter === 'unread' ? !item.seen : item.seen);
+            const selectedCategory = categories.find(option => option.id === category);
+            const matchesCategory = !selectedCategory || (selectedCategory.types as readonly string[]).includes(item.type);
+            return matchesQuery && matchesStatus && matchesCategory;
         });
-    }, [normalized, searchItems, searchActive, query, filter]);
+    }, [normalized, searchItems, searchActive, query, statusFilter, category]);
     return <ModulePage stateKey="notifications"><div className="flex flex-col gap-8 md:gap-12">
         <PageHeader
             title="Сповіщення"
@@ -189,12 +201,20 @@ export default function NotificationsView() {
             titleSuffix={count > 0 ? <Badge variant="warning">{count}</Badge> : undefined}
             action={<img src={logo} alt="Hikka Forge" className="size-5 shrink-0 opacity-60" />}
         />
-        <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 sm:flex-row sm:items-start">
-            <div className="min-w-0 flex-1"><div className="relative"><Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={query} onChange={event => setQuery(event.target.value)} placeholder="Пошук сповіщень..." aria-label="Пошук сповіщень" className="pl-9" /></div><p className="mt-2 text-xs text-muted-foreground">Пошук охоплює до {searchPages} сторінок. Глибину можна змінити в налаштуваннях модуля.</p></div>
-            <select aria-label="Фільтр сповіщень" value={filter} onChange={event => setFilter(event.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <option value="all">Усі сповіщення</option><option value="unread">Непрочитані</option><option value="read">Прочитані</option>
-                <option value="comment_reply">Відповіді</option><option value="comment_vote">Оцінки коментарів</option><option value="comment_tag">Згадки</option><option value="follow">Підписки</option><option value="schedule_anime">Нові епізоди</option><option value="hikka_update">Оновлення Hikka</option><option value="edit_accepted">Прийняті правки</option><option value="edit_denied">Відхилені правки</option><option value="edit_updated">Оновлені правки</option><option value="edit_comment">Коментарі до правок</option><option value="collection_comment">Коментарі до колекцій</option><option value="collection_vote">Оцінки колекцій</option><option value="article_comment">Коментарі до статей</option><option value="article_vote">Оцінки статей</option><option value="thirdparty_login">Авторизації</option>
-            </select>
+        <div className="flex min-w-0 flex-col gap-4">
+            <div className="relative w-full">
+                <Input value={query} onChange={event => setQuery(event.target.value)} placeholder="Пошук сповіщень..." aria-label="Пошук сповіщень" className="w-full pr-11" />
+                <Button type="button" variant="ghost" size="icon-sm" aria-label="Очистити пошук" disabled={!query} onClick={() => setQuery('')} className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground disabled:invisible"><X className="size-4" /></Button>
+            </div>
+        <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4">
+                <div className="flex flex-wrap gap-2">
+                    <Button type="button" size="badge" variant={statusFilter === 'all' && category === 'all' ? 'default' : 'outline'} aria-pressed={statusFilter === 'all' && category === 'all'} onClick={() => { setStatusFilter('all'); setCategory('all'); }}>Усі</Button>
+                    {[{ id: 'unread', label: 'Непрочитані' }, { id: 'read', label: 'Прочитані' }].map(option => <Button key={option.id} type="button" size="badge" variant={statusFilter === option.id ? 'default' : 'outline'} aria-pressed={statusFilter === option.id} onClick={() => setStatusFilter(statusFilter === option.id ? 'all' : option.id)}>{option.label}</Button>)}
+                    {categories.filter((option, index) => index < 4 || showAllCategories || category === option.id).map(option => <Button key={option.id} type="button" size="badge" variant={category === option.id ? 'default' : 'outline'} aria-pressed={category === option.id} onClick={() => setCategory(category === option.id ? 'all' : option.id)}>{option.label}</Button>)}
+                    <Button type="button" size="badge" variant="outline" aria-label={showAllCategories ? 'Приховати категорії' : 'Показати більше категорій'} aria-expanded={showAllCategories} onClick={() => setShowAllCategories(value => !value)}><ChevronDown className={`transition-transform ${showAllCategories ? 'rotate-180' : ''}`} /></Button>
+                </div>
+            </div>
         </div>
         <div className="overflow-hidden rounded-md border border-border">
         {count > 0 && <div className="flex justify-end bg-muted/40 px-3 py-3"><Button size="sm" variant="outline" disabled={marking || loading} onClick={() => void markAll()}>Прочитати всі</Button></div>}
@@ -206,7 +226,8 @@ export default function NotificationsView() {
         {searchActive && searchError && <p className="p-4 text-sm text-destructive" role="alert">{searchError}</p>}
         {!searchActive && loading && <p className="p-4 text-sm text-muted-foreground">Завантаження…</p>}
         {!searchActive && error && <div className="p-4"><p className="text-sm text-destructive">{error}</p><Button variant="outline" onClick={() => void load(page ? page + 1 : 1)}>Спробувати ще</Button></div>}
-        {!loading && !searching && !searchError && !error && !displayed.length && <div className="p-8 text-center"><MaterialSymbolsNotificationsRounded className="mx-auto mb-3 size-6 text-muted-foreground" /><p className="font-medium">Сповіщень не знайдено</p><p className="text-sm text-muted-foreground">{searchActive || filter !== 'all' ? 'Спробуйте змінити пошуковий запит або фільтр' : 'Тут будуть відображатись майбутні сповіщення'}</p></div>}
+        {!loading && !searching && !searchError && !error && !displayed.length && <div className="p-8 text-center"><MaterialSymbolsNotificationsRounded className="mx-auto mb-3 size-6 text-muted-foreground" /><p className="font-medium">Сповіщень не знайдено</p><p className="text-sm text-muted-foreground">{searchActive || statusFilter !== 'all' || category !== 'all' ? 'Спробуйте змінити пошуковий запит або фільтр' : 'Тут будуть відображатись майбутні сповіщення'}</p></div>}
         {!searchActive && page > 0 && page < pages && <div ref={loadMoreRef} aria-hidden="true" className="h-px" />}
-    </div></div></ModulePage>;
+    </div></div>
+    </div></ModulePage>;
 }

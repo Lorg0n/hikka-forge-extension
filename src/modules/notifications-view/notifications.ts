@@ -1,12 +1,12 @@
 // Adapted from hikka-next/packages/core/src/notifications.ts.
-const NotificationTypeEnum = {
+export const NotificationTypeEnum = {
  EDIT_ACCEPTED: 'edit_accepted', EDIT_DENIED: 'edit_denied', EDIT_UPDATED: 'edit_updated',
  COMMENT_REPLY: 'comment_reply', COMMENT_VOTE: 'comment_vote', COMMENT_TAG: 'comment_tag',
  EDIT_COMMENT: 'edit_comment', COLLECTION_COMMENT: 'collection_comment', HIKKA_UPDATE: 'hikka_update',
  SCHEDULE_ANIME: 'schedule_anime', FOLLOW: 'follow', COLLECTION_VOTE: 'collection_vote',
  THIRDPARTY_LOGIN: 'thirdparty_login', ARTICLE_COMMENT: 'article_comment', ARTICLE_VOTE: 'article_vote',
 } as const;
-type NotificationTypeEnum = typeof NotificationTypeEnum[keyof typeof NotificationTypeEnum];
+export type NotificationTypeEnum = typeof NotificationTypeEnum[keyof typeof NotificationTypeEnum];
 type ContentTypeEnum = string;
 type ContentStatusEnum = string;
 export type NotificationResponse = { notification_type: NotificationTypeEnum; initiator_user: { username: string; avatar?: string } | null; created: number; reference: string; seen: boolean; data: Record<string, unknown> };

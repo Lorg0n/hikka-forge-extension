@@ -43,6 +43,15 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-success-border: var(--success-border, var(--border));
+  --color-info: var(--info, var(--muted));
+  --color-info-foreground: var(--info-foreground, var(--foreground));
+  --color-info-border: var(--info-border, var(--border));
+  --color-warning: var(--warning, var(--muted));
+  --color-warning-foreground: var(--warning-foreground, var(--foreground));
+  --color-warning-border: var(--warning-border, var(--border));
+  --color-destructive-border: var(--destructive-border, var(--border));
+  --color-primary-border: var(--primary-border, var(--border));
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

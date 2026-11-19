@@ -36,7 +36,7 @@ export function SettingInput({
     };
 
     return (
-        <FormItem key={setting.id} className="space-y-1">
+        <FormItem key={setting.id} className={setting.type === "toggle" ? "flex items-center justify-between gap-3" : "space-y-1"}>
             <div className="flex flex-col gap-0">
                 <div className="flex items-center gap-1.5">
                     <FormLabel className="text-sm font-medium leading-none">
@@ -113,8 +113,9 @@ export function SettingInput({
                                     ? currentValue
                                     : setting.defaultValue;
                         return (
-                            <div className="flex flex-row items-center justify-between space-y-0 py-2">
+                            <div className="shrink-0">
                                 <Switch
+                                    aria-label={setting.label}
                                     checked={toggleValue}
                                     onCheckedChange={handleInputChange}
                                 />

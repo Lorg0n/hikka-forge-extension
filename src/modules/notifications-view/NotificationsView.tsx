@@ -11,7 +11,7 @@ import MaterialSymbolsLockOpenRightOutlineRounded from './icons/MaterialSymbolsL
 import MaterialSymbolsPersonAddRounded from './icons/MaterialSymbolsPersonAddRounded';
 import MaterialSymbolsNotificationsRounded from './icons/MaterialSymbolsNotificationsRounded';
 import FeMention from './icons/FeMention';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { ModulePage } from '@/components/ui/module-page';
 import { PageHeader } from '@/components/ui/page-header';
@@ -59,19 +59,32 @@ function NotificationRow({ item, markSeen }: { item: NotificationItem; markSeen:
 }
 export default function NotificationsView() {
     const [items, setItems] = useState<NotificationResponse[]>([]); const [page, setPage] = useState(0); const [pages, setPages] = useState(1);
+    const loadMoreRef = useRef<HTMLDivElement>(null);
+    const loadingRef = useRef(false);
     const [count, setCount] = useState(0); const [loading, setLoading] = useState(false); const [marking, setMarking] = useState(false); const [error, setError] = useState('');
     const loadCount = useCallback(async () => { try { const r = await fetch(`${api}/notifications/count`, { credentials: 'include' }); if (r.ok) setCount((await r.json()).unseen); } catch { /* list remains usable */ } }, []);
     const load = useCallback(async (next: number) => {
+        if (loadingRef.current) return;
+        loadingRef.current = true;
         setLoading(true); setError('');
         try {
-            const r = await fetch(`${api}/notifications?page=${next}&size=25`, { credentials: 'include' });
+            const r = await fetch(`${api}/notifications?page=${next}&size=100`, { credentials: 'include' });
             if (!r.ok) throw new Error(r.status === 401 || r.status === 403 ? 'Увійдіть до Hikka, щоб переглянути сповіщення.' : 'Не вдалося завантажити сповіщення.');
             const data: Result = await r.json();
             setItems(previous => next === 1 ? data.list : [...previous, ...data.list.filter(item => !previous.some(old => old.reference === item.reference))]);
             setPage(data.pagination.page); setPages(data.pagination.pages);
-        } catch (e) { setError(e instanceof Error ? e.message : 'Не вдалося завантажити сповіщення.'); } finally { setLoading(false); }
+        } catch (e) { setError(e instanceof Error ? e.message : 'Не вдалося завантажити сповіщення.'); } finally { loadingRef.current = false; setLoading(false); }
     }, []);
     useEffect(() => { void load(1); void loadCount(); }, [load, loadCount]);
+    useEffect(() => {
+        const target = loadMoreRef.current;
+        if (!target || loading || error || page === 0 || page >= pages) return;
+        const observer = new IntersectionObserver(entries => {
+            if (entries.some(entry => entry.isIntersecting)) void load(page + 1);
+        }, { rootMargin: '300px' });
+        observer.observe(target);
+        return () => observer.disconnect();
+    }, [page, pages, loading, error, load]);
     const markSeen = useCallback(async (id: string) => {
         const r = await fetch(`${api}/notifications/${encodeURIComponent(id)}/seen`, { method: 'POST', credentials: 'include', keepalive: true });
         if (!r.ok) throw new Error('Не вдалося позначити сповіщення прочитаним');
@@ -96,6 +109,6 @@ export default function NotificationsView() {
         {loading && <p className="p-4 text-sm text-muted-foreground">Завантаження…</p>}
         {error && <div className="p-4"><p className="text-sm text-destructive">{error}</p><Button variant="outline" onClick={() => void load(page ? page + 1 : 1)}>Спробувати ще</Button></div>}
         {!loading && !error && !normalized.length && <div className="p-8 text-center"><MaterialSymbolsNotificationsRounded className="mx-auto mb-3 size-6 text-muted-foreground" /><p className="font-medium">Сповіщень не знайдено</p><p className="text-sm text-muted-foreground">Тут будуть відображатись майбутні сповіщення</p></div>}
-        {!loading && !error && page < pages && <div className="p-3"><Button className="w-full" variant="outline" onClick={() => void load(page + 1)}>Завантажити ще</Button></div>}
+        {page > 0 && page < pages && <div ref={loadMoreRef} aria-hidden="true" className="h-px" />}
     </div></div></ModulePage>;
 }

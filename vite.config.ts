@@ -20,6 +20,15 @@ export default defineConfig({
   build: {
     outDir,
     rollupOptions: {
+      onwarn(warning, defaultHandler) {
+        // mdast-util-to-hast uses an empty string as a VS Code type-reference
+        // marker; it has no runtime semantics to preserve when bundling.
+        if (warning.code === 'MODULE_LEVEL_DIRECTIVE' &&
+            warning.id?.includes('/node_modules/') &&
+            warning.id.includes('/mdast-util-to-hast/') &&
+            warning.message.includes('directive ""')) return;
+        defaultHandler(warning);
+      },
       input: {
         popup: path.resolve(projectDir, "src/pages/popup/popup.html"),
         stickers_admin: path.resolve(projectDir, "src/pages/stickers-admin/stickers-admin.html"),

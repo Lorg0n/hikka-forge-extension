@@ -23,6 +23,8 @@ import { PageHeader } from '@/components/ui/page-header';
 import logo from '@/assets/logo.svg';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 import { convertNotification, type NotificationItem, type NotificationResponse } from './notifications';
 
 type Result = { pagination: { page: number; pages: number }; list: NotificationResponse[] };
@@ -88,19 +90,30 @@ function NotificationGroup({ items, markSeen }: { items: NotificationItem[]; mar
 export default function NotificationsView() {
     const [items, setItems] = useState<NotificationResponse[]>([]); const [page, setPage] = useState(0); const [pages, setPages] = useState(1);
     const [groupNotifications, setGroupNotifications] = useState(false);
+    const [searchPages, setSearchPages] = useState(10);
+    const [query, setQuery] = useState('');
+    const [filter, setFilter] = useState('all');
+    const [searchItems, setSearchItems] = useState<NotificationResponse[]>([]);
+    const [searching, setSearching] = useState(false);
+    const [searchProgress, setSearchProgress] = useState(0);
+    const [searchError, setSearchError] = useState('');
     useEffect(() => {
         const key = 'module_setting_notifications-page_groupNotifications';
+        const limitKey = 'module_setting_notifications-page_searchPages';
+        const normalizeLimit = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? Math.max(1, Math.min(50, Math.round(value))) : 10;
         let active = true;
-        let changed = false;
+        const changed = new Set<string>();
         const onChange = (changes: Record<string, { newValue?: unknown }>, area: string) => {
             if (area === 'sync' && key in changes) {
-                changed = true;
+                changed.add(key);
                 setGroupNotifications(changes[key].newValue === true);
             }
+            if (area === 'sync' && limitKey in changes) { changed.add(limitKey); setSearchPages(normalizeLimit(changes[limitKey].newValue)); }
         };
         browser.storage.onChanged.addListener(onChange);
-        void browser.storage.sync.get(key).then(values => {
-            if (active && !changed) setGroupNotifications(values[key] === true);
+        void browser.storage.sync.get([key, limitKey]).then(values => {
+            if (active && !changed.has(key)) setGroupNotifications(values[key] === true);
+            if (active && !changed.has(limitKey)) setSearchPages(normalizeLimit(values[limitKey]));
         }).catch(() => {});
         return () => { active = false; browser.storage.onChanged.removeListener(onChange); };
     }, []);
@@ -123,20 +136,51 @@ export default function NotificationsView() {
     useEffect(() => { void load(1); void loadCount(); }, [load, loadCount]);
     useEffect(() => {
         const target = loadMoreRef.current;
-        if (!target || loading || error || page === 0 || page >= pages) return;
+        if (!target || loading || error || query.trim() || page === 0 || page >= pages) return;
         const observer = new IntersectionObserver(entries => {
             if (entries.some(entry => entry.isIntersecting)) void load(page + 1);
         }, { rootMargin: '300px' });
         observer.observe(target);
         return () => observer.disconnect();
-    }, [page, pages, loading, error, load]);
+    }, [page, pages, loading, error, load, query]);
+    useEffect(() => {
+        if (!query.trim()) { setSearchItems([]); setSearching(false); setSearchError(''); setSearchProgress(0); return; }
+        const controller = new AbortController();
+        setSearchItems([]); setSearchProgress(0); setSearching(true); setSearchError('');
+        const timer = window.setTimeout(async () => {
+            try {
+                for (let current = 1; current <= searchPages; current++) {
+                    const response = await fetch(`${api}/notifications?page=${current}&size=100`, { credentials: 'include', signal: controller.signal });
+                    if (!response.ok) throw new Error('Не вдалося виконати пошук сповіщень.');
+                    const data: Result = await response.json();
+                    if (controller.signal.aborted) return;
+                    setSearchItems(previous => [...previous, ...data.list.filter(item => !previous.some(old => old.reference === item.reference))]);
+                    setSearchProgress(current);
+                    if (current >= data.pagination.pages || !data.list.length) break;
+                }
+            } catch (e) { if (!controller.signal.aborted) setSearchError(e instanceof Error ? e.message : 'Не вдалося виконати пошук.'); }
+            finally { if (!controller.signal.aborted) setSearching(false); }
+        }, 350);
+        return () => { window.clearTimeout(timer); controller.abort(); };
+    }, [query, searchPages]);
     const markSeen = useCallback(async (id: string) => {
         const r = await fetch(`${api}/notifications/${encodeURIComponent(id)}/seen`, { method: 'POST', credentials: 'include', keepalive: true });
         if (!r.ok) throw new Error('Не вдалося позначити сповіщення прочитаним');
         setItems(previous => previous.map(item => item.reference === id ? { ...item, seen: true } : item));
+        setSearchItems(previous => previous.map(item => item.reference === id ? { ...item, seen: true } : item));
     }, []);
     const markAll = async () => { setMarking(true); const results = await Promise.allSettled(items.filter(item => !item.seen).map(item => markSeen(item.reference))); await loadCount(); if (results.some(r => r.status === 'rejected')) setError('Не вдалося позначити всі сповіщення прочитаними.'); setMarking(false); };
     const normalized = useMemo(() => items.map(item => convertNotification(item)).filter((item): item is NotificationItem => item !== null), [items]);
+    const searchActive = query.trim().length > 0;
+    const displayed = useMemo(() => {
+        const source = searchActive ? searchItems.map(item => convertNotification(item)).filter((item): item is NotificationItem => item !== null) : normalized;
+        const needle = query.trim().toLocaleLowerCase('uk');
+        return source.filter(item => {
+            const matchesQuery = !needle || [item.title, item.description, item.preview, item.actor?.username].some(value => value?.toLocaleLowerCase('uk').includes(needle));
+            const matchesFilter = filter === 'all' || (filter === 'unread' ? !item.seen : filter === 'read' ? item.seen : item.type === filter);
+            return matchesQuery && matchesFilter;
+        });
+    }, [normalized, searchItems, searchActive, query, filter]);
     return <ModulePage stateKey="notifications"><div className="flex flex-col gap-8 md:gap-12">
         <PageHeader
             title="Сповіщення"
@@ -145,15 +189,24 @@ export default function NotificationsView() {
             titleSuffix={count > 0 ? <Badge variant="warning">{count}</Badge> : undefined}
             action={<img src={logo} alt="Hikka Forge" className="size-5 shrink-0 opacity-60" />}
         />
+        <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 sm:flex-row sm:items-start">
+            <div className="min-w-0 flex-1"><div className="relative"><Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={query} onChange={event => setQuery(event.target.value)} placeholder="Пошук сповіщень..." aria-label="Пошук сповіщень" className="pl-9" /></div><p className="mt-2 text-xs text-muted-foreground">Пошук охоплює до {searchPages} сторінок. Глибину можна змінити в налаштуваннях модуля.</p></div>
+            <select aria-label="Фільтр сповіщень" value={filter} onChange={event => setFilter(event.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <option value="all">Усі сповіщення</option><option value="unread">Непрочитані</option><option value="read">Прочитані</option>
+                <option value="comment_reply">Відповіді</option><option value="comment_vote">Оцінки коментарів</option><option value="comment_tag">Згадки</option><option value="follow">Підписки</option><option value="schedule_anime">Нові епізоди</option><option value="hikka_update">Оновлення Hikka</option><option value="edit_accepted">Прийняті правки</option><option value="edit_denied">Відхилені правки</option><option value="edit_updated">Оновлені правки</option><option value="edit_comment">Коментарі до правок</option><option value="collection_comment">Коментарі до колекцій</option><option value="collection_vote">Оцінки колекцій</option><option value="article_comment">Коментарі до статей</option><option value="article_vote">Оцінки статей</option><option value="thirdparty_login">Авторизації</option>
+            </select>
+        </div>
         <div className="overflow-hidden rounded-md border border-border">
         {count > 0 && <div className="flex justify-end bg-muted/40 px-3 py-3"><Button size="sm" variant="outline" disabled={marking || loading} onClick={() => void markAll()}>Прочитати всі</Button></div>}
         {(['today', 'yesterday', 'earlier'] as const).map(day => {
-            const list = normalized.filter(item => dayKey(item.created) === day); if (!list.length) return null;
+            const list = displayed.filter(item => dayKey(item.created) === day); if (!list.length) return null;
             return <section key={day}><div className="border-y border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">{day === 'today' ? 'Сьогодні' : day === 'yesterday' ? 'Вчора' : 'Раніше'}</div>{(groupNotifications ? groupSimilarNotifications(list) : list.map(item => ({ kind: 'single' as const, item }))).map(entry => { const mark = (id: string) => { void markSeen(id).then(loadCount).catch(() => setError('Не вдалося позначити сповіщення прочитаним.')); }; return entry.kind === 'group' ? <NotificationGroup key={entry.key} items={entry.items} markSeen={mark} /> : <NotificationRow key={entry.item.reference} item={entry.item} markSeen={mark} />; })}</section>;
         })}
-        {loading && <p className="p-4 text-sm text-muted-foreground">Завантаження…</p>}
-        {error && <div className="p-4"><p className="text-sm text-destructive">{error}</p><Button variant="outline" onClick={() => void load(page ? page + 1 : 1)}>Спробувати ще</Button></div>}
-        {!loading && !error && !normalized.length && <div className="p-8 text-center"><MaterialSymbolsNotificationsRounded className="mx-auto mb-3 size-6 text-muted-foreground" /><p className="font-medium">Сповіщень не знайдено</p><p className="text-sm text-muted-foreground">Тут будуть відображатись майбутні сповіщення</p></div>}
-        {page > 0 && page < pages && <div ref={loadMoreRef} aria-hidden="true" className="h-px" />}
+        {searchActive && searching && <p className="p-4 text-sm text-muted-foreground" role="status">Пошук: перевірено {searchProgress} із {searchPages} сторінок…</p>}
+        {searchActive && searchError && <p className="p-4 text-sm text-destructive" role="alert">{searchError}</p>}
+        {!searchActive && loading && <p className="p-4 text-sm text-muted-foreground">Завантаження…</p>}
+        {!searchActive && error && <div className="p-4"><p className="text-sm text-destructive">{error}</p><Button variant="outline" onClick={() => void load(page ? page + 1 : 1)}>Спробувати ще</Button></div>}
+        {!loading && !searching && !searchError && !error && !displayed.length && <div className="p-8 text-center"><MaterialSymbolsNotificationsRounded className="mx-auto mb-3 size-6 text-muted-foreground" /><p className="font-medium">Сповіщень не знайдено</p><p className="text-sm text-muted-foreground">{searchActive || filter !== 'all' ? 'Спробуйте змінити пошуковий запит або фільтр' : 'Тут будуть відображатись майбутні сповіщення'}</p></div>}
+        {!searchActive && page > 0 && page < pages && <div ref={loadMoreRef} aria-hidden="true" className="h-px" />}
     </div></div></ModulePage>;
 }

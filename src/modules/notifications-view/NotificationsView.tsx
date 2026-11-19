@@ -64,13 +64,33 @@ function dayKey(timestamp: number): 'today' | 'yesterday' | 'earlier' {
     const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
     return date >= today ? 'today' : date >= yesterday ? 'yesterday' : 'earlier';
 }
+function useLongPress(action: () => void, disabled: boolean) {
+    const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const origin = useRef({ x: 0, y: 0 });
+    const triggered = useRef(false);
+    const cancel = () => { if (timer.current) clearTimeout(timer.current); timer.current = null; };
+    useEffect(() => cancel, []);
+    return {
+        onPointerDown: (event: React.PointerEvent) => {
+            if (event.pointerType !== 'touch' || disabled) return;
+            triggered.current = false; origin.current = { x: event.clientX, y: event.clientY };
+            cancel(); timer.current = setTimeout(() => { triggered.current = true; action(); }, 550);
+        },
+        onPointerMove: (event: React.PointerEvent) => { if (Math.hypot(event.clientX - origin.current.x, event.clientY - origin.current.y) > 10) cancel(); },
+        onPointerUp: cancel,
+        onPointerCancel: cancel,
+        onContextMenu: (event: React.MouseEvent) => { if (triggered.current) event.preventDefault(); },
+        onClickCapture: (event: React.MouseEvent) => { if (triggered.current) { event.preventDefault(); event.stopPropagation(); triggered.current = false; } },
+    };
+}
 function NotificationRow({ item, markSeen, selecting, selected, toggle }: { item: NotificationItem; markSeen: (id: string) => void; selecting: boolean; selected: boolean; toggle: (id: string) => void }) {
+    const longPress = useLongPress(() => toggle(item.reference), selecting);
     const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     useEffect(() => () => { if (clickTimer.current) clearTimeout(clickTimer.current); }, []);
     const NotificationIcon = item.scoreSign ? (item.scoreSign > 0 ? MaterialSymbolsHeartPlusRounded : MaterialSymbolsHeartMinusRounded) : icons[item.type] || MaterialSymbolsNotificationsRounded;
     const image = item.actor?.avatar || item.contentImage;
-    return <div onDoubleClick={event => { event.preventDefault(); event.stopPropagation(); if (clickTimer.current) clearTimeout(clickTimer.current); if (!selecting) toggle(item.reference); }} onClick={event => { if (selecting || event.ctrlKey || event.metaKey) { event.preventDefault(); if (event.detail < 2) toggle(item.reference); } }} className={`group/item flex gap-3 border-t border-l-4 border-border px-3 py-2.5 transition-colors hover:bg-muted ${item.seen ? 'border-l-transparent' : 'border-l-primary-foreground/60 bg-primary-foreground/10'}`}>
-        {selecting && <input type="checkbox" aria-label="Вибрати сповіщення" checked={selected} onChange={() => toggle(item.reference)} onClick={event => event.stopPropagation()} className="my-auto mx-2 size-4 shrink-0 accent-primary" />}
+    return <div {...longPress} onDoubleClick={event => { event.preventDefault(); event.stopPropagation(); if (clickTimer.current) clearTimeout(clickTimer.current); if (!selecting) toggle(item.reference); }} onClick={event => { if (selecting || event.ctrlKey || event.metaKey) { event.preventDefault(); if (event.detail < 2) toggle(item.reference); } }} className={`group/item flex gap-3 border-t border-l-4 border-border px-3 py-2.5 transition-colors hover:bg-muted ${item.seen ? 'border-l-transparent' : 'border-l-primary-foreground/60 bg-primary-foreground/10'}`}>
+        {selecting && <input type="checkbox" aria-label="Вибрати сповіщення" checked={selected} onChange={() => toggle(item.reference)} onClick={event => event.stopPropagation()} className="my-auto mx-2 size-5 shrink-0 accent-primary" />}
         <div className="relative size-10 shrink-0">
             {image ? <img src={image} alt={item.actor?.username || ''} className="size-10 rounded-md object-cover" /> : <div className="flex size-10 items-center justify-center rounded-md border border-border bg-secondary/40"><NotificationIcon className="size-5" /></div>}
             {image && <span className={`absolute -right-0.5 -bottom-0.5 flex size-4 items-center justify-center rounded-sm border ${accents[item.accent]}`}><NotificationIcon className="size-2.5" /></span>}
@@ -85,6 +105,7 @@ function NotificationRow({ item, markSeen, selecting, selected, toggle }: { item
     </div>;
 }
 function NotificationGroup({ items, markSeen, selecting, selectedIds, toggle, toggleGroup }: { items: NotificationItem[]; markSeen: (id: string) => void; selecting: boolean; selectedIds: Set<string>; toggle: (id: string) => void; toggleGroup: (ids: string[]) => void }) {
+    const longPress = useLongPress(() => { toggle(items[0].reference); toggleGroup(items.slice(1).map(item => item.reference)); }, selecting);
     const [latest] = items;
     const actors = getNotificationGroupActors(items);
     const unseen = items.filter(item => !item.seen);
@@ -92,9 +113,9 @@ function NotificationGroup({ items, markSeen, selecting, selectedIds, toggle, to
     const GroupIcon = latest.scoreSign ? (latest.scoreSign > 0 ? MaterialSymbolsHeartPlusRounded : MaterialSymbolsHeartMinusRounded) : icons[latest.type] || MaterialSymbolsNotificationsRounded;
     const image = latest.actor?.avatar || latest.contentImage;
     const avatar = (actor: typeof actors[number], className: string) => <div className={`absolute flex size-7 items-center justify-center overflow-hidden rounded-md bg-secondary text-xs font-medium uppercase ${className}`}>{actor.avatar ? <img src={actor.avatar} alt={actor.username || ''} className="size-full object-cover" /> : actor.username?.[0]}</div>;
-    return <Collapsible className="border-t border-border first:border-t-0" onOpenChange={open => { if (open && !selecting) unseen.forEach(item => markSeen(item.reference)); }}>
+    return <Collapsible {...longPress} className="border-t border-border first:border-t-0" onOpenChange={open => { if (open && !selecting) unseen.forEach(item => markSeen(item.reference)); }}>
         <CollapsibleTrigger onDoubleClick={event => { event.preventDefault(); event.stopPropagation(); if (!selecting) { toggle(items[0].reference); toggleGroup(items.slice(1).map(item => item.reference)); } }} className={`group/item flex w-full cursor-pointer gap-3 border-l-4 px-3 py-2.5 text-left outline-none transition-colors hover:bg-muted focus-visible:bg-muted ${unseen.length ? 'border-l-primary-foreground/60 bg-primary-foreground/10' : 'border-l-transparent'}`}>
-            {selecting && <input type="checkbox" aria-label="Вибрати групу" checked={items.every(item => selectedIds.has(item.reference))} ref={node => { if (node) node.indeterminate = items.some(item => selectedIds.has(item.reference)) && !items.every(item => selectedIds.has(item.reference)); }} onClick={event => event.stopPropagation()} onChange={() => toggleGroup(items.map(item => item.reference))} className="my-auto mx-2 size-4 shrink-0 accent-primary" />}
+            {selecting && <input type="checkbox" aria-label="Вибрати групу" checked={items.every(item => selectedIds.has(item.reference))} ref={node => { if (node) node.indeterminate = items.some(item => selectedIds.has(item.reference)) && !items.every(item => selectedIds.has(item.reference)); }} onClick={event => event.stopPropagation()} onChange={() => toggleGroup(items.map(item => item.reference))} className="my-auto mx-2 size-5 shrink-0 accent-primary" />}
             <div className="relative size-10 shrink-0">
                 {actors[1] ? <>{avatar(actors[1], 'top-0 left-0')}{avatar(actors[0], 'right-0 bottom-0 ring-2 ring-popover')}</> : image ? <img src={image} alt={latest.actor?.username || ''} className="size-10 rounded-md object-cover" /> : <div className="flex size-10 items-center justify-center rounded-md border border-border bg-secondary/40"><GroupIcon className="size-5" /></div>}
                 {(actors[1] || image) && <div className={`absolute -right-0.5 -bottom-0.5 flex size-4 items-center justify-center rounded-sm border ${accents[latest.accent]}`}><GroupIcon className="size-2.5" /></div>}
@@ -297,7 +318,7 @@ export default function NotificationsView() {
         return () => observer.disconnect();
     }, [visibleEntries, totalEntries]);
     let remainingEntries = visibleEntries;
-    return <ModulePage stateKey="notifications"><div className="flex min-h-[70vh] flex-col gap-8 md:gap-12" onDoubleClick={event => { if (event.target === event.currentTarget) cancelSelection(); }}>
+    return <ModulePage stateKey="notifications" className="pb-[calc(var(--tab-bar-height,68px)+var(--safe-area-bottom,0px))] md:pb-0"><div className="flex min-h-[70vh] flex-col gap-8 md:gap-12" onDoubleClick={event => { if (event.target === event.currentTarget) cancelSelection(); }}>
         <PageHeader
             title="Сповіщення"
             description="Ваші оновлення та активність спільноти"
@@ -324,7 +345,7 @@ export default function NotificationsView() {
                 </div>
             </div>
         </div>
-        {selecting && <div className="mt-3 flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-3 py-1">{ <><span className="text-sm text-muted-foreground">Вибрано: {selectedIds.size}{bulkBusy && ` · ${bulkProgress}`}</span><div className="flex gap-1"><Button size="icon-sm" variant="ghost" aria-label="Вибрати всі" title="Вибрати всі" disabled={searching || !!searchError || bulkBusy} onClick={() => { const needle = debouncedQuery.toLocaleLowerCase('uk'); const selectedCategory = categories.find(option => option.id === category); setSelectedIds(new Set(normalizedSearch.filter(item => (!needle || [item.title, item.description, item.preview, item.actor?.username].some(value => value?.toLocaleLowerCase('uk').includes(needle))) && (statusFilter === 'all' || (statusFilter === 'unread' ? !item.seen : item.seen)) && (!selectedCategory || (selectedCategory.types as readonly string[]).includes(item.type))).map(item => item.reference))); }}><Icon icon="boxicons:select-all" /></Button><Button size="icon-sm" variant="ghost" aria-label="Прочитати вибрані" title="Прочитати вибрані" disabled={!selectedIds.size || bulkBusy} onClick={() => void markSelected()}>{bulkBusy ? <LoaderCircle className="animate-spin" /> : <CheckCheck />}</Button><Button size="icon-sm" variant="ghost" aria-label="Скасувати" title="Скасувати" disabled={bulkBusy} onClick={cancelSelection}><X /></Button></div></>}</div>}
+        {selecting && <div className="sticky top-2 z-20 mt-3 flex items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-1 shadow-sm md:top-20">{ <><span className="text-sm text-muted-foreground">Вибрано: {selectedIds.size}{bulkBusy && ` · ${bulkProgress}`}</span><div className="flex gap-1"><Button size="icon-md" variant="ghost" aria-label="Вибрати всі" title="Вибрати всі" disabled={searching || !!searchError || bulkBusy} onClick={() => { const needle = debouncedQuery.toLocaleLowerCase('uk'); const selectedCategory = categories.find(option => option.id === category); setSelectedIds(new Set(normalizedSearch.filter(item => (!needle || [item.title, item.description, item.preview, item.actor?.username].some(value => value?.toLocaleLowerCase('uk').includes(needle))) && (statusFilter === 'all' || (statusFilter === 'unread' ? !item.seen : item.seen)) && (!selectedCategory || (selectedCategory.types as readonly string[]).includes(item.type))).map(item => item.reference))); }}><Icon icon="boxicons:select-all" /></Button><Button size="icon-md" variant="ghost" aria-label="Прочитати вибрані" title="Прочитати вибрані" disabled={!selectedIds.size || bulkBusy} onClick={() => void markSelected()}>{bulkBusy ? <LoaderCircle className="animate-spin" /> : <CheckCheck />}</Button><Button size="icon-md" variant="ghost" aria-label="Скасувати" title="Скасувати" disabled={bulkBusy} onClick={cancelSelection}><X /></Button></div></>}</div>}
         <div className="mt-3 overflow-hidden rounded-md border border-border">
         {sections.map(({ day, entries }) => {
             const visible = entries.slice(0, remainingEntries);

@@ -10,6 +10,6 @@ const moduleDef: ForgeModuleDef = {
     settings: [
         { id: 'groupNotifications', label: 'Групувати схожі', type: 'toggle', defaultValue: false },
     ],
-    component: NotificationsButton, icon: { name: 'lucide:bell', color: '#f59e0b' },
+    component: NotificationsButton, icon: { name: 'lucide:bell', color: '#f472b6' },
 };
 export default moduleDef;

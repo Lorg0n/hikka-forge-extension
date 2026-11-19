@@ -189,7 +189,7 @@ export default function NotificationsView() {
         saveCache();
         return data;
     }, [prepareCache, saveCache]);
-    const [count, setCount] = useState(0); const [loading, setLoading] = useState(false); const [marking, setMarking] = useState(false); const [error, setError] = useState('');
+    const [count, setCount] = useState(0); const [loading, setLoading] = useState(false); const [error, setError] = useState('');
     const loadCount = useCallback(async () => { try { const r = await fetch(`${api}/notifications/count`, { credentials: 'include' }); if (r.ok) setCount((await r.json()).unseen); } catch { /* list remains usable */ } }, []);
     const load = useCallback(async (next: number) => {
         if (loadingRef.current) return;
@@ -242,7 +242,6 @@ export default function NotificationsView() {
         for (const entry of Object.values(cacheRef.current.pages)) entry.data.list = entry.data.list.map(item => item.reference === id ? { ...item, seen: true } : item);
         saveCache();
     }, [saveCache]);
-    const markAll = async () => { setMarking(true); const results = await Promise.allSettled(items.filter(item => !item.seen).map(item => markSeen(item.reference))); await loadCount(); if (results.some(r => r.status === 'rejected')) setError('Не вдалося позначити всі сповіщення прочитаними.'); setMarking(false); };
     const normalized = useMemo(() => items.map(item => convertNotification(item)).filter((item): item is NotificationItem => item !== null), [items]);
     const normalizedSearch = useMemo(() => searchItems.map(item => convertNotification(item)).filter((item): item is NotificationItem => item !== null), [searchItems]);
     const displayed = useMemo(() => {
@@ -297,7 +296,6 @@ export default function NotificationsView() {
             </div>
         </div>
         <div className="mt-3 overflow-hidden rounded-md border border-border">
-        {count > 0 && <div className="flex justify-end bg-muted/40 px-3 py-3"><Button size="sm" variant="outline" disabled={marking || loading} onClick={() => void markAll()}>Прочитати всі</Button></div>}
         {sections.map(({ day, entries }) => {
             const visible = entries.slice(0, remainingEntries);
             remainingEntries = Math.max(0, remainingEntries - visible.length);

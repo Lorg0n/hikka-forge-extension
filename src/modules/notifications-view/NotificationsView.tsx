@@ -24,10 +24,18 @@ import logo from '@/assets/logo.svg';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { ChevronDown, X } from 'lucide-react';
+import { ChevronDown, LoaderCircle, X } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { convertNotification, type NotificationItem, type NotificationResponse } from './notifications';
 
 type Result = { pagination: { page: number; pages: number }; list: NotificationResponse[] };
+type CachedPage = { data: Result; savedAt: number };
+type NotificationsCache = { head: string; pages: Record<string, CachedPage> };
+const CACHE_TTL = 60 * 60 * 1000;
+const CACHE_PREFIX = 'notifications_cache_v1_';
+function NotificationsSkeleton() {
+    return <div role="status" aria-label="Завантаження сповіщень">{Array.from({ length: 4 }, (_, index) => <div key={index} className="flex gap-3 border-t border-border px-3 py-3"><Skeleton className="size-10 shrink-0" /><div className="flex flex-1 flex-col gap-2"><Skeleton className="h-3 w-32" /><Skeleton className="h-3 w-2/3" /><Skeleton className="h-2 w-16" /></div></div>)}</div>;
+}
 const icons = {
     edit_accepted: MaterialSymbolsCheckCircleRounded, edit_denied: MaterialSymbolsFlagCircleRounded, edit_updated: MaterialSymbolsChangeCircleRounded,
     comment_reply: MaterialSymbolsAddCommentRounded, comment_vote: MaterialSymbolsFavoriteRounded, comment_tag: FeMention,
@@ -129,6 +137,41 @@ export default function NotificationsView() {
     }, []);
     const loadMoreRef = useRef<HTMLDivElement>(null);
     const loadingRef = useRef(false);
+    const cacheRef = useRef<NotificationsCache>({ head: '', pages: {} });
+    const cacheKeyRef = useRef<string | null>(null);
+    const cacheReadyRef = useRef<Promise<void> | null>(null);
+    const prepareCache = useCallback(() => {
+        if (!cacheReadyRef.current) cacheReadyRef.current = (async () => {
+            try {
+                const response = await fetch(`${api}/user/me`, { credentials: 'include' });
+                if (!response.ok) return;
+                const user = await response.json();
+                if (typeof user.username !== 'string' || !user.username) return;
+                const key = CACHE_PREFIX + user.username;
+                const stored = await browser.storage.local.get(key);
+                cacheKeyRef.current = key;
+                const cached = stored[key] as NotificationsCache | undefined;
+                if (cached && typeof cached.head === 'string' && cached.pages && typeof cached.pages === 'object') cacheRef.current = cached;
+            } catch { /* Continue without persistent cache. */ }
+        })();
+        return cacheReadyRef.current;
+    }, []);
+    const fetchPage = useCallback(async (next: number, signal?: AbortSignal): Promise<Result> => {
+        await prepareCache();
+        if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+        const cached = cacheRef.current.pages[String(next)];
+        if (next > 1 && cached && Date.now() - cached.savedAt < CACHE_TTL) return cached.data;
+        const response = await fetch(`${api}/notifications?page=${next}&size=100`, { credentials: 'include', signal });
+        if (!response.ok) throw new Error(response.status === 401 || response.status === 403 ? 'Увійдіть до Hikka, щоб переглянути сповіщення.' : 'Не вдалося завантажити сповіщення.');
+        const data: Result = await response.json();
+        if (next === 1) {
+            const head = data.list.map(item => item.reference).join(',');
+            if (cacheRef.current.head !== head) cacheRef.current = { head, pages: {} };
+        }
+        cacheRef.current.pages[String(next)] = { data, savedAt: Date.now() };
+        if (cacheKeyRef.current) void browser.storage.local.set({ [cacheKeyRef.current]: cacheRef.current }).catch(() => {});
+        return data;
+    }, [prepareCache]);
     const [count, setCount] = useState(0); const [loading, setLoading] = useState(false); const [marking, setMarking] = useState(false); const [error, setError] = useState('');
     const loadCount = useCallback(async () => { try { const r = await fetch(`${api}/notifications/count`, { credentials: 'include' }); if (r.ok) setCount((await r.json()).unseen); } catch { /* list remains usable */ } }, []);
     const load = useCallback(async (next: number) => {
@@ -136,13 +179,11 @@ export default function NotificationsView() {
         loadingRef.current = true;
         setLoading(true); setError('');
         try {
-            const r = await fetch(`${api}/notifications?page=${next}&size=100`, { credentials: 'include' });
-            if (!r.ok) throw new Error(r.status === 401 || r.status === 403 ? 'Увійдіть до Hikka, щоб переглянути сповіщення.' : 'Не вдалося завантажити сповіщення.');
-            const data: Result = await r.json();
+            const data = await fetchPage(next);
             setItems(previous => next === 1 ? data.list : [...previous, ...data.list.filter(item => !previous.some(old => old.reference === item.reference))]);
             setPage(data.pagination.page); setPages(data.pagination.pages);
         } catch (e) { setError(e instanceof Error ? e.message : 'Не вдалося завантажити сповіщення.'); } finally { loadingRef.current = false; setLoading(false); }
-    }, []);
+    }, [fetchPage]);
     useEffect(() => { void load(1); void loadCount(); }, [load, loadCount]);
     useEffect(() => {
         const target = loadMoreRef.current;
@@ -153,16 +194,15 @@ export default function NotificationsView() {
         observer.observe(target);
         return () => observer.disconnect();
     }, [page, pages, loading, error, load, query]);
+    const searchActive = query.trim().length > 0;
     useEffect(() => {
-        if (!query.trim()) { setSearchItems([]); setSearching(false); setSearchError(''); setSearchProgress(0); return; }
+        if (!searchActive) { setSearchItems([]); setSearching(false); setSearchError(''); setSearchProgress(0); return; }
         const controller = new AbortController();
         setSearchItems([]); setSearchProgress(0); setSearching(true); setSearchError('');
         const timer = window.setTimeout(async () => {
             try {
                 for (let current = 1; current <= searchPages; current++) {
-                    const response = await fetch(`${api}/notifications?page=${current}&size=100`, { credentials: 'include', signal: controller.signal });
-                    if (!response.ok) throw new Error('Не вдалося виконати пошук сповіщень.');
-                    const data: Result = await response.json();
+                    const data = await fetchPage(current, controller.signal);
                     if (controller.signal.aborted) return;
                     setSearchItems(previous => [...previous, ...data.list.filter(item => !previous.some(old => old.reference === item.reference))]);
                     setSearchProgress(current);
@@ -172,16 +212,17 @@ export default function NotificationsView() {
             finally { if (!controller.signal.aborted) setSearching(false); }
         }, 350);
         return () => { window.clearTimeout(timer); controller.abort(); };
-    }, [query, searchPages]);
+    }, [searchActive, searchPages, fetchPage]);
     const markSeen = useCallback(async (id: string) => {
         const r = await fetch(`${api}/notifications/${encodeURIComponent(id)}/seen`, { method: 'POST', credentials: 'include', keepalive: true });
         if (!r.ok) throw new Error('Не вдалося позначити сповіщення прочитаним');
         setItems(previous => previous.map(item => item.reference === id ? { ...item, seen: true } : item));
         setSearchItems(previous => previous.map(item => item.reference === id ? { ...item, seen: true } : item));
+        for (const entry of Object.values(cacheRef.current.pages)) entry.data.list = entry.data.list.map(item => item.reference === id ? { ...item, seen: true } : item);
+        if (cacheKeyRef.current) void browser.storage.local.set({ [cacheKeyRef.current]: cacheRef.current }).catch(() => {});
     }, []);
     const markAll = async () => { setMarking(true); const results = await Promise.allSettled(items.filter(item => !item.seen).map(item => markSeen(item.reference))); await loadCount(); if (results.some(r => r.status === 'rejected')) setError('Не вдалося позначити всі сповіщення прочитаними.'); setMarking(false); };
     const normalized = useMemo(() => items.map(item => convertNotification(item)).filter((item): item is NotificationItem => item !== null), [items]);
-    const searchActive = query.trim().length > 0;
     const displayed = useMemo(() => {
         const source = searchActive ? searchItems.map(item => convertNotification(item)).filter((item): item is NotificationItem => item !== null) : normalized;
         const needle = query.trim().toLocaleLowerCase('uk');
@@ -203,7 +244,8 @@ export default function NotificationsView() {
         />
         <div className="flex min-w-0 flex-col gap-4">
             <div className="relative w-full">
-                <Input value={query} onChange={event => setQuery(event.target.value)} placeholder="Пошук сповіщень..." aria-label="Пошук сповіщень" className="w-full pr-11" />
+                <Input value={query} onChange={event => setQuery(event.target.value)} placeholder="Пошук сповіщень..." aria-label="Пошук сповіщень" className="w-full pr-20" />
+                {searchActive && searching && <LoaderCircle className="absolute right-10 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" aria-label="Пошук" />}
                 <Button type="button" variant="ghost" size="icon-sm" aria-label="Очистити пошук" disabled={!query} onClick={() => setQuery('')} className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground disabled:invisible"><X className="size-4" /></Button>
             </div>
         <div className="flex flex-col gap-4">
@@ -222,9 +264,10 @@ export default function NotificationsView() {
             const list = displayed.filter(item => dayKey(item.created) === day); if (!list.length) return null;
             return <section key={day}><div className="border-y border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">{day === 'today' ? 'Сьогодні' : day === 'yesterday' ? 'Вчора' : 'Раніше'}</div>{(groupNotifications ? groupSimilarNotifications(list) : list.map(item => ({ kind: 'single' as const, item }))).map(entry => { const mark = (id: string) => { void markSeen(id).then(loadCount).catch(() => setError('Не вдалося позначити сповіщення прочитаним.')); }; return entry.kind === 'group' ? <NotificationGroup key={entry.key} items={entry.items} markSeen={mark} /> : <NotificationRow key={entry.item.reference} item={entry.item} markSeen={mark} />; })}</section>;
         })}
-        {searchActive && searching && <p className="p-4 text-sm text-muted-foreground" role="status">Пошук: перевірено {searchProgress} із {searchPages} сторінок…</p>}
+        {searchActive && searching && <span className="sr-only" role="status">Пошук: перевірено {searchProgress} із {searchPages} сторінок</span>}
         {searchActive && searchError && <p className="p-4 text-sm text-destructive" role="alert">{searchError}</p>}
-        {!searchActive && loading && <p className="p-4 text-sm text-muted-foreground">Завантаження…</p>}
+        {!searchActive && loading && (page === 0 ? <NotificationsSkeleton /> : <div className="flex justify-center p-4" role="status" aria-label="Завантаження"><LoaderCircle className="size-5 animate-spin text-muted-foreground" /></div>)}
+        {searchActive && searching && !displayed.length && <NotificationsSkeleton />}
         {!searchActive && error && <div className="p-4"><p className="text-sm text-destructive">{error}</p><Button variant="outline" onClick={() => void load(page ? page + 1 : 1)}>Спробувати ще</Button></div>}
         {!loading && !searching && !searchError && !error && !displayed.length && <div className="p-8 text-center"><MaterialSymbolsNotificationsRounded className="mx-auto mb-3 size-6 text-muted-foreground" /><p className="font-medium">Сповіщень не знайдено</p><p className="text-sm text-muted-foreground">{searchActive || statusFilter !== 'all' || category !== 'all' ? 'Спробуйте змінити пошуковий запит або фільтр' : 'Тут будуть відображатись майбутні сповіщення'}</p></div>}
         {!searchActive && page > 0 && page < pages && <div ref={loadMoreRef} aria-hidden="true" className="h-px" />}

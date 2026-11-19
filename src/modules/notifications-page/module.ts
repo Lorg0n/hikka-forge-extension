@@ -9,7 +9,6 @@ const moduleDef: ForgeModuleDef = {
     elementSelector: { selector: 'body', position: 'append', hostWidth: 'auto' },
     settings: [
         { id: 'groupNotifications', label: 'Групувати схожі', type: 'toggle', defaultValue: false },
-        { id: 'searchPages', label: 'Глибина пошуку', description: 'Більша кількість сторінок збільшує час пошуку.', type: 'slider', min: 1, max: 50, step: 1, defaultValue: 10, unit: ' стор.' },
     ],
     component: NotificationsButton, icon: { name: 'lucide:bell', color: '#f59e0b' },
 };

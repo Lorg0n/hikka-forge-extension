@@ -14,6 +14,8 @@ import FeMention from './icons/FeMention';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { ModulePage } from '@/components/ui/module-page';
+import { PageHeader } from '@/components/ui/page-header';
+import logo from '@/assets/logo.svg';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { convertNotification, type NotificationItem, type NotificationResponse } from './notifications';
@@ -77,8 +79,16 @@ export default function NotificationsView() {
     }, []);
     const markAll = async () => { setMarking(true); const results = await Promise.allSettled(items.filter(item => !item.seen).map(item => markSeen(item.reference))); await loadCount(); if (results.some(r => r.status === 'rejected')) setError('Не вдалося позначити всі сповіщення прочитаними.'); setMarking(false); };
     const normalized = useMemo(() => items.map(item => convertNotification(item)).filter((item): item is NotificationItem => item !== null), [items]);
-    return <ModulePage stateKey="notifications"><div className="overflow-hidden rounded-md border border-border">
-        <div className="flex items-center justify-between gap-2 bg-muted/40 px-3 py-3.5"><div className="flex items-center gap-2"><h1 className="text-sm font-semibold">Сповіщення</h1>{count > 0 && <Badge variant="warning">{count}</Badge>}</div>{count > 0 && <Button size="sm" variant="outline" disabled={marking || loading} onClick={() => void markAll()}>Прочитати всі</Button>}</div>
+    return <ModulePage stateKey="notifications"><div className="flex flex-col gap-8 md:gap-12">
+        <PageHeader
+            title="Сповіщення"
+            description="Ваші оновлення та активність спільноти"
+            media={<div className="flex aspect-square w-full items-center justify-center rounded-(--base-radius) bg-primary/10"><MaterialSymbolsNotificationsRounded className="size-7 text-primary-foreground" /></div>}
+            titleSuffix={count > 0 ? <Badge variant="warning">{count}</Badge> : undefined}
+            action={<img src={logo} alt="Hikka Forge" className="size-5 shrink-0 opacity-60" />}
+        />
+        <div className="overflow-hidden rounded-md border border-border">
+        {count > 0 && <div className="flex justify-end bg-muted/40 px-3 py-3"><Button size="sm" variant="outline" disabled={marking || loading} onClick={() => void markAll()}>Прочитати всі</Button></div>}
         {(['today', 'yesterday', 'earlier'] as const).map(day => {
             const list = normalized.filter(item => dayKey(item.created) === day); if (!list.length) return null;
             return <section key={day}><div className="border-y border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">{day === 'today' ? 'Сьогодні' : day === 'yesterday' ? 'Вчора' : 'Раніше'}</div>{list.map(item => <NotificationRow key={item.reference} item={item} markSeen={id => { void markSeen(id).then(loadCount).catch(() => setError('Не вдалося позначити сповіщення прочитаним.')); }} />)}</section>;
@@ -87,5 +97,5 @@ export default function NotificationsView() {
         {error && <div className="p-4"><p className="text-sm text-destructive">{error}</p><Button variant="outline" onClick={() => void load(page ? page + 1 : 1)}>Спробувати ще</Button></div>}
         {!loading && !error && !normalized.length && <div className="p-8 text-center"><MaterialSymbolsNotificationsRounded className="mx-auto mb-3 size-6 text-muted-foreground" /><p className="font-medium">Сповіщень не знайдено</p><p className="text-sm text-muted-foreground">Тут будуть відображатись майбутні сповіщення</p></div>}
         {!loading && !error && page < pages && <div className="p-3"><Button className="w-full" variant="outline" onClick={() => void load(page + 1)}>Завантажити ще</Button></div>}
-    </div></ModulePage>;
+    </div></div></ModulePage>;
 }

@@ -1,57 +1,91 @@
-import { useCallback, useEffect, useState } from 'react';
+import MaterialSymbolsAddCommentRounded from './icons/MaterialSymbolsAddCommentRounded';
+import MaterialSymbolsChangeCircleRounded from './icons/MaterialSymbolsChangeCircleRounded';
+import MaterialSymbolsCheckCircleRounded from './icons/MaterialSymbolsCheckCircleRounded';
+import MaterialSymbolsFavoriteRounded from './icons/MaterialSymbolsFavoriteRounded';
+import MaterialSymbolsFlagCircleRounded from './icons/MaterialSymbolsFlagCircleRounded';
+import MaterialSymbolsHeartMinusRounded from './icons/MaterialSymbolsHeartMinusRounded';
+import MaterialSymbolsHeartPlusRounded from './icons/MaterialSymbolsHeartPlusRounded';
+import MaterialSymbolsInfoRounded from './icons/MaterialSymbolsInfoRounded';
+import MaterialSymbolsLiveTvRounded from './icons/MaterialSymbolsLiveTvRounded';
+import MaterialSymbolsLockOpenRightOutlineRounded from './icons/MaterialSymbolsLockOpenRightOutlineRounded';
+import MaterialSymbolsPersonAddRounded from './icons/MaterialSymbolsPersonAddRounded';
+import MaterialSymbolsNotificationsRounded from './icons/MaterialSymbolsNotificationsRounded';
+import FeMention from './icons/FeMention';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { ModulePage } from '@/components/ui/module-page';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { convertNotification, type NotificationItem, type NotificationResponse } from './notifications';
 
-type Notification = { reference: string; notification_type: string; created: number; seen: boolean; initiator_user?: { username?: string; avatar?: string } | null; data: Record<string, unknown> };
-type Result = { pagination: { page: number; pages: number; total: number }; list: Notification[] };
-const labels: Record<string, string> = {
-    comment_reply: 'Відповіді на коментар', comment_vote: 'Оцінки коментаря', comment_tag: 'Згадки',
-    collection_comment: 'Коментарі до колекції', article_comment: 'Коментарі до статті',
-    collection_vote: 'Оцінки колекції', article_vote: 'Оцінки статті', edit_comment: 'Коментарі до правок',
-    edit_accepted: 'Прийняті правки', edit_denied: 'Відхилені правки', edit_updated: 'Оновлення правок',
-    hikka_update: 'Оновлення Hikka', schedule_anime: 'Нові епізоди', follow: 'Нові підписники', thirdparty_login: 'Вхід у застосунок',
+type Result = { pagination: { page: number; pages: number }; list: NotificationResponse[] };
+const icons = {
+    edit_accepted: MaterialSymbolsCheckCircleRounded, edit_denied: MaterialSymbolsFlagCircleRounded, edit_updated: MaterialSymbolsChangeCircleRounded,
+    comment_reply: MaterialSymbolsAddCommentRounded, comment_vote: MaterialSymbolsFavoriteRounded, comment_tag: FeMention,
+    edit_comment: MaterialSymbolsAddCommentRounded, collection_comment: MaterialSymbolsAddCommentRounded, article_comment: MaterialSymbolsAddCommentRounded,
+    hikka_update: MaterialSymbolsInfoRounded, schedule_anime: MaterialSymbolsLiveTvRounded, follow: MaterialSymbolsPersonAddRounded,
+    collection_vote: MaterialSymbolsFavoriteRounded, article_vote: MaterialSymbolsFavoriteRounded, thirdparty_login: MaterialSymbolsLockOpenRightOutlineRounded,
+} as const;
+const accents: Record<string, string> = {
+    primary: 'bg-primary text-primary-foreground border-primary-border', success: 'bg-success text-success-foreground border-success-border',
+    warning: 'bg-warning text-warning-foreground border-warning-border', destructive: 'bg-destructive text-destructive-foreground border-destructive-border',
+    info: 'bg-info text-info-foreground border-info-border', neutral: 'bg-muted text-muted-foreground border-border',
 };
-function itemHref(item: Notification): string {
-    const d = item.data;
-    if (typeof d.link === 'string' && (d.link.startsWith('/') || d.link.startsWith('https://hikka.io/'))) return d.link;
-    if (item.notification_type === 'follow' && typeof d.username === 'string') return `/u/${encodeURIComponent(d.username)}`;
-    if (typeof d.slug === 'string') {
-        const type = typeof d.content_type === 'string' ? d.content_type : item.notification_type.startsWith('article') ? 'article' : 'collection';
-        const path = ({ article: 'articles', collection: 'collections' } as Record<string, string>)[type] || type;
-        return `/${path}/${encodeURIComponent(d.slug)}`;
-    }
-    return '#';
+const api = 'https://api.hikka.io';
+function dayKey(timestamp: number): 'today' | 'yesterday' | 'earlier' {
+    const date = new Date(timestamp * 1000); const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    return date >= today ? 'today' : date >= yesterday ? 'yesterday' : 'earlier';
+}
+function NotificationRow({ item, markSeen }: { item: NotificationItem; markSeen: (id: string) => void }) {
+    const NotificationIcon = item.scoreSign ? (item.scoreSign > 0 ? MaterialSymbolsHeartPlusRounded : MaterialSymbolsHeartMinusRounded) : icons[item.type] || MaterialSymbolsNotificationsRounded;
+    const image = item.actor?.avatar || item.contentImage;
+    return <div className={`group/item flex gap-3 border-t border-l-4 border-border px-3 py-2.5 transition-colors hover:bg-muted ${item.seen ? 'border-l-transparent' : 'border-l-primary-foreground/60 bg-primary-foreground/10'}`}>
+        <div className="relative size-10 shrink-0">
+            {image ? <img src={image} alt={item.actor?.username || ''} className="size-10 rounded-md object-cover" /> : <div className="flex size-10 items-center justify-center rounded-md border border-border bg-secondary/40"><NotificationIcon className="size-5" /></div>}
+            {image && <span className={`absolute -right-0.5 -bottom-0.5 flex size-4 items-center justify-center rounded-sm border ${accents[item.accent]}`}><NotificationIcon className="size-2.5" /></span>}
+        </div>
+        <div className="relative flex min-w-0 flex-1 flex-col gap-1">
+            {item.href !== '#' && <a href={item.href} className="absolute inset-0 z-10" aria-label={item.title} onClick={() => { if (!item.seen) markSeen(item.reference); }} />}
+            <div className="flex items-center justify-between gap-2"><span className="truncate text-sm font-medium leading-tight">{item.title}</span>{item.scoreSign && <span className={`rounded-sm border px-1 text-xs font-bold ${accents[item.accent]}`}>{item.scoreSign > 0 ? '+1' : '-1'}</span>}</div>
+            <div className="line-clamp-2 text-xs text-muted-foreground"><ReactMarkdown allowedElements={['p', 'strong', 'em', 'del', 'code']} unwrapDisallowed>{item.description || ''}</ReactMarkdown></div>
+            {item.preview && <blockquote className="mt-0.5 line-clamp-1 border-l-2 border-muted-foreground/20 pl-2 text-xs text-muted-foreground"><ReactMarkdown allowedElements={['p', 'strong', 'em', 'del', 'code']} unwrapDisallowed>{item.preview}</ReactMarkdown></blockquote>}
+            <time className="text-xs opacity-60" dateTime={new Date(item.created * 1000).toISOString()}>{new Date(item.created * 1000).toLocaleString('uk-UA')}</time>
+        </div>
+    </div>;
 }
 export default function NotificationsView() {
-    const [items, setItems] = useState<Notification[]>([]);
-    const [page, setPage] = useState(0);
-    const [pages, setPages] = useState(1);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
+    const [items, setItems] = useState<NotificationResponse[]>([]); const [page, setPage] = useState(0); const [pages, setPages] = useState(1);
+    const [count, setCount] = useState(0); const [loading, setLoading] = useState(false); const [marking, setMarking] = useState(false); const [error, setError] = useState('');
+    const loadCount = useCallback(async () => { try { const r = await fetch(`${api}/notifications/count`, { credentials: 'include' }); if (r.ok) setCount((await r.json()).unseen); } catch { /* list remains usable */ } }, []);
     const load = useCallback(async (next: number) => {
         setLoading(true); setError('');
         try {
-            const response = await fetch(`https://api.hikka.io/notifications?page=${next}&size=25`, { credentials: 'include' });
-            if (!response.ok) throw new Error(response.status === 401 || response.status === 403 ? 'Увійдіть до Hikka, щоб переглянути сповіщення.' : 'Не вдалося завантажити сповіщення.');
-            const data: Result = await response.json();
+            const r = await fetch(`${api}/notifications?page=${next}&size=25`, { credentials: 'include' });
+            if (!r.ok) throw new Error(r.status === 401 || r.status === 403 ? 'Увійдіть до Hikka, щоб переглянути сповіщення.' : 'Не вдалося завантажити сповіщення.');
+            const data: Result = await r.json();
             setItems(previous => next === 1 ? data.list : [...previous, ...data.list.filter(item => !previous.some(old => old.reference === item.reference))]);
             setPage(data.pagination.page); setPages(data.pagination.pages);
-        } catch (e) { setError(e instanceof Error ? e.message : 'Не вдалося завантажити сповіщення.'); }
-        finally { setLoading(false); }
+        } catch (e) { setError(e instanceof Error ? e.message : 'Не вдалося завантажити сповіщення.'); } finally { setLoading(false); }
     }, []);
-    useEffect(() => { void load(1); }, [load]);
-    const groups = new Map<string, Notification[]>();
-    for (const item of items) groups.set(item.notification_type, [...(groups.get(item.notification_type) || []), item]);
-    const renderItem = (item: Notification) => <a key={item.reference} href={itemHref(item)} className={`flex gap-3 border-t border-border p-4 hover:bg-muted/60 ${!item.seen ? 'bg-primary/10' : ''}`}>
-        {item.initiator_user?.avatar && <img src={item.initiator_user.avatar} alt="" className="size-10 rounded-md object-cover" />}
-        <span className="min-w-0 flex-1"><span className="block font-medium">{item.initiator_user?.username || (typeof item.data.username === 'string' ? item.data.username : labels[item.notification_type] || 'Сповіщення')}</span>
-        <span className="block text-sm text-muted-foreground">{typeof item.data.description === 'string' ? item.data.description : typeof item.data.comment_text === 'string' ? item.data.comment_text : labels[item.notification_type] || 'Сповіщення'}</span>
-        <time className="text-xs text-muted-foreground">{new Date(item.created * 1000).toLocaleString('uk-UA')}</time></span>
-    </a>;
-    return <ModulePage stateKey="notifications"><div className="flex flex-col gap-6"><div><h1 className="text-3xl font-bold">Сповіщення</h1><p className="mt-2 text-muted-foreground">Усі ваші сповіщення в одному місці</p></div>
-        {Array.from(groups, ([type, group]) => group.length === 1 ? <div key={type} className="overflow-hidden rounded-lg border border-border">{renderItem(group[0])}</div> : <details key={type} className="overflow-hidden rounded-lg border border-border"><summary className="cursor-pointer p-4 font-medium hover:bg-muted/60">{labels[type] || type} <span className="text-muted-foreground">· {group.length}</span></summary>{group.map(renderItem)}</details>)}
-        {loading && <p className="text-muted-foreground">Завантаження…</p>}{error && <div><p className="text-destructive">{error}</p><Button variant="outline" onClick={() => void load(page ? page + 1 : 1)}>Спробувати ще</Button></div>}
-        {!loading && !error && !items.length && <p className="text-muted-foreground">У вас поки немає сповіщень</p>}
-        {!loading && !error && page < pages && <Button variant="outline" onClick={() => void load(page + 1)}>Завантажити ще</Button>}
+    useEffect(() => { void load(1); void loadCount(); }, [load, loadCount]);
+    const markSeen = useCallback(async (id: string) => {
+        const r = await fetch(`${api}/notifications/${encodeURIComponent(id)}/seen`, { method: 'POST', credentials: 'include', keepalive: true });
+        if (!r.ok) throw new Error('Не вдалося позначити сповіщення прочитаним');
+        setItems(previous => previous.map(item => item.reference === id ? { ...item, seen: true } : item));
+    }, []);
+    const markAll = async () => { setMarking(true); const results = await Promise.allSettled(items.filter(item => !item.seen).map(item => markSeen(item.reference))); await loadCount(); if (results.some(r => r.status === 'rejected')) setError('Не вдалося позначити всі сповіщення прочитаними.'); setMarking(false); };
+    const normalized = useMemo(() => items.map(item => convertNotification(item)).filter((item): item is NotificationItem => item !== null), [items]);
+    return <ModulePage stateKey="notifications"><div className="overflow-hidden rounded-md border border-border">
+        <div className="flex items-center justify-between gap-2 bg-muted/40 px-3 py-3.5"><div className="flex items-center gap-2"><h1 className="text-sm font-semibold">Сповіщення</h1>{count > 0 && <Badge variant="warning">{count}</Badge>}</div>{count > 0 && <Button size="sm" variant="outline" disabled={marking || loading} onClick={() => void markAll()}>Прочитати всі</Button>}</div>
+        {(['today', 'yesterday', 'earlier'] as const).map(day => {
+            const list = normalized.filter(item => dayKey(item.created) === day); if (!list.length) return null;
+            return <section key={day}><div className="border-y border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">{day === 'today' ? 'Сьогодні' : day === 'yesterday' ? 'Вчора' : 'Раніше'}</div>{list.map(item => <NotificationRow key={item.reference} item={item} markSeen={id => { void markSeen(id).then(loadCount).catch(() => setError('Не вдалося позначити сповіщення прочитаним.')); }} />)}</section>;
+        })}
+        {loading && <p className="p-4 text-sm text-muted-foreground">Завантаження…</p>}
+        {error && <div className="p-4"><p className="text-sm text-destructive">{error}</p><Button variant="outline" onClick={() => void load(page ? page + 1 : 1)}>Спробувати ще</Button></div>}
+        {!loading && !error && !normalized.length && <div className="p-8 text-center"><MaterialSymbolsNotificationsRounded className="mx-auto mb-3 size-6 text-muted-foreground" /><p className="font-medium">Сповіщень не знайдено</p><p className="text-sm text-muted-foreground">Тут будуть відображатись майбутні сповіщення</p></div>}
+        {!loading && !error && page < pages && <div className="p-3"><Button className="w-full" variant="outline" onClick={() => void load(page + 1)}>Завантажити ще</Button></div>}
     </div></ModulePage>;
 }

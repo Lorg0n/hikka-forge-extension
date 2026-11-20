@@ -24,7 +24,7 @@ import logo from '@/assets/logo.svg';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { CheckCheck, ChevronDown, LoaderCircle, Search, X } from 'lucide-react';
+import { Check, CheckCheck, ChevronDown, LoaderCircle, Search, X } from 'lucide-react';
 import { Icon } from '@iconify/react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { convertNotification, type NotificationItem, type NotificationResponse } from './notifications';
@@ -133,6 +133,12 @@ export default function NotificationsView() {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [bulkBusy, setBulkBusy] = useState(false);
     const [bulkProgress, setBulkProgress] = useState(0);
+    const [bulkSuccess, setBulkSuccess] = useState(false);
+    useEffect(() => {
+        if (!bulkSuccess) return;
+        const timer = window.setTimeout(() => setBulkSuccess(false), 1200);
+        return () => window.clearTimeout(timer);
+    }, [bulkSuccess]);
     const toggle = (id: string) => { setSelecting(true); setSelectedIds(previous => { const next = new Set(previous); if (next.has(id)) next.delete(id); else next.add(id); return next; }); };
     const toggleGroup = (ids: string[]) => setSelectedIds(previous => { const next = new Set(previous); const remove = ids.every(id => next.has(id)); ids.forEach(id => remove ? next.delete(id) : next.add(id)); return next; });
     const cancelSelection = () => { if (!bulkBusy) { setSelecting(false); setSelectedIds(new Set()); } };
@@ -277,7 +283,7 @@ export default function NotificationsView() {
     }, [saveCache]);
     const markSelected = async () => {
         const pending = searchItems.filter(item => selectedIds.has(item.reference) && !item.seen);
-        setBulkBusy(true); setBulkProgress(0);
+        setBulkSuccess(false); setBulkBusy(true); setBulkProgress(0);
         const failed = new Set<string>();
         for (let i = 0; i < pending.length; i += 4) {
             const batch = pending.slice(i, i + 4);
@@ -287,7 +293,7 @@ export default function NotificationsView() {
         }
         await loadCount(); setBulkBusy(false); setSelectedIds(failed);
         if (failed.size) setError('Не вдалося позначити деякі сповіщення. Спробуйте ще раз.');
-        else setSelecting(false);
+        else setBulkSuccess(true);
     };
     const normalized = useMemo(() => items.map(item => convertNotification(item)).filter((item): item is NotificationItem => item !== null), [items]);
     const normalizedSearch = useMemo(() => searchItems.map(item => convertNotification(item)).filter((item): item is NotificationItem => item !== null), [searchItems]);
@@ -344,7 +350,7 @@ export default function NotificationsView() {
                 </div>
             </div>
         </div>
-        {selecting && <div className="sticky top-0 z-20 mt-3 flex items-center justify-between gap-2 rounded-md border border-border bg-card/80 px-4 py-2 shadow-sm backdrop-blur-xl motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-2 motion-safe:duration-200 md:top-16">{ <><span className="text-sm text-muted-foreground">Вибрано: {selectedIds.size}{bulkBusy && ` · ${bulkProgress}`}</span><div className="flex gap-1"><Button size="icon-md" variant="ghost" aria-label="Вибрати всі" title="Вибрати всі" disabled={searching || !!searchError || bulkBusy} onClick={() => { const needle = debouncedQuery.toLocaleLowerCase('uk'); const selectedCategory = categories.find(option => option.id === category); setSelectedIds(new Set(normalizedSearch.filter(item => (!needle || [item.title, item.description, item.preview, item.actor?.username].some(value => value?.toLocaleLowerCase('uk').includes(needle))) && (statusFilter === 'all' || (statusFilter === 'unread' ? !item.seen : item.seen)) && (!selectedCategory || (selectedCategory.types as readonly string[]).includes(item.type))).map(item => item.reference))); }}><Icon icon="boxicons:select-all" /></Button><Button size="icon-md" variant="ghost" aria-label="Прочитати вибрані" title="Прочитати вибрані" disabled={!selectedIds.size || bulkBusy} onClick={() => void markSelected()}>{bulkBusy ? <LoaderCircle className="animate-spin" /> : <CheckCheck />}</Button><Button size="icon-md" variant="ghost" aria-label="Скасувати" title="Скасувати" disabled={bulkBusy} onClick={cancelSelection}><X /></Button></div></>}</div>}
+        {selecting && <div className="sticky top-0 z-20 mt-3 flex items-center justify-between gap-2 rounded-md border border-border bg-card/80 px-4 py-2 shadow-sm backdrop-blur-xl motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-2 motion-safe:duration-200 md:top-16">{ <><span className="text-sm text-muted-foreground">Вибрано: {selectedIds.size}{bulkBusy && ` · ${bulkProgress}`}</span><div className="flex gap-1"><Button size="icon-md" variant="ghost" aria-label="Вибрати всі" title="Вибрати всі" disabled={searching || !!searchError || bulkBusy} onClick={() => { const needle = debouncedQuery.toLocaleLowerCase('uk'); const selectedCategory = categories.find(option => option.id === category); setSelectedIds(new Set(normalizedSearch.filter(item => (!needle || [item.title, item.description, item.preview, item.actor?.username].some(value => value?.toLocaleLowerCase('uk').includes(needle))) && (statusFilter === 'all' || (statusFilter === 'unread' ? !item.seen : item.seen)) && (!selectedCategory || (selectedCategory.types as readonly string[]).includes(item.type))).map(item => item.reference))); }}><Icon icon="boxicons:select-all" /></Button><Button size="icon-md" variant="ghost" aria-label="Прочитати вибрані" title="Прочитати вибрані" disabled={!selectedIds.size || bulkBusy} onClick={() => void markSelected()}>{bulkBusy ? <LoaderCircle className="motion-safe:animate-spin" /> : bulkSuccess ? <Check className="text-success-foreground motion-safe:animate-in motion-safe:zoom-in-50 motion-safe:fade-in motion-safe:duration-200" /> : <CheckCheck className="motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200" />}</Button><span aria-hidden="true" className="my-2 mx-1 w-px self-stretch bg-border" /><Button size="icon-md" variant="ghost" aria-label="Скасувати" title="Скасувати" disabled={bulkBusy} onClick={cancelSelection}><X /></Button></div></>}</div>}
         <div className="mt-3 overflow-hidden rounded-md border border-border">
         {sections.map(({ day, entries }) => {
             const visible = entries.slice(0, remainingEntries);

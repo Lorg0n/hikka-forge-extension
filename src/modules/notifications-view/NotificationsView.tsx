@@ -224,7 +224,7 @@ export default function NotificationsView() {
         return data;
     }, [prepareCache, saveCache]);
     const [count, setCount] = useState(0); const [loading, setLoading] = useState(false); const [error, setError] = useState('');
-    const loadCount = useCallback(async () => { try { const r = await fetch(`${api}/notifications/count`, { credentials: 'include' }); if (r.ok) setCount((await r.json()).unseen); } catch { /* list remains usable */ } }, []);
+    const loadCount = useCallback(async () => { try { const r = await fetch(`${api}/notifications/count`, { credentials: 'include' }); if (r.ok) { const unseen = (await r.json()).unseen; setCount(unseen); window.dispatchEvent(new CustomEvent('hikka-forge-notifications-count', { detail: unseen })); } } catch { /* list remains usable */ } }, []);
     const load = useCallback(async (next: number) => {
         if (loadingRef.current) return;
         loadingRef.current = true;

@@ -61,7 +61,7 @@ function appendStickerLink(nodes: EditorNode[], link: EditorNode): boolean {
 	for (let index = nodes.length - 1; index >= 0; index -= 1) {
 		const node = nodes[index];
 		if ("text" in node || node.type === "a") {
-			nodes.splice(index + 1, 0, link, { text: "" });
+			nodes.splice(index + 1, 0, link, { text: " " });
 			return true;
 		}
 		if (appendStickerLink(node.children, link)) return true;
@@ -87,7 +87,7 @@ async function insertSticker(editorId: string, slug: string) {
 		children: [{ text: token }],
 	};
 	if (!hasEditorContent(value)) {
-		await editor.set([{ type: "p", children: [{ text: "" }, link, { text: "" }] }]);
+		await editor.set([{ type: "p", children: [{ text: "" }, link, { text: " " }] }]);
 		return;
 	}
 	if (!appendStickerLink(value, link)) {

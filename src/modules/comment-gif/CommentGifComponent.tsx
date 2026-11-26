@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import forgeLogo from "@/assets/logo.svg";
+import { API_BACKEND_BASE } from "@/constants";
 import { editorApi, editorIds, type EditorNode, type EditorValue } from "@/services/editorApiService";
 import { StickerService, type StickerCategory, type StickerItem } from "@/services/stickerService";
 
@@ -12,8 +13,6 @@ const COMMENT_TOOLBAR = `${COMMENTS} [role="toolbar"][aria-orientation="horizont
 const MOBILE_TOOLBAR = `[data-slot="page-sheet-content"] [role="toolbar"][aria-orientation="horizontal"]`;
 const TOOLBAR = `${COMMENT_TOOLBAR}, ${MOBILE_TOOLBAR}`;
 const TOKEN = /:emote\[([a-z0-9-]+)\]:/gi;
-// Reserve support for a future public sticker URL: users without Hikka Forge can
-// open its preview/install page, while the legacy token keeps older extensions compatible.
 const LINKED_TOKEN = /^:emote\[([a-z0-9-]+)\]:$/i;
 const IMAGE = "[data-hikka-forge-sticker]";
 const STICKER_TOKEN = "[data-hikka-forge-sticker-token]";
@@ -58,38 +57,43 @@ function loadStickerCatalog(refresh = false): Promise<StickerItem[]> {
 	return stickerCatalog;
 }
 
+function appendStickerLink(nodes: EditorNode[], link: EditorNode): boolean {
+	for (let index = nodes.length - 1; index >= 0; index -= 1) {
+		const node = nodes[index];
+		if ("text" in node || node.type === "a") {
+			nodes.splice(index + 1, 0, link, { text: "" });
+			return true;
+		}
+		if (appendStickerLink(node.children, link)) return true;
+	}
+	return false;
+}
+
 function hasEditorContent(nodes: EditorNode[]): boolean {
 	return nodes.some((node) => "text" in node
 		? node.text.trim().length > 0
 		: hasEditorContent(node.children));
 }
 
-function appendToLastTextNode(nodes: EditorNode[], text: string): boolean {
-	for (let index = nodes.length - 1; index >= 0; index -= 1) {
-		const node = nodes[index];
-		if ("text" in node) {
-			node.text += text;
-			return true;
-		}
-		if (appendToLastTextNode(node.children, text)) return true;
-	}
-	return false;
-}
-
 async function insertSticker(editorId: string, slug: string) {
 	const editor = editorApi(editorId);
-	const value: EditorValue = await editor.get();
+	// Firefox exposes the page's response through Xray wrappers. Copy it into
+	// the extension realm before adding new objects to its children arrays.
+	const value: EditorValue = JSON.parse(JSON.stringify(await editor.get()));
 	const token = `:emote[${slug}]:`;
-
-	if (hasEditorContent(value)) {
-		if (!appendToLastTextNode(value, token)) {
-			throw new Error("The editor document has no text node to append the sticker to.");
-		}
-		await editor.set(value);
+	const link: EditorNode = {
+		type: "a",
+		url: `${API_BACKEND_BASE}/stickers/${encodeURIComponent(slug)}`,
+		children: [{ text: token }],
+	};
+	if (!hasEditorContent(value)) {
+		await editor.set([{ type: "p", children: [{ text: "" }, link, { text: "" }] }]);
 		return;
 	}
-
-	await editor.set([{ type: "p", children: [{ text: token }] }]);
+	if (!appendStickerLink(value, link)) {
+		throw new Error("The editor document has no text node to append the sticker to.");
+	}
+	await editor.set(value);
 }
 
 function contentEditorId(): string | null {
@@ -272,7 +276,7 @@ function renderLinkedTokens(root: Node, items: Map<string, StickerItem>) {
 			: [];
 
 	for (const link of links) {
-		if (!link.matches(LINK_TRIGGER) || link.closest(IMAGE)) continue;
+		if (!link.matches(LINK_TRIGGER) || link.closest(`${IMAGE}, [contenteditable="true"]`)) continue;
 		const match = LINKED_TOKEN.exec(link.textContent?.trim() ?? "");
 		const slug = match?.[1];
 		const item = slug ? items.get(slug) : undefined;
